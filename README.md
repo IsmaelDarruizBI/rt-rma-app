@@ -89,8 +89,36 @@ Esto lee `business/processes/repair-management.yaml` y genera
 
 ## Estado actual
 
-Etapa: **Business Process Discovery & Modeling** (contenido de ejemplo,
-no representa aun el proceso real de Rosario Tecno).
+Etapa: **Business Process Discovery & Modeling**
 
-No incluido todavia (deliberadamente): Next.js, React, React Flow, Tailwind,
-base de datos, validacion cruzada de referencias entre archivos.
+Actualmente se encuentra definida la **V1.0 (draft) del proceso de Gestion
+de Ordenes de Reparacion de Rosario Tecno**, pendiente de validacion
+funcional con el negocio.
+
+La fuente de verdad continua siendo:
+
+```text
+YAML
+→ JSON Schema
+→ Mermaid
+```
+
+React Flow sera una futura capa de visualizacion interactiva.
+
+Todavia no se incluyen deliberadamente:
+
+- React / Next.js
+- React Flow
+- Base de datos
+- User Stories
+- Spec Kit
+- Requerimientos tecnicos
+- Validacion cruzada entre archivos
+- Desarrollo de aplicacion
+
+Comandos principales:
+
+```bash
+npm run validate
+npm run generate:mermaid
+```
