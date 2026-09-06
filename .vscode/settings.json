@@ -1,0 +1,5 @@
+{
+  "yaml.schemas": {
+    "./business/schemas/process.schema.json": "business/processes/*.yaml"
+  }
+}

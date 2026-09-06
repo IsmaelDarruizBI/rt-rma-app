@@ -5,12 +5,15 @@
   "description": "Rosario Tecno RMA App - business process discovery and modeling",
   "type": "module",
   "scripts": {
-    "generate:mermaid": "tsx scripts/generate-mermaid.ts"
+    "generate:mermaid": "tsx scripts/generate-mermaid.ts",
+    "validate:process": "tsx scripts/validate-process.ts",
+    "validate": "npm run validate:process"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
     "tsx": "^4.19.1",
     "yaml": "^2.6.0",
+    "ajv": "^8.17.1",
     "@types/node": "^22.9.0"
   }
 }

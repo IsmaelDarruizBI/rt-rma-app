@@ -3,12 +3,14 @@
 %% SOURCE: business/processes/repair-management.yaml
 
 flowchart TD
+    EVT-REP-001{{"Equipo requiere reparacion"}}
     PROC-REP-010["Recibir equipo"]
     PROC-REP-020["Diagnosticar equipo"]
     PROC-REP-030{"Equipo reparable"}
     PROC-REP-040((("Continuar proceso de reparacion")))
     PROC-REP-050((("Equipo no reparable")))
 
+    EVT-REP-001 --> PROC-REP-010
     PROC-REP-010 --> PROC-REP-020
     PROC-REP-020 --> PROC-REP-030
     PROC-REP-030 -->|Si| PROC-REP-040

@@ -8,11 +8,11 @@ process:
   version: "1.0"
   status: draft
 
-trigger:
-  id: EVT-REP-001
-  name: Equipo requiere reparacion
-
 nodes:
+  - id: EVT-REP-001
+    type: event
+    name: Equipo requiere reparacion
+
   - id: PROC-REP-010
     type: activity
     name: Recibir equipo
@@ -36,6 +36,9 @@ nodes:
     name: Equipo no reparable
 
 edges:
+  - from: EVT-REP-001
+    to: PROC-REP-010
+
   - from: PROC-REP-010
     to: PROC-REP-020
 
