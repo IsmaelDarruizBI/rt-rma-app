@@ -1,0 +1,15 @@
+# Actores minimos de ejemplo.
+# No agregar actores que no hayan sido definidos y confirmados con el negocio.
+
+actors:
+  - id: ACT-ADMIN
+    name: Administrativo
+
+  - id: ACT-TECH
+    name: Tecnico
+
+  - id: ACT-CLIENT
+    name: Cliente
+
+  - id: ACT-SYSTEM
+    name: Sistema

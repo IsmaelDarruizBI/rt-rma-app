@@ -1,0 +1,9 @@
+# EJEMPLO DEMOSTRATIVO.
+# Este/estos registro(s) deberan ser reemplazados cuando se documenten
+# las reglas de negocio reales de Rosario Tecno.
+
+rules:
+  - id: BR-REP-001
+    name: Ejemplo
+    description: Regla de negocio de ejemplo
+    status: draft

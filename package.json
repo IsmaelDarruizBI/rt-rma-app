@@ -1,0 +1,16 @@
+{
+  "name": "rt-rma-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rosario Tecno RMA App - business process discovery and modeling",
+  "type": "module",
+  "scripts": {
+    "generate:mermaid": "tsx scripts/generate-mermaid.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.1",
+    "yaml": "^2.6.0",
+    "@types/node": "^22.9.0"
+  }
+}

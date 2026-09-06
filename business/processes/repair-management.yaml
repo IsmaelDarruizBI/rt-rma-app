@@ -1,0 +1,51 @@
+# EJEMPLO DEMOSTRATIVO.
+# Este proceso NO representa todavia el flujo real de Rosario Tecno.
+# Sirve unicamente para validar la estructura YAML -> Schema -> Mermaid.
+
+process:
+  id: PROC-REP
+  name: Gestion de Reparaciones
+  version: "1.0"
+  status: draft
+
+trigger:
+  id: EVT-REP-001
+  name: Equipo requiere reparacion
+
+nodes:
+  - id: PROC-REP-010
+    type: activity
+    name: Recibir equipo
+    actor: ACT-ADMIN
+
+  - id: PROC-REP-020
+    type: activity
+    name: Diagnosticar equipo
+    actor: ACT-TECH
+
+  - id: PROC-REP-030
+    type: decision
+    name: Equipo reparable
+
+  - id: PROC-REP-040
+    type: end
+    name: Continuar proceso de reparacion
+
+  - id: PROC-REP-050
+    type: end
+    name: Equipo no reparable
+
+edges:
+  - from: PROC-REP-010
+    to: PROC-REP-020
+
+  - from: PROC-REP-020
+    to: PROC-REP-030
+
+  - from: PROC-REP-030
+    to: PROC-REP-040
+    condition: Si
+
+  - from: PROC-REP-030
+    to: PROC-REP-050
+    condition: No
