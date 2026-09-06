@@ -23,11 +23,32 @@ la primera etapa de la trazabilidad E2E descrita en el
 ## Como se agrega un proceso nuevo
 
 1. Crear el archivo YAML en `business/processes/`.
-2. Seguir la estructura de `repair-management.yaml` (proceso, trigger,
-   nodes, edges).
-3. Validar manualmente que respete `business/schemas/process.schema.json`.
+2. Seguir la estructura de `repair-management.yaml` (proceso, nodes, edges).
+3. Ejecutar `npm run validate` para validarlo contra
+   `business/schemas/process.schema.json`.
 4. Ejecutar `npm run generate:mermaid` para producir el diagrama.
 
-Los contenidos actuales (`repair-management.yaml`, actores, reglas) son
-ejemplos demostrativos y deberan ser reemplazados por el proceso real de
-Rosario Tecno cuando se releve con el negocio.
+`repair-management.yaml` contiene actualmente la V1.0 (draft) del proceso de
+Gestion de Ordenes de Reparacion de Rosario Tecno, pendiente de validacion
+funcional con el negocio. Ver la seccion "Process V1.1 - Pending validation"
+mas abajo para los temas explicitamente dejados fuera de esta version.
+
+## Process V1.1 - Pending validation
+
+Puntos identificados durante el modelado de la V1.0 que quedan pendientes de
+validacion funcional con el negocio antes de incorporarse al proceso:
+
+- Estados definitivos de la Orden de Reparacion.
+- Validacion de stock vs reserva de stock.
+- Actor responsable del control tecnico.
+- Flujo de garantia y reproceso.
+- Tercerizacion.
+- Scrap.
+- Desperdicios.
+- Devolucion de repuestos defectuosos.
+- Compras y reposicion.
+- Presupuesto y aprobacion del cliente.
+- Puntos y comisiones de tecnicos.
+- Reglas de priorizacion.
+- Casos en que una reparacion puede involucrar mas de un tecnico.
+- Reglas de integracion con el sistema de stock y ventas de Rosario Tecno.

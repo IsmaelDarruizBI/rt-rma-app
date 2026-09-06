@@ -1,9 +1,41 @@
-# EJEMPLO DEMOSTRATIVO.
-# Este/estos registro(s) deberan ser reemplazados cuando se documenten
-# las reglas de negocio reales de Rosario Tecno.
+# Reglas de negocio V1.0 del proceso de Gestion de Ordenes de Reparacion.
+# Son afirmaciones funcionales en estado draft, pendientes de validacion con
+# el negocio. Todavia no se transforman en Functional Requirements.
 
 rules:
+
   - id: BR-REP-001
-    name: Ejemplo
-    description: Regla de negocio de ejemplo
+    name: Definicion del requerimiento
+    description: >
+      Toda Orden de Reparacion debe indicar al menos una reparacion requerida
+      antes de continuar con el proceso.
+    status: draft
+
+  - id: BR-REP-002
+    name: Validacion previa de recursos
+    description: >
+      Antes de habilitar una Orden de Reparacion deben validarse los recursos
+      y condiciones necesarias para su ejecucion.
+    status: draft
+
+  - id: BR-REP-003
+    name: Override justificado
+    description: >
+      Si un usuario autorizado fuerza una Orden de Reparacion que no supera
+      alguna validacion, debe registrarse usuario, fecha, validacion ignorada
+      y motivo.
+    status: draft
+
+  - id: BR-REP-004
+    name: Registro de ejecucion real
+    description: >
+      El tecnico debe registrar lo efectivamente realizado y los repuestos
+      realmente utilizados durante la reparacion.
+    status: draft
+
+  - id: BR-REP-005
+    name: Inventario consecuencia de ejecucion
+    description: >
+      Los movimientos de inventario asociados a una reparacion deben originarse
+      a partir de los repuestos y cantidades registrados en su ejecucion.
     status: draft

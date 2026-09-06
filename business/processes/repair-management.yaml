@@ -1,54 +1,393 @@
-# EJEMPLO DEMOSTRATIVO.
-# Este proceso NO representa todavia el flujo real de Rosario Tecno.
-# Sirve unicamente para validar la estructura YAML -> Schema -> Mermaid.
+# Gestion de Ordenes de Reparacion - V1.0 (draft).
+# Primera version funcional del proceso, pendiente de validacion con el
+# negocio. Deliberadamente deja fuera: garantia/reproceso, tercerizacion,
+# scrap, devolucion de repuestos, compras/reposicion de inventario, puntos
+# y comisiones de tecnicos, priorizacion automatica, presupuesto/aprobacion
+# del cliente y reserva de stock. Ver docs/discovery/README.md (V1.1).
 
 process:
   id: PROC-REP
-  name: Gestion de Reparaciones
+  name: Gestion de Ordenes de Reparacion
   version: "1.0"
   status: draft
 
 nodes:
+
   - id: EVT-REP-001
     type: event
-    name: Equipo requiere reparacion
+    name: Surge necesidad de reparacion
+    description: >
+      Evento que inicia el proceso cuando un equipo requiere una reparacion.
 
   - id: PROC-REP-010
-    type: activity
-    name: Recibir equipo
-    actor: ACT-ADMIN
+    type: decision
+    name: Cual es el origen del equipo
 
   - id: PROC-REP-020
     type: activity
-    name: Diagnosticar equipo
-    actor: ACT-TECH
+    name: Recibir referencia del equipo RT
+    actor: ACT-SYSTEM
+    description: >
+      El equipo pertenece a Rosario Tecno y su informacion debe provenir,
+      a futuro, del sistema que gestiona stock y ventas de equipos.
+    outputs:
+      - Equipo RT identificado
 
   - id: PROC-REP-030
-    type: decision
-    name: Equipo reparable
+    type: activity
+    name: Registrar cliente y equipo
+    actor: ACT-RECEP
+    description: >
+      Se registran los datos necesarios del cliente externo y del equipo
+      recibido para reparacion.
+    outputs:
+      - Cliente identificado
+      - Equipo identificado
 
   - id: PROC-REP-040
-    type: end
-    name: Continuar proceso de reparacion
+    type: activity
+    name: Crear Orden de Reparacion
+    actor: ACT-RECEP
+    description: >
+      Se crea la unidad transaccional central del proceso.
+      La orden nace en estado REQUERIMIENTO.
+    outputs:
+      - Orden de Reparacion
+      - Estado REQUERIMIENTO
+
+  - id: PROC-REP-070
+    type: activity
+    name: Definir requerimiento de reparacion
+    actor: ACT-ADMIN
+    description: >
+      Se registra que reparacion se necesita realizar y, opcionalmente,
+      restricciones como marca de repuesto o tecnico requerido.
+    inputs:
+      - Orden de Reparacion
+    outputs:
+      - Reparacion requerida
+    rules:
+      - BR-REP-001
 
   - id: PROC-REP-050
+    type: decision
+    name: Es cliente externo
+
+  - id: PROC-REP-060
+    type: activity
+    name: Generar comprobante de recepcion
+    actor: ACT-SYSTEM
+    description: >
+      Se genera el documento que acredita que el cliente dejo el equipo
+      para ser reparado. El comprobante debe poder incluir el numero de
+      Orden de Reparacion y el requerimiento de reparacion registrado.
+    outputs:
+      - Comprobante de recepcion
+
+  - id: PROC-REP-080
+    type: activity
+    name: Validar factibilidad
+    actor: ACT-SYSTEM
+    description: >
+      Se valida que exista la informacion y los recursos necesarios
+      para habilitar la orden.
+    rules:
+      - BR-REP-002
+
+  - id: PROC-REP-090
+    type: decision
+    name: Estan disponibles los recursos necesarios
+
+  - id: PROC-REP-100
+    type: activity
+    name: Registrar advertencia de faltante
+    actor: ACT-SYSTEM
+    description: >
+      El sistema informa los recursos o condiciones que impiden
+      habilitar normalmente la orden.
+
+  - id: PROC-REP-110
+    type: decision
+    name: Usuario autorizado fuerza la orden
+
+  - id: PROC-REP-120
+    type: activity
+    name: Orden pendiente por recursos
+    actor: ACT-SYSTEM
+    description: >
+      La orden permanece pendiente hasta que puedan volver a validarse
+      las condiciones necesarias.
+
+  - id: PROC-REP-130
+    type: activity
+    name: Registrar override
+    actor: ACT-COORD
+    description: >
+      Un usuario autorizado decide continuar a pesar de una validacion
+      fallida y debe registrar el motivo.
+    outputs:
+      - Usuario responsable
+      - Fecha
+      - Motivo
+      - Validacion ignorada
+    rules:
+      - BR-REP-003
+
+  - id: PROC-REP-140
+    type: activity
+    name: Habilitar Orden de Reparacion
+    actor: ACT-SYSTEM
+    description: >
+      La orden queda habilitada para ingresar al circuito operativo.
+
+  - id: PROC-REP-150
+    type: activity
+    name: Definir prioridad
+    actor: ACT-COORD
+    description: >
+      El coordinador establece inicialmente la prioridad de ejecucion
+      de la orden.
+
+  - id: PROC-REP-160
+    type: activity
+    name: Asignar tecnico
+    actor: ACT-COORD
+    description: >
+      Se asigna la orden al tecnico responsable de ejecutarla.
+
+  - id: PROC-REP-170
+    type: activity
+    name: Ingresar orden a cola de trabajo
+    actor: ACT-SYSTEM
+    description: >
+      La orden queda disponible dentro de la cola de trabajo
+      correspondiente al tecnico.
+
+  - id: PROC-REP-180
+    type: activity
+    name: Tomar Orden de Reparacion
+    actor: ACT-TECH
+    description: >
+      El tecnico comienza a trabajar sobre una orden de su cola.
+
+  - id: PROC-REP-190
+    type: activity
+    name: Ejecutar reparacion
+    actor: ACT-TECH
+
+  - id: PROC-REP-200
+    type: activity
+    name: Registrar ejecucion real
+    actor: ACT-TECH
+    description: >
+      El tecnico registra los trabajos efectivamente realizados,
+      repuestos utilizados, cantidades, observaciones y eventuales
+      desperdicios.
+    outputs:
+      - Reparaciones realizadas
+      - Repuestos utilizados
+      - Cantidades utilizadas
+      - Observaciones
+    rules:
+      - BR-REP-004
+
+  - id: PROC-REP-210
+    type: activity
+    name: Generar movimientos de inventario
+    actor: ACT-SYSTEM
+    description: >
+      Los consumos y otros movimientos de inventario son consecuencia
+      de la ejecucion registrada en la orden.
+    rules:
+      - BR-REP-005
+
+  - id: PROC-REP-220
+    type: activity
+    name: Realizar control tecnico
+    actor: ACT-TECH
+    description: >
+      Se valida el resultado de la reparacion antes de marcarla como lista.
+      El actor definitivo responsable de este control debe validarse
+      posteriormente con el negocio.
+
+  - id: PROC-REP-230
+    type: decision
+    name: Resultado tecnico correcto
+
+  - id: PROC-REP-240
+    type: activity
+    name: Marcar reparacion lista
+    actor: ACT-SYSTEM
+
+  - id: PROC-REP-250
+    type: decision
+    name: La orden corresponde a cliente externo
+
+  - id: PROC-REP-260
+    type: activity
+    name: Notificar cliente
+    actor: ACT-SYSTEM
+    description: >
+      Se notifica al cliente que la reparacion se encuentra lista.
+      A futuro este punto podra integrarse con WhatsApp, chatbot
+      o portal web.
+
+  - id: PROC-REP-270
+    type: activity
+    name: Entregar equipo
+    actor: ACT-ADMIN
+
+  - id: PROC-REP-280
+    type: activity
+    name: Generar comprobante final y garantia
+    actor: ACT-SYSTEM
+    description: >
+      Se genera el documento final que informa el trabajo efectivamente
+      realizado y las condiciones y vencimiento de la garantia de reparacion.
+    outputs:
+      - Comprobante final
+      - Garantia de reparacion
+
+  - id: PROC-REP-290
+    type: activity
+    name: Informar resultado al sistema RT
+    actor: ACT-SYSTEM
+    description: >
+      Para equipos de Rosario Tecno, el resultado de la reparacion debera
+      poder informarse a futuro al sistema que gestiona stock y ventas.
+
+  - id: PROC-REP-300
+    type: activity
+    name: Cerrar Orden de Reparacion
+    actor: ACT-SYSTEM
+
+  - id: EVT-REP-999
     type: end
-    name: Equipo no reparable
+    name: Orden de Reparacion cerrada
+
 
 edges:
+
   - from: EVT-REP-001
     to: PROC-REP-010
 
   - from: PROC-REP-010
     to: PROC-REP-020
+    condition: Rosario Tecno
+
+  - from: PROC-REP-010
+    to: PROC-REP-030
+    condition: Cliente externo
 
   - from: PROC-REP-020
-    to: PROC-REP-030
+    to: PROC-REP-040
 
   - from: PROC-REP-030
     to: PROC-REP-040
+
+  - from: PROC-REP-040
+    to: PROC-REP-070
+
+  - from: PROC-REP-070
+    to: PROC-REP-050
+
+  - from: PROC-REP-050
+    to: PROC-REP-060
     condition: Si
 
-  - from: PROC-REP-030
-    to: PROC-REP-050
+  - from: PROC-REP-050
+    to: PROC-REP-080
     condition: No
+
+  - from: PROC-REP-060
+    to: PROC-REP-080
+
+  - from: PROC-REP-080
+    to: PROC-REP-090
+
+  - from: PROC-REP-090
+    to: PROC-REP-140
+    condition: Si
+
+  - from: PROC-REP-090
+    to: PROC-REP-100
+    condition: No
+
+  - from: PROC-REP-100
+    to: PROC-REP-110
+
+  - from: PROC-REP-110
+    to: PROC-REP-120
+    condition: No
+
+  - from: PROC-REP-110
+    to: PROC-REP-130
+    condition: Si
+
+  - from: PROC-REP-120
+    to: PROC-REP-080
+    condition: Revalidar
+
+  - from: PROC-REP-130
+    to: PROC-REP-140
+
+  - from: PROC-REP-140
+    to: PROC-REP-150
+
+  - from: PROC-REP-150
+    to: PROC-REP-160
+
+  - from: PROC-REP-160
+    to: PROC-REP-170
+
+  - from: PROC-REP-170
+    to: PROC-REP-180
+
+  - from: PROC-REP-180
+    to: PROC-REP-190
+
+  - from: PROC-REP-190
+    to: PROC-REP-200
+
+  - from: PROC-REP-200
+    to: PROC-REP-210
+
+  - from: PROC-REP-210
+    to: PROC-REP-220
+
+  - from: PROC-REP-220
+    to: PROC-REP-230
+
+  - from: PROC-REP-230
+    to: PROC-REP-190
+    condition: No
+
+  - from: PROC-REP-230
+    to: PROC-REP-240
+    condition: Si
+
+  - from: PROC-REP-240
+    to: PROC-REP-250
+
+  - from: PROC-REP-250
+    to: PROC-REP-260
+    condition: Si
+
+  - from: PROC-REP-250
+    to: PROC-REP-290
+    condition: No
+
+  - from: PROC-REP-260
+    to: PROC-REP-270
+
+  - from: PROC-REP-270
+    to: PROC-REP-280
+
+  - from: PROC-REP-280
+    to: PROC-REP-300
+
+  - from: PROC-REP-290
+    to: PROC-REP-300
+
+  - from: PROC-REP-300
+    to: EVT-REP-999

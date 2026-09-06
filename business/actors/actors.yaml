@@ -1,9 +1,13 @@
-# Actores minimos de ejemplo.
+# Actores del proceso de Gestion de Ordenes de Reparacion (V1.0, draft).
 # No agregar actores que no hayan sido definidos y confirmados con el negocio.
 
 actors:
+
   - id: ACT-ADMIN
-    name: Administrativo
+    name: Administrador
+
+  - id: ACT-RECEP
+    name: Recepcion
 
   - id: ACT-TECH
     name: Tecnico
@@ -13,3 +17,6 @@ actors:
 
   - id: ACT-SYSTEM
     name: Sistema
+
+  - id: ACT-COORD
+    name: Coordinador RMA
