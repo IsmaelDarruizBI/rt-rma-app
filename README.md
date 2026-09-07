@@ -38,18 +38,20 @@ de IDs que sostendra la trazabilidad futura.
 ```text
 YAML            = Source of Truth
 JSON Schema     = Validation Contract
-Mermaid         = Visualization (generada, nunca editada a mano)
-React Flow      = Future Interactive Visualization
+Mermaid         = Visualizacion general
+HTML Viewer     = Visualizacion interactiva para negocio
+React Flow      = Futuro renderer avanzado
 ```
 
 El proceso de negocio se define en YAML bajo `business/`. Ese YAML es la
-unica fuente de verdad. A partir de el se genera automaticamente un diagrama
-Mermaid para visualizacion humana. El modelo de datos (`nodes[]` / `edges[]`)
-esta pensado desde el inicio para poder alimentar React Flow en el futuro sin
-rediseñar el esquema.
+unica fuente de verdad. A partir de el se generan automaticamente un diagrama
+Mermaid y un viewer HTML interactivo para visualizacion humana; ninguno de
+los dos se edita a mano ni introduce informacion nueva. El modelo de datos
+(`nodes[]` / `edges[]`) esta pensado desde el inicio para poder alimentar
+React Flow en el futuro sin rediseñar el esquema.
 
 ```text
-YAML → JSON Schema → Renderer → Mermaid (hoy) / React Flow (futuro)
+YAML → JSON Schema → Renderer → Mermaid / HTML Viewer (hoy) → React Flow (futuro)
 ```
 
 ## Estructura
@@ -63,6 +65,7 @@ business/
 
 generated/
   mermaid/     Diagramas Mermaid generados automaticamente (no editar)
+  viewer/      Viewer HTML interactivo generado automaticamente (no editar)
 
 scripts/       Generadores y herramientas de este repositorio
 
@@ -78,14 +81,51 @@ traceability/  Convenciones de trazabilidad para etapas futuras
 npm install
 ```
 
-## Generar el diagrama Mermaid
+## Visualizacion
+
+Ambas visualizaciones se generan desde el mismo YAML y nunca deben editarse
+manualmente.
+
+### Mermaid general
+
+`generated/mermaid/repair-management.mmd`
 
 ```bash
 npm run generate:mermaid
 ```
 
-Esto lee `business/processes/repair-management.yaml` y genera
-`generated/mermaid/repair-management.mmd`.
+Diagrama Mermaid plano, pensado como vista general del proceso (por ejemplo
+para pegar en un documento o visor de Mermaid).
+
+### Viewer interactivo
+
+`generated/viewer/repair-management.html`
+
+```bash
+npm run generate:viewer
+```
+
+HTML autocontenido (incluye Mermaid embebido, funciona sin conexion) pensado
+para validacion funcional con el negocio. Al hacer click sobre un nodo del
+diagrama, un panel lateral muestra su detalle: actor, descripcion, inputs,
+outputs y reglas de negocio, resolviendo las referencias contra
+`business/actors/actors.yaml` y `business/rules/business-rules.yaml`. Si una
+referencia no existe, el panel lo muestra como una advertencia visible en
+lugar de fallar silenciosamente.
+
+### Comandos
+
+```bash
+npm run validate
+npm run generate:mermaid
+npm run generate:viewer
+```
+
+o, para correr los tres pasos en orden:
+
+```bash
+npm run generate
+```
 
 ## Estado actual
 
@@ -100,10 +140,10 @@ La fuente de verdad continua siendo:
 ```text
 YAML
 → JSON Schema
-→ Mermaid
+→ Mermaid / HTML Viewer
 ```
 
-React Flow sera una futura capa de visualizacion interactiva.
+React Flow sera una futura capa de visualizacion interactiva avanzada.
 
 Todavia no se incluyen deliberadamente:
 
@@ -121,4 +161,6 @@ Comandos principales:
 ```bash
 npm run validate
 npm run generate:mermaid
+npm run generate:viewer
+npm run generate
 ```

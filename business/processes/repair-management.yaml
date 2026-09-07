@@ -28,8 +28,8 @@ nodes:
     name: Recibir referencia del equipo RT
     actor: ACT-SYSTEM
     description: >
-      El equipo pertenece a Rosario Tecno y su informacion debe provenir,
-      a futuro, del sistema que gestiona stock y ventas de equipos.
+      El equipo pertenece a Rosario Tecno y su informacion debe provenir
+      del sistema que gestiona stock y ventas de equipos.
     outputs:
       - Equipo RT identificado
 
@@ -80,7 +80,8 @@ nodes:
     description: >
       Se genera el documento que acredita que el cliente dejo el equipo
       para ser reparado. El comprobante debe poder incluir el numero de
-      Orden de Reparacion y el requerimiento de reparacion registrado.
+      Orden de Reparacion, el equipo a reparar y el requerimiento de 
+      reparacion registrado.
     outputs:
       - Comprobante de recepcion
 
