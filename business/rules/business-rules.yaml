@@ -1,4 +1,4 @@
-# Reglas de negocio V1.0 del proceso de Gestion de Ordenes de Reparacion.
+# Reglas de negocio V1.1 del proceso de Gestion de Ordenes de Reparacion.
 # Son afirmaciones funcionales en estado draft, pendientes de validacion con
 # el negocio. Todavia no se transforman en Functional Requirements.
 
@@ -8,7 +8,9 @@ rules:
     name: Definicion del requerimiento
     description: >
       Toda Orden de Reparacion debe indicar al menos una reparacion requerida
-      antes de continuar con el proceso.
+      antes de continuar con el proceso, excepto mientras se encuentra en
+      estado EN_REVISION. En ese caso, la reparacion requerida debe quedar
+      definida antes de validar factibilidad.
     status: draft
 
   - id: BR-REP-002
@@ -36,6 +38,43 @@ rules:
   - id: BR-REP-005
     name: Inventario consecuencia de ejecucion
     description: >
-      Los movimientos de inventario asociados a una reparacion deben originarse
+      Los movimientos de inventario asociados a una reparacion (consumo de
+      lo utilizado y liberacion de reservas no utilizadas) deben originarse
       a partir de los repuestos y cantidades registrados en su ejecucion.
+    status: draft
+
+  - id: BR-REP-006
+    name: Reserva de insumos al tomar Orden
+    description: >
+      Al tomar una Orden de Reparacion habilitada, deben reservarse
+      conceptualmente los insumos previstos segun la reparacion requerida.
+      La reserva no aplica mientras la Orden se encuentra en EN_REVISION.
+    status: draft
+
+  - id: BR-REP-007
+    name: Asignacion tecnica flexible
+    description: >
+      Una Orden en EN_REPARACION puede quedar en modo EXCLUSIVA (solo el
+      tecnico asignado puede continuarla, salvo override justificado con
+      usuario, fecha y motivo) o en modo ABIERTA (otro tecnico puede
+      continuarla). La estructura tecnica de este modo queda pendiente de
+      definicion.
+    status: draft
+
+  - id: BR-REP-008
+    name: Control tecnico por Recepcion
+    description: >
+      El control tecnico final es responsabilidad de Recepcion. Si el
+      control es rechazado, debe registrarse fecha, usuario, observacion y
+      resultado, y la Orden vuelve a EN_COLA para que un tecnico la retome.
+    status: draft
+
+  - id: BR-REP-009
+    name: Productividad posterior a control aprobado
+    description: >
+      Los puntos de productividad se calculan automaticamente segun el tipo
+      de reparacion realizada, la ponderacion configurada y los tecnicos que
+      participaron, y solo se acreditan despues de que Recepcion valida
+      correctamente la reparacion. La forma de distribuir puntos entre
+      multiples tecnicos queda pendiente de definicion.
     status: draft

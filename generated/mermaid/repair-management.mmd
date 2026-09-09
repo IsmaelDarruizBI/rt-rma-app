@@ -4,13 +4,19 @@
 
 flowchart TD
     EVT-REP-001{{"Surge necesidad de reparacion"}}
-    PROC-REP-010{"Cual es el origen del equipo"}
-    PROC-REP-020["Recibir referencia del equipo RT"]
+    PROC-REP-010{"Cual es el origen de la Orden de Reparacion"}
+    PROC-REP-020["Recibir referencia y contexto del equipo RT"]
+    PROC-REP-025["Recibir referencia de garantia de venta RT"]
     PROC-REP-030["Registrar cliente y equipo"]
+    PROC-REP-035["Identificar reparacion original en garantia"]
     PROC-REP-040["Crear Orden de Reparacion"]
-    PROC-REP-070["Definir requerimiento de reparacion"]
-    PROC-REP-050{"Es cliente externo"}
+    PROC-REP-045{"Se conoce la reparacion requerida"}
+    PROC-REP-050{"Requiere comprobante de recepcion"}
+    PROC-REP-055["Marcar Orden en revision"]
     PROC-REP-060["Generar comprobante de recepcion"]
+    PROC-REP-065["Realizar revision tecnica"]
+    PROC-REP-070["Definir requerimiento de reparacion"]
+    PROC-REP-075["Definir requerimiento luego de revision"]
     PROC-REP-080["Validar factibilidad"]
     PROC-REP-090{"Estan disponibles los recursos necesarios"}
     PROC-REP-100["Registrar advertencia de faltante"]
@@ -19,29 +25,39 @@ flowchart TD
     PROC-REP-130["Registrar override"]
     PROC-REP-140["Habilitar Orden de Reparacion"]
     PROC-REP-150["Definir prioridad"]
-    PROC-REP-160["Asignar tecnico"]
     PROC-REP-170["Ingresar orden a cola de trabajo"]
     PROC-REP-180["Tomar Orden de Reparacion"]
+    PROC-REP-185["Reservar insumos previstos"]
     PROC-REP-190["Ejecutar reparacion"]
     PROC-REP-200["Registrar ejecucion real"]
     PROC-REP-210["Generar movimientos de inventario"]
     PROC-REP-220["Realizar control tecnico"]
     PROC-REP-230{"Resultado tecnico correcto"}
+    PROC-REP-235["Registrar control rechazado"]
+    PROC-REP-245["Calcular puntos de productividad"]
     PROC-REP-240["Marcar reparacion lista"]
-    PROC-REP-250{"La orden corresponde a cliente externo"}
+    PROC-REP-250{"Requiere entrega a cliente"}
     PROC-REP-260["Notificar cliente"]
-    PROC-REP-270["Entregar equipo"]
     PROC-REP-280["Generar comprobante final y garantia"]
+    PROC-REP-270["Entregar equipo"]
     PROC-REP-290["Informar resultado al sistema RT"]
-    PROC-REP-300["Cerrar Orden de Reparacion"]
-    EVT-REP-999((("Orden de Reparacion cerrada")))
+    EVT-REP-999((("Fin del flujo de Orden de Reparacion")))
 
     EVT-REP-001 --> PROC-REP-010
-    PROC-REP-010 -->|Rosario Tecno| PROC-REP-020
-    PROC-REP-010 -->|Cliente externo| PROC-REP-030
+    PROC-REP-010 -->|CLIENTE_EXTERNO| PROC-REP-030
+    PROC-REP-010 -->|RT_INTERNO| PROC-REP-020
+    PROC-REP-010 -->|RT_GARANTIA_VENTA| PROC-REP-025
+    PROC-REP-010 -->|RMA_GARANTIA_REPARACION| PROC-REP-035
     PROC-REP-020 --> PROC-REP-040
+    PROC-REP-025 --> PROC-REP-040
     PROC-REP-030 --> PROC-REP-040
-    PROC-REP-040 --> PROC-REP-070
+    PROC-REP-035 --> PROC-REP-040
+    PROC-REP-040 --> PROC-REP-045
+    PROC-REP-045 -->|Si| PROC-REP-070
+    PROC-REP-045 -->|No| PROC-REP-055
+    PROC-REP-055 --> PROC-REP-065
+    PROC-REP-065 --> PROC-REP-075
+    PROC-REP-075 --> PROC-REP-080
     PROC-REP-070 --> PROC-REP-050
     PROC-REP-050 -->|Si| PROC-REP-060
     PROC-REP-050 -->|No| PROC-REP-080
@@ -55,21 +71,22 @@ flowchart TD
     PROC-REP-120 -->|Revalidar| PROC-REP-080
     PROC-REP-130 --> PROC-REP-140
     PROC-REP-140 --> PROC-REP-150
-    PROC-REP-150 --> PROC-REP-160
-    PROC-REP-160 --> PROC-REP-170
+    PROC-REP-150 --> PROC-REP-170
     PROC-REP-170 --> PROC-REP-180
-    PROC-REP-180 --> PROC-REP-190
+    PROC-REP-180 --> PROC-REP-185
+    PROC-REP-185 --> PROC-REP-190
     PROC-REP-190 --> PROC-REP-200
     PROC-REP-200 --> PROC-REP-210
     PROC-REP-210 --> PROC-REP-220
     PROC-REP-220 --> PROC-REP-230
-    PROC-REP-230 -->|No| PROC-REP-190
-    PROC-REP-230 -->|Si| PROC-REP-240
+    PROC-REP-230 -->|No| PROC-REP-235
+    PROC-REP-230 -->|Si| PROC-REP-245
+    PROC-REP-235 --> PROC-REP-170
+    PROC-REP-245 --> PROC-REP-240
     PROC-REP-240 --> PROC-REP-250
     PROC-REP-250 -->|Si| PROC-REP-260
     PROC-REP-250 -->|No| PROC-REP-290
-    PROC-REP-260 --> PROC-REP-270
-    PROC-REP-270 --> PROC-REP-280
-    PROC-REP-280 --> PROC-REP-300
-    PROC-REP-290 --> PROC-REP-300
-    PROC-REP-300 --> EVT-REP-999
+    PROC-REP-260 --> PROC-REP-280
+    PROC-REP-280 --> PROC-REP-270
+    PROC-REP-270 --> EVT-REP-999
+    PROC-REP-290 --> EVT-REP-999

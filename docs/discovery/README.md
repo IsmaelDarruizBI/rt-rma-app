@@ -28,27 +28,50 @@ la primera etapa de la trazabilidad E2E descrita en el
    `business/schemas/process.schema.json`.
 4. Ejecutar `npm run generate:mermaid` para producir el diagrama.
 
-`repair-management.yaml` contiene actualmente la V1.0 (draft) del proceso de
-Gestion de Ordenes de Reparacion de Rosario Tecno, pendiente de validacion
-funcional con el negocio. Ver la seccion "Process V1.1 - Pending validation"
-mas abajo para los temas explicitamente dejados fuera de esta version.
+`repair-management.yaml` contiene actualmente la V1.1 (draft) del proceso de
+Gestion de Ordenes de Reparacion de Rosario Tecno, incorporando lo validado
+en la segunda reunion funcional, y sigue pendiente de validacion funcional
+con el negocio. Ver "Estados conceptuales V1.1" y "Pendientes" mas abajo.
 
-## Process V1.1 - Pending validation
+## Estados conceptuales V1.1
 
-Puntos identificados durante el modelado de la V1.0 que quedan pendientes de
+Propuesta de estados de la Orden de Reparacion, tal como surge del modelado
+de la V1.1 (no son todavia un modelo de datos formal):
+
+- REQUERIMIENTO
+- EN_REVISION — la reparacion requerida todavia no esta definida.
+- PENDIENTE_RECURSOS
+- HABILITADA
+- EN_COLA
+- EN_REPARACION — con modo EXCLUSIVA / ABIERTA.
+- PENDIENTE_CONTROL
+- REPARACION_LISTA
+- ENTREGADA
+- CANCELADA — estado confirmado, reglas de transicion pendientes de
+  definicion (quien puede cancelar, desde que estados, por que motivos).
+
+No se incluye CERRADA (el flujo V1.1 no tiene un paso de cierre adicional).
+
+TERCERIZADA sigue pendiente de definir si sera un estado: ver pendientes.
+
+## Pendientes
+
+Puntos identificados durante el modelado de la V1.1 que quedan pendientes de
 validacion funcional con el negocio antes de incorporarse al proceso:
 
-- Estados definitivos de la Orden de Reparacion.
-- Validacion de stock vs reserva de stock.
-- Actor responsable del control tecnico.
-- Flujo de garantia y reproceso.
-- Tercerizacion.
-- Scrap.
-- Desperdicios.
-- Devolucion de repuestos defectuosos.
-- Compras y reposicion.
-- Presupuesto y aprobacion del cliente.
-- Puntos y comisiones de tecnicos.
-- Reglas de priorizacion.
-- Casos en que una reparacion puede involucrar mas de un tecnico.
-- Reglas de integracion con el sistema de stock y ventas de Rosario Tecno.
+- Flujo completo de tercerizacion.
+- Definir si TERCERIZADA es un estado.
+- Presupuesto y aprobacion de cliente externo.
+- Flujo de SCRAP.
+- Flujo de devolucion a proveedor.
+- Modelo definitivo de reproceso (reabrir misma OR, crear nueva OR
+  relacionada, registrar evento de reproceso, o un modelo combinado). La
+  unica relacion confirmada por ahora es que RMA_GARANTIA_REPARACION genera
+  una nueva Orden relacionada con la Orden original.
+- Reglas de garantia RMA configurable.
+- Override de garantia vencida.
+- Distribucion de puntos entre multiples tecnicos.
+- Catalogo definitivo de prioridades.
+- Estado terminal definitivo de RT_INTERNO.
+- Reglas de CANCELADA: quien, cuando y motivo.
+- Actor/regla que define el modo EXCLUSIVA / ABIERTA de EN_REPARACION.
