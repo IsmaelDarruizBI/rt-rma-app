@@ -191,13 +191,16 @@ const STYLES = `
     flex: 1 1 auto;
     min-width: 0;
     overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     background:
       radial-gradient(circle, #dfe1e7 1px, transparent 1px) 0 0 / 20px 20px,
       var(--bg);
     border-right: 1px solid var(--border);
   }
   #diagram-inner {
-    transform-origin: top left;
+    transform-origin: top center;
     transition: transform 0.12s ease-out;
     padding: 32px;
     width: max-content;
@@ -211,6 +214,7 @@ const STYLES = `
 
   #toolbar {
     position: sticky;
+    align-self: flex-start;
     top: 12px;
     left: 12px;
     display: inline-flex;
@@ -389,10 +393,25 @@ const CLIENT_SCRIPT = `
     highlightNode(nodeId);
   };
 
-  function initZoom() {
-    var scale = 1;
+  function computeInitialScale() {
+    var pane = document.getElementById("diagram-pane");
+    var svg = document.querySelector("#diagram-inner svg");
+    if (!svg) return 1.4;
+    var naturalWidth = svg.getBoundingClientRect().width;
+    var paneWidth = pane.clientWidth;
+    if (!naturalWidth || !paneWidth) return 1.4;
+    var fit = (paneWidth * 0.6) / naturalWidth;
+    return Math.min(1.8, Math.max(1.2, fit));
+  }
+
+  function initZoom(defaultScale) {
+    var scale = defaultScale;
     var target = document.getElementById("diagram-inner");
-    function apply() { target.style.transform = "scale(" + scale + ")"; }
+    var resetBtn = document.getElementById("zoom-reset");
+    function apply() {
+      target.style.transform = "scale(" + scale + ")";
+      resetBtn.textContent = Math.round(scale * 100) + "%";
+    }
     document.getElementById("zoom-in").addEventListener("click", function () {
       scale = Math.min(scale + 0.15, 3);
       apply();
@@ -401,10 +420,11 @@ const CLIENT_SCRIPT = `
       scale = Math.max(scale - 0.15, 0.3);
       apply();
     });
-    document.getElementById("zoom-reset").addEventListener("click", function () {
-      scale = 1;
+    resetBtn.addEventListener("click", function () {
+      scale = defaultScale;
       apply();
     });
+    apply();
   }
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -413,7 +433,7 @@ const CLIENT_SCRIPT = `
       var container = document.getElementById("diagram-inner");
       container.innerHTML = result.svg;
       if (result.bindFunctions) result.bindFunctions(container);
-      initZoom();
+      initZoom(computeInitialScale());
     });
     renderProcessSummary();
   });

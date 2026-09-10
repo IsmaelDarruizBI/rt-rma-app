@@ -3,7 +3,7 @@
 # segunda reunion funcional: los 4 origenes de la Orden de Reparacion,
 # el estado EN_REVISION para reparaciones aun no diagnosticadas, reserva
 # de insumos, asignacion tecnica flexible (EXCLUSIVA/ABIERTA), reintento
-# de control tecnico y calculo de puntos de productividad.
+# de control tecnico y calculo del puntaje de la reparacion.
 # Deliberadamente sigue sin definir: flujo completo de tercerizacion,
 # scrap, devolucion de repuestos, compras/reposicion de inventario,
 # distribucion de puntos entre multiples tecnicos, presupuesto/aprobacion
@@ -124,7 +124,9 @@ nodes:
     description: >
       Las ordenes que requieren comprobante de recepcion son
       CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION.
-      RT_INTERNO no lo requiere.
+      RT_INTERNO no lo requiere. Se evalua tanto si la reparacion ya se
+      conoce como si la Orden esta EN_REVISION: el comprobante es
+      independiente de si la reparacion ya fue diagnosticada.
 
   - id: PROC-REP-055
     type: activity
@@ -133,13 +135,9 @@ nodes:
     description: >
       La reparacion requerida todavia no se conoce. La Orden pasa a
       EN_REVISION con tipo de reparacion sin definir (no usar REVISION
-      como tipo de reparacion). Si el origen de la Orden requiere
-      comprobante de recepcion, el comprobante emitido en este punto debe
-      indicar que la reparacion se encuentra pendiente de
-      diagnostico/revision, sin inventar un tipo de reparacion.
+      como tipo de reparacion).
     outputs:
       - Estado EN_REVISION
-      - Comprobante de recepcion (pendiente de diagnostico), si corresponde segun origen
 
   - id: PROC-REP-060
     type: activity
@@ -147,9 +145,13 @@ nodes:
     actor: ACT-SYSTEM
     description: >
       Se genera el documento que acredita que el cliente dejo el equipo
-      para ser reparado, para ordenes cuyo origen lo requiere y cuya
-      reparacion ya se conoce. El comprobante debe mostrar la Orden, el
-      equipo y la reparacion requerida.
+      para ser reparado, para ordenes cuyo origen lo requiere
+      (CLIENTE_EXTERNO, RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION).
+      Si la reparacion ya se conoce, el comprobante muestra la Orden, el
+      cliente, el equipo y la reparacion requerida. Si la Orden esta
+      EN_REVISION, el comprobante muestra la Orden, el cliente y el
+      equipo, e indica conceptualmente "reparacion pendiente de
+      diagnostico", sin inventar un tipo de reparacion.
     outputs:
       - Comprobante de recepcion
 
@@ -365,14 +367,17 @@ nodes:
 
   - id: PROC-REP-245
     type: activity
-    name: Calcular puntos de productividad
+    name: Calcular puntaje de la reparacion
     actor: ACT-SYSTEM
     description: >
-      Los puntos se calculan automaticamente segun el tipo de reparacion
-      realizada, la ponderacion configurada y los tecnicos que
-      participaron. La acreditacion solo ocurre despues de que Recepcion
-      valida correctamente la reparacion. La forma de distribuir puntos
-      cuando participaron varios tecnicos queda pendiente de definicion.
+      Cada reparacion realizada tiene una ponderacion configurable. Una
+      vez que Recepcion aprueba el control tecnico, el sistema calcula el
+      puntaje total correspondiente a la reparacion. Todavia no esta
+      definida la distribucion o acreditacion de ese puntaje entre los
+      distintos tecnicos que participaron: no debe asumirse que se
+      asigna automaticamente a un unico tecnico.
+    outputs:
+      - Puntaje de la reparacion
     rules:
       - BR-REP-009
 
@@ -479,16 +484,10 @@ edges:
     to: PROC-REP-055
     condition: No
 
-  - from: PROC-REP-055
-    to: PROC-REP-065
-
-  - from: PROC-REP-065
-    to: PROC-REP-075
-
-  - from: PROC-REP-075
-    to: PROC-REP-080
-
   - from: PROC-REP-070
+    to: PROC-REP-050
+
+  - from: PROC-REP-055
     to: PROC-REP-050
 
   - from: PROC-REP-050
@@ -497,9 +496,24 @@ edges:
 
   - from: PROC-REP-050
     to: PROC-REP-080
-    condition: No
+    condition: No - reparacion definida
+
+  - from: PROC-REP-050
+    to: PROC-REP-065
+    condition: No - aun en revision
 
   - from: PROC-REP-060
+    to: PROC-REP-080
+    condition: Reparacion definida
+
+  - from: PROC-REP-060
+    to: PROC-REP-065
+    condition: Aun en revision
+
+  - from: PROC-REP-065
+    to: PROC-REP-075
+
+  - from: PROC-REP-075
     to: PROC-REP-080
 
   - from: PROC-REP-080

@@ -34,7 +34,7 @@ flowchart TD
     PROC-REP-220["Realizar control tecnico"]
     PROC-REP-230{"Resultado tecnico correcto"}
     PROC-REP-235["Registrar control rechazado"]
-    PROC-REP-245["Calcular puntos de productividad"]
+    PROC-REP-245["Calcular puntaje de la reparacion"]
     PROC-REP-240["Marcar reparacion lista"]
     PROC-REP-250{"Requiere entrega a cliente"}
     PROC-REP-260["Notificar cliente"]
@@ -55,13 +55,15 @@ flowchart TD
     PROC-REP-040 --> PROC-REP-045
     PROC-REP-045 -->|Si| PROC-REP-070
     PROC-REP-045 -->|No| PROC-REP-055
-    PROC-REP-055 --> PROC-REP-065
+    PROC-REP-070 --> PROC-REP-050
+    PROC-REP-055 --> PROC-REP-050
+    PROC-REP-050 -->|Si| PROC-REP-060
+    PROC-REP-050 -->|No - reparacion definida| PROC-REP-080
+    PROC-REP-050 -->|No - aun en revision| PROC-REP-065
+    PROC-REP-060 -->|Reparacion definida| PROC-REP-080
+    PROC-REP-060 -->|Aun en revision| PROC-REP-065
     PROC-REP-065 --> PROC-REP-075
     PROC-REP-075 --> PROC-REP-080
-    PROC-REP-070 --> PROC-REP-050
-    PROC-REP-050 -->|Si| PROC-REP-060
-    PROC-REP-050 -->|No| PROC-REP-080
-    PROC-REP-060 --> PROC-REP-080
     PROC-REP-080 --> PROC-REP-090
     PROC-REP-090 -->|Si| PROC-REP-140
     PROC-REP-090 -->|No| PROC-REP-100

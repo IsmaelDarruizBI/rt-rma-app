@@ -54,6 +54,13 @@ No se incluye CERRADA (el flujo V1.1 no tiene un paso de cierre adicional).
 
 TERCERIZADA sigue pendiente de definir si sera un estado: ver pendientes.
 
+El comprobante de recepcion se genera para los origenes que lo requieren
+(CLIENTE_EXTERNO, RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION)
+independientemente de si la reparacion ya se conoce o la Orden esta
+EN_REVISION; RT_INTERNO no lo requiere. El puntaje de una reparacion ya
+puede calcularse una vez aprobado el control tecnico; su distribucion entre
+multiples tecnicos sigue pendiente (ver Pendientes).
+
 ## Pendientes
 
 Puntos identificados durante el modelado de la V1.1 que quedan pendientes de

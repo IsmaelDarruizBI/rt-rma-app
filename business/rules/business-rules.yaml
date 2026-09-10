@@ -70,11 +70,12 @@ rules:
     status: draft
 
   - id: BR-REP-009
-    name: Productividad posterior a control aprobado
+    name: Puntaje de la reparacion posterior a control aprobado
     description: >
-      Los puntos de productividad se calculan automaticamente segun el tipo
-      de reparacion realizada, la ponderacion configurada y los tecnicos que
-      participaron, y solo se acreditan despues de que Recepcion valida
-      correctamente la reparacion. La forma de distribuir puntos entre
-      multiples tecnicos queda pendiente de definicion.
+      El puntaje correspondiente a una reparacion se calcula segun su
+      ponderacion configurada, unicamente despues de que el control
+      tecnico haya sido aprobado por Recepcion. La distribucion o
+      acreditacion de ese puntaje entre los distintos tecnicos que
+      participaron en la reparacion queda pendiente de definicion
+      funcional.
     status: draft
