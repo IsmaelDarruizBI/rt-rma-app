@@ -3,7 +3,9 @@
 # segunda reunion funcional: los 4 origenes de la Orden de Reparacion,
 # el estado EN_REVISION para reparaciones aun no diagnosticadas, reserva
 # de insumos, asignacion tecnica flexible (EXCLUSIVA/ABIERTA), reintento
-# de control tecnico y calculo del puntaje de la reparacion.
+# de control tecnico, calculo del puntaje de la reparacion y el primer
+# camino hacia el resultado SIN_REPARACION (distinto de CANCELADA) cuando
+# la revision tecnica no logra determinar la reparacion requerida.
 # Deliberadamente sigue sin definir: flujo completo de tercerizacion,
 # scrap, devolucion de repuestos, compras/reposicion de inventario,
 # distribucion de puntos entre multiples tecnicos, presupuesto/aprobacion
@@ -164,6 +166,36 @@ nodes:
       y registra el resultado de la revision.
     outputs:
       - Resultado de revision tecnica
+
+  - id: PROC-REP-068
+    type: decision
+    name: Se pudo definir la reparacion requerida
+    description: >
+      Distingue si, luego de la revision tecnica, se pudo determinar que
+      reparacion necesita el equipo.
+
+  - id: PROC-REP-069
+    type: activity
+    name: Registrar finalizacion sin reparacion
+    actor: ACT-RECEP
+    description: >
+      La revision tecnica no permitio determinar que reparacion necesita
+      el equipo. La Orden fue procesada correctamente pero concluye sin
+      que se haya realizado una reparacion: resultado SIN_REPARACION.
+      SIN_REPARACION no equivale a CANCELADA (una Orden cancelada fue
+      interrumpida; una Orden SIN_REPARACION fue procesada hasta su fin
+      sin necesitar o poder realizarse una reparacion). El motivo es
+      obligatorio; ejemplos conceptuales: no se pudo determinar la falla,
+      equipo no reparable, reparacion no disponible, otro. No se define
+      todavia un catalogo rigido de motivos.
+    outputs:
+      - Resultado SIN_REPARACION
+      - Motivo (obligatorio)
+      - Observaciones de diagnostico/revision
+      - Usuario que registra la decision
+      - Fecha
+    rules:
+      - BR-REP-010
 
   - id: PROC-REP-070
     type: activity
@@ -392,7 +424,9 @@ nodes:
     type: decision
     name: Requiere entrega a cliente
     description: >
-      Las ordenes que requieren entrega/documentacion al cliente son
+      Se alcanza tanto cuando la reparacion quedo lista (PROC-REP-240)
+      como cuando la Orden finalizo SIN_REPARACION (PROC-REP-069). Las
+      ordenes que requieren entrega/documentacion al cliente son
       CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION.
       RT_INTERNO continua hacia informar el resultado al sistema RT.
 
@@ -402,21 +436,24 @@ nodes:
     actor: ACT-RECEP
     description: >
       El sistema asiste a Recepcion preparando el mensaje de WhatsApp
-      para avisar que la reparacion esta lista; Recepcion confirma y
-      envia. Por ahora no se automatiza completamente el envio por
-      WhatsApp; a futuro podra integrarse con WhatsApp, chatbot o portal
-      web.
+      para avisar que la reparacion esta lista, o que la Orden concluyo
+      SIN_REPARACION segun corresponda; Recepcion confirma y envia. Por
+      ahora no se automatiza completamente el envio por WhatsApp; a
+      futuro podra integrarse con WhatsApp, chatbot o portal web.
 
   - id: PROC-REP-280
     type: activity
-    name: Generar comprobante final y garantia
+    name: Generar comprobante final
     actor: ACT-SYSTEM
     description: >
       Se genera el documento final que informa el trabajo efectivamente
-      realizado y las condiciones y vencimiento de la garantia de reparacion.
+      realizado. Si la Orden tuvo una reparacion, el comprobante incluye
+      ademas las condiciones y vencimiento de la garantia de reparacion.
+      Si el resultado de la Orden es SIN_REPARACION, no se genera
+      garantia de reparacion.
     outputs:
       - Comprobante final
-      - Garantia de reparacion
+      - Garantia de reparacion (unicamente si hubo reparacion)
 
   - id: PROC-REP-270
     type: activity
@@ -430,7 +467,8 @@ nodes:
     name: Informar resultado al sistema RT
     actor: ACT-SYSTEM
     description: >
-      Para equipos de Rosario Tecno, el resultado de la reparacion debera
+      Para equipos de Rosario Tecno, el resultado de la Orden (incluida
+      la reparacion realizada o, si corresponde, SIN_REPARACION) debera
       poder informarse a futuro al sistema que gestiona stock y ventas.
       El estado terminal definitivo para RT_INTERNO queda pendiente de
       definicion.
@@ -511,7 +549,18 @@ edges:
     condition: Aun en revision
 
   - from: PROC-REP-065
+    to: PROC-REP-068
+
+  - from: PROC-REP-068
     to: PROC-REP-075
+    condition: Si
+
+  - from: PROC-REP-068
+    to: PROC-REP-069
+    condition: No
+
+  - from: PROC-REP-069
+    to: PROC-REP-250
 
   - from: PROC-REP-075
     to: PROC-REP-080

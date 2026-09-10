@@ -15,6 +15,8 @@ flowchart TD
     PROC-REP-055["Marcar Orden en revision"]
     PROC-REP-060["Generar comprobante de recepcion"]
     PROC-REP-065["Realizar revision tecnica"]
+    PROC-REP-068{"Se pudo definir la reparacion requerida"}
+    PROC-REP-069["Registrar finalizacion sin reparacion"]
     PROC-REP-070["Definir requerimiento de reparacion"]
     PROC-REP-075["Definir requerimiento luego de revision"]
     PROC-REP-080["Validar factibilidad"]
@@ -38,7 +40,7 @@ flowchart TD
     PROC-REP-240["Marcar reparacion lista"]
     PROC-REP-250{"Requiere entrega a cliente"}
     PROC-REP-260["Notificar cliente"]
-    PROC-REP-280["Generar comprobante final y garantia"]
+    PROC-REP-280["Generar comprobante final"]
     PROC-REP-270["Entregar equipo"]
     PROC-REP-290["Informar resultado al sistema RT"]
     EVT-REP-999((("Fin del flujo de Orden de Reparacion")))
@@ -62,7 +64,10 @@ flowchart TD
     PROC-REP-050 -->|No - aun en revision| PROC-REP-065
     PROC-REP-060 -->|Reparacion definida| PROC-REP-080
     PROC-REP-060 -->|Aun en revision| PROC-REP-065
-    PROC-REP-065 --> PROC-REP-075
+    PROC-REP-065 --> PROC-REP-068
+    PROC-REP-068 -->|Si| PROC-REP-075
+    PROC-REP-068 -->|No| PROC-REP-069
+    PROC-REP-069 --> PROC-REP-250
     PROC-REP-075 --> PROC-REP-080
     PROC-REP-080 --> PROC-REP-090
     PROC-REP-090 -->|Si| PROC-REP-140

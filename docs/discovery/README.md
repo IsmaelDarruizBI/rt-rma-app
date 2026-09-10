@@ -61,6 +61,31 @@ EN_REVISION; RT_INTERNO no lo requiere. El puntaje de una reparacion ya
 puede calcularse una vez aprobado el control tecnico; su distribucion entre
 multiples tecnicos sigue pendiente (ver Pendientes).
 
+## Resultado de la Orden: SIN_REPARACION
+
+SIN_REPARACION es un **resultado** de la Orden de Reparacion, no un
+reemplazo de sus estados (en particular, no reemplaza a ENTREGADA: una
+Orden SIN_REPARACION igualmente puede llegar a ENTREGADA, conservando el
+resultado SIN_REPARACION). La estructura tecnica definitiva de estado vs.
+resultado todavia no esta diseñada.
+
+No equivale a CANCELADA:
+
+- CANCELADA: la Orden fue interrumpida o cancelada.
+- SIN_REPARACION: la Orden fue procesada correctamente hasta su fin, pero
+  concluyo sin que se realizara una reparacion.
+
+El primer camino implementado hacia SIN_REPARACION es: luego de una
+revision tecnica (PROC-REP-065) sobre una Orden EN_REVISION, no se logra
+determinar que reparacion necesita el equipo (PROC-REP-068 = No). En el
+futuro, otros caminos podrian converger en este mismo resultado; por ahora
+son solo posibles extensiones, sin implementar:
+
+- El cliente decide no continuar.
+- La reparacion resulta tecnicamente no realizable.
+- El presupuesto no es aceptado por el cliente.
+- Falta de recursos y decision de no continuar.
+
 ## Pendientes
 
 Puntos identificados durante el modelado de la V1.1 que quedan pendientes de
