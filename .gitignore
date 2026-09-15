@@ -8,3 +8,6 @@ dist/
 !.env.example
 coverage/
 .claude/settings.local.json
+
+__pycache__/
+*.py[cod]
