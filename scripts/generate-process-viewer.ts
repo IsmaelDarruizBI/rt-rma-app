@@ -7,6 +7,12 @@
  * business/processes, business/actors and business/rules and renders them;
  * it never introduces new process information.
  *
+ * It additionally reads an optional end-to-end traceability example
+ * (traceability/examples/*.yaml) purely for visualization: when the node
+ * it points to is selected, the viewer renders the demo cascade next to
+ * the regular node detail. Those example artifacts are NOT business
+ * process data and are never written back into business/processes.
+ *
  * Mermaid is embedded inline (from node_modules/mermaid) so the generated
  * HTML also works offline, e.g. on a notebook in a meeting room with no
  * reliable network.
@@ -29,6 +35,10 @@ const RULES_FILE = join("business", "rules", "business-rules.yaml");
 const MERMAID_LIB_FILE = join("node_modules", "mermaid", "dist", "mermaid.min.js");
 const OUTPUT_FILE = join("generated", "viewer", "repair-management.html");
 
+// Proof-of-concept only (branch `test`): a single traceability example,
+// not a general traceability system. See traceability/README.md.
+const TRACEABILITY_EXAMPLE_FILE = join("traceability", "examples", "create-repair-order.yaml");
+
 const CLICK_CALLBACK = "selectNode";
 
 type ResolvedActor = { id: string; name: string } | { id: string; missing: true };
@@ -45,6 +55,162 @@ interface ResolvedNode {
   inputs?: string[];
   outputs?: string[];
   rules?: ResolvedRule[];
+}
+
+// --- Traceability example (proof of concept, branch `test` only) ---------
+
+interface TraceabilityItem {
+  id: string;
+  type: string;
+  name: string;
+  description?: string;
+  actor?: string;
+  file?: string;
+  symbol?: string;
+}
+
+interface TraceabilityLink {
+  from: string;
+  to: string;
+  relation: string;
+}
+
+interface TraceabilityModel {
+  source: { node: string };
+  items: TraceabilityItem[];
+  links: TraceabilityLink[];
+}
+
+interface CascadeStep {
+  id: string;
+  type: string;
+  name: string;
+  description?: string;
+  file?: string;
+  snippet?: string;
+}
+
+function loadTraceabilityExample(filePath: string): TraceabilityModel | undefined {
+  try {
+    return loadYaml<TraceabilityModel>(filePath);
+  } catch {
+    // The example is optional: no traceability demo yet is not an error.
+    return undefined;
+  }
+}
+
+/**
+ * Extracts the source of a top-level `def <symbolName>(...):` Python
+ * function: from its `def` line up to (but not including) the next
+ * non-indented, non-blank line, or end of file. First skips past the
+ * signature by tracking parenthesis depth, since a PEP 8 multi-line
+ * signature commonly closes with `)` back at column 0 - which would
+ * otherwise look like the end of the function. Best-effort and
+ * intentionally simple: good enough for the small, hand-written demo file
+ * this reads from.
+ */
+function extractFunctionSnippet(filePath: string, symbolName: string): string | undefined {
+  let source: string;
+  try {
+    source = readFileSync(filePath, "utf8");
+  } catch {
+    return undefined;
+  }
+
+  const lines = source.split("\n");
+  const startIndex = lines.findIndex((line) => line.startsWith(`def ${symbolName}(`));
+  if (startIndex === -1) return undefined;
+
+  let parenDepth = 0;
+  let signatureEnd = startIndex;
+  for (let i = startIndex; i < lines.length; i++) {
+    for (const char of lines[i]) {
+      if (char === "(") parenDepth++;
+      if (char === ")") parenDepth--;
+    }
+    if (parenDepth <= 0) {
+      signatureEnd = i;
+      break;
+    }
+  }
+
+  let endIndex = lines.length;
+  for (let i = signatureEnd + 1; i < lines.length; i++) {
+    const line = lines[i];
+    const isIndentedOrBlank = line.trim() === "" || line.startsWith(" ") || line.startsWith("\t");
+    if (!isIndentedOrBlank) {
+      endIndex = i;
+      break;
+    }
+  }
+
+  return lines.slice(startIndex, endIndex).join("\n").trimEnd();
+}
+
+/**
+ * Builds, per source business-process-node id, the full cascade to show in
+ * the "Trazabilidad E2E - DEMO" panel section: the process node itself
+ * followed by each linked traceability item, in link order. Assumes a
+ * single linear chain per source, which is all this proof of concept needs;
+ * a future many-to-many traceability system would replace this.
+ */
+function buildTraceabilityCascades(
+  model: ProcessModel,
+  traceability: TraceabilityModel | undefined
+): Record<string, CascadeStep[]> {
+  if (!traceability) return {};
+
+  const nodesById = new Map(model.nodes.map((node) => [node.id, node]));
+  const itemsById = new Map(traceability.items.map((item) => [item.id, item]));
+  const nextByFrom = new Map(traceability.links.map((link) => [link.from, link.to]));
+
+  const sourceId = traceability.source.node;
+  const sourceNode = nodesById.get(sourceId);
+  if (!sourceNode) {
+    console.warn(`Traceability demo: nodo de origen no encontrado en el proceso: ${sourceId}`);
+    return {};
+  }
+
+  const cascade: CascadeStep[] = [
+    {
+      id: sourceNode.id,
+      type: "business_process",
+      name: sourceNode.name,
+      description: sourceNode.description,
+    },
+  ];
+
+  const visited = new Set<string>([sourceId]);
+  let currentId = sourceId;
+  for (;;) {
+    const nextId = nextByFrom.get(currentId);
+    if (!nextId || visited.has(nextId)) break;
+
+    const item = itemsById.get(nextId);
+    if (!item) {
+      console.warn(`Traceability demo: item no encontrado: ${nextId}`);
+      break;
+    }
+
+    const snippet =
+      item.type === "code" && item.file && item.symbol
+        ? extractFunctionSnippet(item.file, item.symbol)
+        : undefined;
+
+    cascade.push({
+      id: item.id,
+      type: item.type,
+      name: item.name,
+      description: item.description,
+      file: item.file,
+      snippet,
+    });
+
+    visited.add(nextId);
+    currentId = nextId;
+  }
+
+  return { [sourceId]: cascade };
 }
 
 function resolveActor(actorId: string, actorsById: Map<string, Actor>): ResolvedActor {
@@ -297,6 +463,39 @@ const STYLES = `
   .rule-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.45; }
   .rule-status { font-size: 10.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
 
+  .badge.demo { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+  .cascade-section h2 { display: flex; align-items: center; gap: 8px; }
+  .cascade-step {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    background: #fafafe;
+  }
+  .cascade-type {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+  .cascade-id { font-size: 11px; color: var(--text-faint); margin-top: 1px; }
+  .cascade-name { font-size: 14px; font-weight: 650; margin-top: 4px; color: var(--text); }
+  .cascade-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+  .cascade-file { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; font-family: ui-monospace, Consolas, monospace; }
+  .cascade-arrow { text-align: center; color: var(--text-faint); font-size: 14px; margin: 4px 0; }
+  .cascade-code {
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    background: #101322;
+    color: #e2e4f0;
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
+    line-height: 1.5;
+    overflow-x: auto;
+    font-family: ui-monospace, Consolas, monospace;
+    white-space: pre;
+  }
+
   #diagram-pane::-webkit-scrollbar, #detail-pane::-webkit-scrollbar { width: 10px; height: 10px; }
   #diagram-pane::-webkit-scrollbar-thumb, #detail-pane::-webkit-scrollbar-thumb {
     background: #d3d5db; border-radius: 999px; border: 2px solid transparent; background-clip: content-box;
@@ -353,6 +552,43 @@ const CLIENT_SCRIPT = `
     return document.querySelector("#detail-pane .panel-inner");
   }
 
+  var CASCADE_TYPE_LABELS = {
+    business_process: "Business Process",
+    feature: "Feature",
+    user_story: "User Story",
+    system_action: "System Action",
+    functional_requirement: "Functional Requirement",
+    technical_requirement: "Technical Requirement",
+    task: "Task",
+    code: "Code"
+  };
+
+  function renderCascadeStep(step, isLast) {
+    var label = CASCADE_TYPE_LABELS[step.type] || step.type;
+    var html = '<div class="cascade-step">' +
+      '<div class="cascade-type">' + escapeHtml(label) + "</div>" +
+      '<div class="cascade-id">' + escapeHtml(step.id) + "</div>" +
+      '<div class="cascade-name">' + escapeHtml(step.name) + "</div>" +
+      (step.description ? '<div class="cascade-desc">' + escapeHtml(step.description) + "</div>" : "") +
+      (step.file ? '<div class="cascade-file">' + escapeHtml(step.file) + "</div>" : "") +
+      (step.snippet ? '<pre class="cascade-code"><code>' + escapeHtml(step.snippet) + "</code></pre>" : "") +
+      "</div>";
+    return html + (isLast ? "" : '<div class="cascade-arrow">&#8595;</div>');
+  }
+
+  function renderTraceabilityCascade(cascade) {
+    var steps = cascade.map(function (step, index) {
+      return renderCascadeStep(step, index === cascade.length - 1);
+    }).join("");
+    return '<hr class="divider">' +
+      '<div class="cascade-section">' +
+      '<h2>Trazabilidad E2E <span class="badge demo">DEMO</span></h2>' +
+      '<p class="hint">Ejemplo de trazabilidad de punta a punta a partir de este nodo. ' +
+      "No es una especificacion funcional ni una arquitectura tecnica aprobada.</p>" +
+      steps +
+      "</div>";
+  }
+
   function renderProcessSummary() {
     var p = PROCESS_INFO;
     var html = '<h2>Proceso</h2>' +
@@ -378,6 +614,10 @@ const CLIENT_SCRIPT = `
       renderList("Inputs", node.inputs) +
       renderList("Outputs", node.outputs) +
       renderRules(node.rules);
+    var cascade = TRACEABILITY_BY_SOURCE[nodeId];
+    if (cascade) {
+      html += renderTraceabilityCascade(cascade);
+    }
     panelBody().innerHTML = html;
   }
 
@@ -439,13 +679,19 @@ const CLIENT_SCRIPT = `
   });
 `;
 
-function buildHtml(model: ProcessModel, resolvedNodes: ResolvedNode[], mermaidLib: string): string {
+function buildHtml(
+  model: ProcessModel,
+  resolvedNodes: ResolvedNode[],
+  mermaidLib: string,
+  traceabilityCascades: Record<string, CascadeStep[]>
+): string {
   const nodesById: Record<string, ResolvedNode> = {};
   for (const node of resolvedNodes) {
     nodesById[node.id] = node;
   }
 
   const diagramSource = buildDiagramSource(model);
+  const hasTraceabilityDemo = Object.keys(traceabilityCascades).length > 0;
 
   return `<!--
   AUTO-GENERATED FILE.
@@ -454,6 +700,7 @@ function buildHtml(model: ProcessModel, resolvedNodes: ResolvedNode[], mermaidLi
   - ${PROCESS_FILE.replace(/\\/g, "/")}
   - ${ACTORS_FILE.replace(/\\/g, "/")}
   - ${RULES_FILE.replace(/\\/g, "/")}
+  ${hasTraceabilityDemo ? `- ${TRACEABILITY_EXAMPLE_FILE.replace(/\\/g, "/")} (trazabilidad E2E, proof of concept)` : ""}
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -491,6 +738,7 @@ function buildHtml(model: ProcessModel, resolvedNodes: ResolvedNode[], mermaidLi
     var PROCESS_INFO = ${embedJson(model.process)};
     var NODES_BY_ID = ${embedJson(nodesById)};
     var DIAGRAM_SOURCE = ${embedJson(diagramSource)};
+    var TRACEABILITY_BY_SOURCE = ${embedJson(traceabilityCascades)};
     ${CLIENT_SCRIPT}
   </script>
 </body>
@@ -509,7 +757,10 @@ function main(): void {
   const resolvedNodes = model.nodes.map((node) => resolveNode(node, actorsById, rulesById));
   const mermaidLib = readFileSync(MERMAID_LIB_FILE, "utf8");
 
-  const html = buildHtml(model, resolvedNodes, mermaidLib);
+  const traceabilityExample = loadTraceabilityExample(TRACEABILITY_EXAMPLE_FILE);
+  const traceabilityCascades = buildTraceabilityCascades(model, traceabilityExample);
+
+  const html = buildHtml(model, resolvedNodes, mermaidLib, traceabilityCascades);
 
   mkdirSync(dirname(OUTPUT_FILE), { recursive: true });
   writeFileSync(OUTPUT_FILE, html, "utf8");

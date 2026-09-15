@@ -1,0 +1,113 @@
+# TRACEABILITY PROOF OF CONCEPT (rama `test`).
+#
+# Esto es un EJEMPLO de trazabilidad end-to-end, no una especificacion
+# funcional ni una arquitectura tecnica aprobada. Ninguno de los elementos
+# definidos aqui (Feature, User Story, System Action, Functional
+# Requirement, Technical Requirement, Task) forma parte del proceso de
+# negocio V1.1 (business/processes/repair-management.yaml), que sigue
+# siendo la unica fuente de verdad del negocio.
+#
+# Estructura basada en items + links (no anidada), pensada para que la
+# futura trazabilidad pueda ser many-to-many sin rediseñar el archivo.
+#
+# Origen: PROC-REP-040 (Crear Orden de Reparacion), ya definido en
+# business/processes/repair-management.yaml. No se duplica aqui: se
+# referencia por ID.
+
+source:
+  node: PROC-REP-040
+
+items:
+
+  - id: FEAT-REP-001
+    type: feature
+    name: Alta de Orden de Reparacion
+    description: >
+      Capacidad del sistema que permite registrar una nueva Orden de
+      Reparacion a partir de un equipo y un origen previamente
+      identificados, iniciando su trazabilidad dentro del proceso RMA.
+
+  - id: US-REP-001
+    type: user_story
+    name: Crear Orden de Reparacion
+    actor: ACT-RECEP
+    description: >
+      Como usuario de Recepcion quiero crear una nueva Orden de Reparacion
+      a partir del equipo y origen identificados para iniciar su
+      seguimiento dentro del proceso RMA.
+
+  - id: ACC-REP-001
+    type: system_action
+    name: Registrar nueva Orden de Reparacion
+    description: >
+      El sistema recibe la solicitud de creacion de una Orden de
+      Reparacion y registra la nueva unidad transaccional asociada al
+      equipo/origen previamente identificado.
+
+  - id: FR-REP-001
+    type: functional_requirement
+    name: Creacion de Orden de Reparacion
+    description: >
+      Cuando Recepcion confirma la creacion de una Orden de Reparacion, el
+      sistema debe crear una nueva Orden con: identificador unico; origen
+      de la Orden; referencia al equipo identificado; referencia al
+      cliente cuando corresponda; estado inicial REQUERIMIENTO; usuario
+      que realizo la creacion; fecha/hora de creacion.
+
+  - id: TR-REP-001
+    type: technical_requirement
+    name: Servicio de aplicacion para crear Orden de Reparacion
+    description: >
+      Debe existir una operacion de aplicacion capaz de recibir los datos
+      necesarios para crear una Orden de Reparacion, aplicar las
+      validaciones minimas del caso y devolver la Orden creada. Solucion
+      ilustrativa para este proof of concept (Python, sin framework HTTP
+      ni base de datos elegidos): no constituye todavia la arquitectura
+      aprobada de RMA.
+
+  - id: TASK-REP-001
+    type: task
+    name: Implementar create_repair_order
+    description: >
+      Implementar una funcion Python que represente la creacion de una
+      Orden de Reparacion para el proof of concept.
+
+  - id: CODE-REP-001
+    type: code
+    name: create_repair_order()
+    description: >
+      Funcion Python de ejemplo que implementa conceptualmente la
+      creacion de una Orden de Reparacion (sin persistencia, API ni
+      autenticacion).
+    file: examples/traceability/create_repair_order.py
+    symbol: create_repair_order
+
+links:
+
+  - from: PROC-REP-040
+    to: FEAT-REP-001
+    relation: implemented_by
+
+  - from: FEAT-REP-001
+    to: US-REP-001
+    relation: decomposed_into
+
+  - from: US-REP-001
+    to: ACC-REP-001
+    relation: realized_by
+
+  - from: ACC-REP-001
+    to: FR-REP-001
+    relation: specified_by
+
+  - from: FR-REP-001
+    to: TR-REP-001
+    relation: designed_by
+
+  - from: TR-REP-001
+    to: TASK-REP-001
+    relation: implemented_by
+
+  - from: TASK-REP-001
+    to: CODE-REP-001
+    relation: produces
