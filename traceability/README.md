@@ -247,14 +247,19 @@ En particular:
 
 - las 7 Features son reales y estan en estado `draft`, no `approved`;
 - todavia no existen User Stories reales;
-- la trazabilidad automatizada (generacion de matrices, validacion
-  cruzada, herramientas) todavia no existe;
-- dentro de cada Feature, `process_nodes` y `business_rules` son
-  referencias declarativas (listas de IDs en texto): todavia no hay
-  validacion cruzada que confirme que esos IDs realmente existen en
-  `repair-management.yaml` o `business-rules.yaml`, ni que
-  `source_process.version` coincide con la version real del Business
-  Process. Eso es una evolucion posterior;
+- la trazabilidad automatizada como *sistema* (generacion de matrices de
+  trazabilidad, navegacion bidireccional entre todos los niveles,
+  herramientas de UI) todavia no existe: eso sigue siendo una evolucion
+  posterior;
+- si existe, en cambio, una primera validacion de integridad referencial
+  (`scripts/validate-references.ts`, `npm run validate:references`):
+  confirma que cada `process_nodes[]` y `business_rules[]` declarado en
+  una Feature existe realmente en `repair-management.yaml` /
+  `business-rules.yaml`, que `source_process` coincide con el Business
+  Process aprobado, la integridad interna del propio Business Process
+  (edges, actores, reglas) y reporta cobertura de nodos y de Business
+  Rules por Feature. Es validacion estructural + referencial, no todavia
+  un sistema de trazabilidad con matrices o navegacion;
 - los IDs ya asignados a nodos de Business Process (por ejemplo los de
   `PROC-REP` en `repair-management.yaml`) deben mantenerse estables;
 - la V1.2 aprobada de Gestion de Ordenes de Reparacion no se modifica por

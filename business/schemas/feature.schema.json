@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rosariotecno.local/schemas/feature.schema.json",
   "title": "Feature",
-  "description": "Contrato de validacion para la definicion de Features de un Business Process. Valida unicamente la forma del YAML (Etapa 2: Feature Definition); no valida referencias cruzadas contra process_nodes, business_rules ni la version de source_process contra el Business Process real. Eso es una evolucion posterior.",
+  "description": "Contrato de validacion ESTRUCTURAL para la definicion de Features de un Business Process (Etapa 2: Feature Definition). Valida unicamente la forma del YAML: no confirma que process_nodes o business_rules existan realmente, ni que source_process coincida con el Business Process real. Esa validacion de integridad REFERENCIAL entre archivos vive en scripts/validate-references.ts (npm run validate:references), que corre despues de este schema, no dentro de el.",
   "type": "object",
   "required": ["process", "features"],
   "additionalProperties": true,

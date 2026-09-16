@@ -153,9 +153,12 @@ estado `draft`** para `PROC-REP` V1.2, definidas en
 y validadas estructuralmente contra
 `business/schemas/feature.schema.json` (`npm run validate:features`).
 Todavia no se crearon User Stories, ni se inicio la definicion de
-Functional Requirements o Technical Requirements. Las Features siguen sin
-validacion cruzada contra `process_nodes` o `business_rules`: por ahora
-son referencias declarativas.
+Functional Requirements o Technical Requirements. Ademas de la validacion
+estructural, `npm run validate:references` valida integridad referencial
+entre archivos (`process_nodes` y `business_rules` de cada Feature contra
+`repair-management.yaml` y `business-rules.yaml`, `source_process` contra
+la version aprobada, y la integridad interna del propio Business Process)
+y reporta cobertura de nodos y de Business Rules.
 
 La V1.2 (approved) de `PROC-REP` es Business Process validado con negocio:
 baseline funcional aprobada para iniciar la siguiente etapa del proyecto.
@@ -188,7 +191,6 @@ Todavia no se incluyen deliberadamente:
 - User Stories reales
 - Spec Kit
 - Requerimientos funcionales o tecnicos formales
-- Validacion cruzada entre archivos
 - Desarrollo de aplicacion
 
 Comandos principales:
