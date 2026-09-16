@@ -1,4 +1,4 @@
-# Reglas de negocio V1.1 del proceso de Gestion de Ordenes de Reparacion.
+# Reglas de negocio V1.2 del proceso de Gestion de Ordenes de Reparacion.
 # Son afirmaciones funcionales en estado draft, pendientes de validacion con
 # el negocio. Todavia no se transforman en Functional Requirements.
 
@@ -87,4 +87,29 @@ rules:
       el motivo, las observaciones, el usuario y la fecha de la decision.
       Este resultado (SIN_REPARACION) debe quedar distinguido de una
       Orden cancelada (CANCELADA).
+    status: draft
+
+  - id: BR-REP-011
+    name: Compatibilidad de estacion de trabajo
+    description: >
+      Para tomar una Orden de Reparacion deben cumplirse, en orden: el
+      tecnico debe tener una sesion activa; esa sesion debe tener una
+      Estacion de Trabajo asociada/confirmada; esa estacion debe estar
+      configurada; y esa estacion debe estar OPERATIVA. Si falta la
+      sesion activa, la sesion no tiene estacion confirmada, la estacion
+      no esta configurada, o la estacion esta NO OPERATIVA, no se permite
+      tomar la Orden bajo ninguna circunstancia: ninguno de estos casos
+      admite override, y la Orden permanece disponible en EN_COLA.
+      Unicamente cuando la sesion y la estacion son validas y la estacion
+      esta OPERATIVA se evalua si, ademas, esa estacion esta configurada
+      para el tipo de reparacion requerido. Si no lo esta, el sistema
+      debe advertirlo y permitir dos alternativas: (1) mantener la Orden
+      disponible en EN_COLA para que sea tomada por otro tecnico desde
+      otra estacion; o (2) permitir que un usuario autorizado fuerce la
+      continuidad, registrando usuario, fecha, estacion, reparacion
+      incompatible y motivo. El override aplica unicamente a esta
+      incompatibilidad estacion/reparacion: nunca a sesion inexistente,
+      estacion no confirmada, estacion no configurada o estacion NO
+      OPERATIVA. Distinta de BR-REP-003 (override de validacion de
+      recursos/factibilidad): no deben mezclarse.
     status: draft

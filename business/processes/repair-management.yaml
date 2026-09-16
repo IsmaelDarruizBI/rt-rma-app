@@ -1,21 +1,37 @@
-# Gestion de Ordenes de Reparacion - V1.1 (draft).
-# Segunda version funcional del proceso, incorporando lo validado en la
-# segunda reunion funcional: los 4 origenes de la Orden de Reparacion,
-# el estado EN_REVISION para reparaciones aun no diagnosticadas, reserva
-# de insumos, asignacion tecnica flexible (EXCLUSIVA/ABIERTA), reintento
-# de control tecnico, calculo del puntaje de la reparacion y el primer
-# camino hacia el resultado SIN_REPARACION (distinto de CANCELADA) cuando
-# la revision tecnica no logra determinar la reparacion requerida.
+# Gestion de Ordenes de Reparacion - V1.2 (draft).
+# Baseline funcional final de la etapa de Business Process Discovery &
+# Modeling. Incorpora sobre la V1.1 la validacion de Estacion de Trabajo
+# al intentar tomar una Orden EN_COLA: la estacion debe estar OPERATIVA
+# (sin excepcion posible) y, si esta operativa pero no esta configurada
+# para el tipo de reparacion requerido, un usuario autorizado puede
+# forzar la continuidad registrando el override (distinto del override de
+# recursos/factibilidad de BR-REP-003, ver BR-REP-011). El concepto de
+# Estacion de Trabajo (computadoras asociadas, tipos de reparacion
+# habilitados, sesion Tecnico + Estacion) se documenta funcionalmente en
+# docs/discovery/README.md y no se modela como nodos adicionales de este
+# flujo.
+# Se mantiene sin modificar todo lo validado en V1.1: los 4 origenes de
+# la Orden de Reparacion, el estado EN_REVISION para reparaciones aun no
+# diagnosticadas, el comprobante de recepcion, la validacion de
+# factibilidad, la reserva de insumos, la asignacion tecnica flexible
+# (EXCLUSIVA/ABIERTA), el reintento de control tecnico, el calculo del
+# puntaje de la reparacion y el camino hacia el resultado SIN_REPARACION
+# (distinto de CANCELADA).
 # Deliberadamente sigue sin definir: flujo completo de tercerizacion,
 # scrap, devolucion de repuestos, compras/reposicion de inventario,
 # distribucion de puntos entre multiples tecnicos, presupuesto/aprobacion
 # del cliente, modelo definitivo de reproceso y reglas de CANCELADA.
-# Ver docs/discovery/README.md (seccion V1.1 y pendientes).
+# Gestion de Ordenes de Compra de repuestos y Gestion de Ordenes de Venta
+# mayorista de repuestos fueron identificadas como procesos relacionados
+# pero quedan fuera de este proceso: se modelaran a futuro como procesos
+# independientes (ver docs/discovery/README.md).
+# Ver docs/discovery/README.md (secciones V1.2, Estaciones de Trabajo y
+# Pendientes).
 
 process:
   id: PROC-REP
   name: Gestion de Ordenes de Reparacion
-  version: "1.1"
+  version: "1.2"
   status: draft
 
 nodes:
@@ -303,22 +319,105 @@ nodes:
       pueda tomarla. El coordinador no asigna obligatoriamente el
       tecnico.
 
+  - id: PROC-REP-172
+    type: activity
+    name: Validar estacion de trabajo
+    actor: ACT-SYSTEM
+    description: >
+      Se dispara cuando un tecnico intenta tomar una Orden EN_COLA. El
+      sistema valida, en este orden conceptual: (1) que el tecnico tenga
+      una sesion activa; (2) que esa sesion tenga una Estacion de Trabajo
+      asociada/confirmada (ver docs/discovery/README.md - Estaciones de
+      Trabajo); (3) que esa estacion este configurada; (4) que la
+      estacion este OPERATIVA. Si cualquiera de estas cuatro validaciones
+      falla -Caso A: sin sesion activa, sesion sin estacion confirmada,
+      estacion no configurada, o estacion NO OPERATIVA- no se autoasigna
+      la Orden, no se permite continuar y no se ofrece override bajo
+      ninguna circunstancia: la Orden permanece EN_COLA, disponible para
+      un nuevo intento (del mismo tecnico u otro, eventualmente desde
+      otra estacion). Unicamente cuando las cuatro validaciones son
+      correctas (sesion y estacion validas) continua hacia PROC-REP-174,
+      que evalua si ademas esa estacion esta configurada para el tipo de
+      reparacion requerido por la Orden (Caso B: compatible; Caso C:
+      operativa pero incompatible, con posibilidad de override).
+    outputs:
+      - Resultado de validacion de sesion/estacion
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-174
+    type: decision
+    name: Estacion habilitada para esta reparacion
+    description: >
+      Se alcanza unicamente cuando la sesion y la estacion son validas
+      (PROC-REP-172: sesion activa, estacion confirmada, configurada y
+      OPERATIVA). Distingue si, ademas, esa estacion esta configurada
+      -relacion configurable y many-to-many entre Estacion y tipo de
+      reparacion- para el tipo de reparacion requerido por la Orden.
+
+  - id: PROC-REP-176
+    type: activity
+    name: Registrar advertencia de estacion incompatible
+    actor: ACT-SYSTEM
+    description: >
+      La estacion esta operativa, pero no esta configurada entre las
+      estaciones habilitadas para ejecutar el tipo de reparacion
+      requerido por la Orden. Luego debe evaluarse si se desea forzar la
+      continuidad (PROC-REP-178).
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-178
+    type: decision
+    name: Usuario autorizado fuerza continuidad
+    description: >
+      Distingue si un usuario autorizado decide forzar la toma de la
+      Orden desde una estacion operativa pero no habilitada para ese tipo
+      de reparacion. Si no se fuerza, la Orden no se autoasigna: permanece
+      EN_COLA para ser tomada desde otra estacion compatible.
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-179
+    type: activity
+    name: Registrar override de estacion
+    actor: ACT-COORD
+    description: >
+      Un usuario autorizado decide continuar a pesar de que la estacion
+      no esta configurada para el tipo de reparacion requerido. El
+      override autoriza unicamente esa continuidad de trabajo: no
+      modifica automaticamente la configuracion de la estacion.
+    outputs:
+      - Usuario responsable
+      - Fecha/hora
+      - Estacion
+      - Tipo de reparacion no habilitado
+      - Motivo
+    rules:
+      - BR-REP-011
+
   - id: PROC-REP-180
     type: activity
     name: Tomar Orden de Reparacion
     actor: ACT-TECH
     description: >
-      El tecnico se autoasigna la Orden cuando comienza a trabajar sobre
-      ella; la orden pasa a EN_REPARACION. Debe quedar registrado el
-      historial de tecnicos que participaron: una Orden puede ser
-      iniciada por un tecnico y finalizada por otro, sin sobrescribir
-      conceptualmente al tecnico anterior. La Orden queda en modo
-      EXCLUSIVA (otro tecnico no deberia poder tomarla, salvo override
-      justificado con usuario, fecha y motivo) o en modo ABIERTA (otro
-      tecnico puede continuarla); la estructura tecnica de este modo
-      queda pendiente de definicion.
+      El tecnico se autoasigna la Orden luego de superar la validacion de
+      estacion (PROC-REP-172 / PROC-REP-174) o luego de un override de
+      estacion autorizado (PROC-REP-179); la orden pasa a EN_REPARACION.
+      Al tomar la Orden debe quedar registrado conceptualmente la Orden
+      de Reparacion, el Tecnico, la Estacion de Trabajo utilizada y la
+      fecha/hora de la toma. Debe quedar registrado tambien el historial
+      de tecnicos que participaron: una Orden puede ser iniciada por un
+      tecnico desde una estacion y continuada por otro tecnico desde otra
+      estacion, sin sobrescribir conceptualmente al tecnico ni a la
+      estacion anteriores. La Orden queda en modo EXCLUSIVA (otro tecnico
+      no deberia poder tomarla, salvo override justificado con usuario,
+      fecha y motivo) o en modo ABIERTA (otro tecnico puede continuarla);
+      la estructura tecnica de este modo, asi como la del historial de
+      tecnicos/estaciones, queda pendiente de definicion.
     rules:
       - BR-REP-007
+      - BR-REP-011
 
   - id: PROC-REP-185
     type: activity
@@ -601,6 +700,36 @@ edges:
     to: PROC-REP-170
 
   - from: PROC-REP-170
+    to: PROC-REP-172
+
+  - from: PROC-REP-172
+    to: PROC-REP-174
+    condition: Sesion y estacion validas
+
+  - from: PROC-REP-172
+    to: PROC-REP-170
+    condition: Sesion o estacion invalida
+
+  - from: PROC-REP-174
+    to: PROC-REP-180
+    condition: Si
+
+  - from: PROC-REP-174
+    to: PROC-REP-176
+    condition: No
+
+  - from: PROC-REP-176
+    to: PROC-REP-178
+
+  - from: PROC-REP-178
+    to: PROC-REP-179
+    condition: Si
+
+  - from: PROC-REP-178
+    to: PROC-REP-170
+    condition: No
+
+  - from: PROC-REP-179
     to: PROC-REP-180
 
   - from: PROC-REP-180
