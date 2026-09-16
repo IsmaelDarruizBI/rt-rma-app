@@ -71,6 +71,34 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  #app-header { flex-wrap: wrap; row-gap: 8px; }
+  .search-wrap { position: relative; flex: 1 1 260px; max-width: 360px; min-width: 140px; }
+  #node-search {
+    width: 100%;
+    font: inherit;
+    font-size: 13px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+  }
+  #node-search:focus { border-color: var(--accent); background: var(--surface); }
+  #search-results {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 30;
+    padding: 4px;
+  }
   #app-header .badges { display: flex; gap: 6px; flex: 0 0 auto; }
   .badge {
     display: inline-flex;
@@ -120,6 +148,54 @@
     stroke-width: 3px !important;
     filter: drop-shadow(0 0 6px rgba(79, 70, 229, 0.45));
   }
+  .node.context > * { stroke: var(--accent) !important; stroke-width: 1.5px !important; }
+  .node.dimmed { opacity: 0.6; transition: opacity 0.15s ease; }
+  #diagram-inner.focus-mode .node.dimmed { opacity: 0.15; }
+  path.edge-context { stroke: var(--accent) !important; stroke-width: 2px !important; opacity: 1 !important; }
+  path.edge-dimmed { opacity: 0.7; transition: opacity 0.15s ease; }
+  #diagram-inner.focus-mode path.edge-dimmed { opacity: 0.15; }
+
+  .legend-panel {
+    position: sticky;
+    bottom: 12px;
+    align-self: flex-start;
+    margin: 12px;
+    width: fit-content;
+    max-width: 220px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 6px 10px;
+    font-size: 12px;
+    z-index: 10;
+  }
+  .legend-panel summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-muted);
+    list-style: none;
+  }
+  .legend-panel summary::-webkit-details-marker { display: none; }
+  .legend-panel summary::before { content: "\25b8  "; }
+  .legend-panel[open] summary::before { content: "\25be  "; }
+  .legend-body { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; color: var(--text-muted); }
+  .legend-swatch {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+    border: 1.5px solid var(--text-muted);
+    background: var(--surface);
+  }
+  .legend-swatch.shape-rect { border-radius: 3px; }
+  .legend-swatch.shape-diamond { width: 10px; height: 10px; border-radius: 2px; transform: rotate(45deg); }
+  .legend-swatch.shape-hexagon {
+    border-radius: 0;
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  }
+  .legend-swatch.shape-circle { border-radius: 50%; }
 
   #toolbar {
     position: sticky;
@@ -150,8 +226,14 @@
     border-radius: 999px;
     transition: background 0.12s ease;
   }
+  #toolbar { flex-wrap: wrap; row-gap: 4px; }
   #toolbar button:hover { background: var(--accent-soft); color: var(--accent); }
   #toolbar #zoom-reset { color: var(--text-muted); font-weight: 500; font-size: 12px; }
+  #toolbar .toolbar-divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 3px; }
+  #toolbar .mode-btn { font-size: 11.5px; padding: 6px 10px; color: var(--text-muted); }
+  #toolbar .mode-btn.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  #toolbar .mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  #toolbar .mode-btn:disabled:hover { background: transparent; color: var(--text-muted); }
 
   #detail-pane {
     flex: 0 0 380px;
@@ -206,6 +288,47 @@
   .rule-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.45; }
   .rule-status { font-size: 10.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
 
+  .nav-list { display: flex; flex-direction: column; gap: 6px; }
+  .nav-card, .search-result {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 7px 9px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  .nav-card:hover, .nav-card:focus-visible,
+  .search-result:hover, .search-result:focus-visible {
+    background: var(--accent-soft);
+    border-color: var(--accent-soft-border);
+    outline: none;
+  }
+  .nav-card .nav-id, .search-result .nav-id { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .nav-card .nav-name, .search-result .nav-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .nav-card .nav-condition {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--accent-soft);
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-top: 5px;
+  }
+  .nav-card .nav-condition-value {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--accent);
+  }
+  .decision-list .nav-condition { font-size: 12px; padding: 2px 10px; }
+  .nav-empty { margin: 0; }
+  .search-empty { padding: 8px 9px; font-size: 13px; color: var(--text-muted); }
+
   #diagram-pane::-webkit-scrollbar, #detail-pane::-webkit-scrollbar { width: 10px; height: 10px; }
   #diagram-pane::-webkit-scrollbar-thumb, #detail-pane::-webkit-scrollbar-thumb {
     background: #d3d5db; border-radius: 999px; border: 2px solid transparent; background-clip: content-box;
@@ -216,6 +339,7 @@
     #diagram-pane { height: 52vh; border-right: none; border-bottom: 1px solid var(--border); }
     #detail-pane { flex: 1 1 auto; max-width: 100%; }
     #app-header .badges { flex-wrap: wrap; justify-content: flex-end; }
+    .search-wrap { flex: 1 1 100%; max-width: none; order: 3; }
   }
 </style>
 </head>
@@ -224,6 +348,10 @@
     <div class="title">
       <span class="eyebrow">Rosario Tecno · RMA</span>
       <h1>Gestion de Ordenes de Reparacion</h1>
+    </div>
+    <div class="search-wrap">
+      <input id="node-search" type="text" placeholder="Buscar nodo..." autocomplete="off" spellcheck="false">
+      <div id="search-results" hidden></div>
     </div>
     <div class="badges">
       <span class="badge neutral">PROC-REP</span>
@@ -237,8 +365,18 @@
         <button id="zoom-out" type="button" title="Alejar">-</button>
         <button id="zoom-reset" type="button" title="Restablecer zoom">100%</button>
         <button id="zoom-in" type="button" title="Acercar">+</button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="center-btn" type="button" title="Centrar en el nodo seleccionado">Centrar</button>
+        <button id="fullscreen-btn" type="button" title="Pantalla completa">⛶ Pantalla completa</button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="mode-full" type="button" class="mode-btn active" aria-pressed="true">Proceso completo</button>
+        <button id="mode-focus" type="button" class="mode-btn" aria-pressed="false" disabled title="Seleccione un nodo para habilitar el modo foco">Modo foco</button>
       </div>
       <div id="diagram-inner">Cargando diagrama...</div>
+      <details id="legend" class="legend-panel">
+        <summary>Leyenda</summary>
+        <div id="legend-body" class="legend-body"></div>
+      </details>
     </div>
     <div id="detail-pane"><div class="panel-inner"></div></div>
   </div>
@@ -2270,8 +2408,18 @@ Expecting `+Ze.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
   <script>
     var PROCESS_INFO = {"id":"PROC-REP","name":"Gestion de Ordenes de Reparacion","version":"1.2","status":"draft"};
     var NODES_BY_ID = {"EVT-REP-001":{"id":"EVT-REP-001","type":"event","name":"Surge necesidad de reparacion","description":"Evento que inicia el proceso cuando un equipo requiere una reparacion.\n"},"PROC-REP-010":{"id":"PROC-REP-010","type":"decision","name":"Cual es el origen de la Orden de Reparacion","description":"La Orden de Reparacion admite cuatro origenes: CLIENTE_EXTERNO (cliente externo trae un equipo propio), RT_INTERNO (equipo de Rosario Tecno gestionado en la aplicacion de Gestion RT), RT_GARANTIA_VENTA (ingreso derivado de una garantia por venta de Rosario Tecno) y RMA_GARANTIA_REPARACION (el cliente vuelve porque falla una reparacion RMA anterior).\n"},"PROC-REP-020":{"id":"PROC-REP-020","type":"activity","name":"Recibir referencia y contexto del equipo RT","description":"Origen RT_INTERNO. El equipo pertenece a Rosario Tecno y su informacion debe provenir de la aplicacion de Gestion RT. Ademas del equipo deben poder identificarse conceptualmente el tipo de ingreso del equipo en RT (por ejemplo Proveedor, Toma u otros tipos existentes en Gestion RT) y si el equipo tuvo una reparacion tercerizada previamente. No se crea todavia una rama de flujo por tercerizacion: sigue pendiente de definicion funcional.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Equipo RT identificado","Tipo de ingreso RT identificado","Historial de tercerizacion identificado"]},"PROC-REP-025":{"id":"PROC-REP-025","type":"activity","name":"Recibir referencia de garantia de venta RT","description":"Origen RT_GARANTIA_VENTA. La garantia comercial se gestiona y valida en la aplicacion de Gestion RT; la aplicacion RMA no decide si la garantia comercial corresponde. RMA recibe desde Gestion RT la solicitud de reparacion y la referencia al documento que origino la garantia. La resolucion de cambio directo sigue siendo responsabilidad de Gestion RT; si la resolucion requiere reparacion, ingresa al flujo RMA.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Cliente identificado","Equipo identificado","Documento de venta origen identificado","Referencia de garantia RT identificada"]},"PROC-REP-030":{"id":"PROC-REP-030","type":"activity","name":"Registrar cliente y equipo","description":"Origen CLIENTE_EXTERNO. Se registran los datos necesarios del cliente externo y del equipo recibido para reparacion. El cliente externo puede clasificarse conceptualmente como Minorista o Mayorista, sin crear una entidad de cliente separada: existe una sola entidad conceptual Cliente.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"outputs":["Cliente identificado","Equipo identificado"]},"PROC-REP-035":{"id":"PROC-REP-035","type":"activity","name":"Identificar reparacion original en garantia","description":"Origen RMA_GARANTIA_REPARACION. Representa a un cliente que vuelve porque falla una reparacion realizada anteriormente por RMA. Queda relacionada la nueva Orden de Reparacion con la Orden de Reparacion que origino la garantia. No se define todavia como se registra tecnicamente un reproceso: el modelo definitivo queda pendiente.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"outputs":["Cliente identificado","Equipo identificado","Orden de Reparacion origen identificada"]},"PROC-REP-040":{"id":"PROC-REP-040","type":"activity","name":"Crear Orden de Reparacion","description":"Se crea la unidad transaccional central del proceso, cualquiera sea su origen. Las cuatro ramas de origen convergen en este nodo. La orden nace en estado REQUERIMIENTO.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"outputs":["Orden de Reparacion","Estado REQUERIMIENTO"]},"PROC-REP-045":{"id":"PROC-REP-045","type":"decision","name":"Se conoce la reparacion requerida","description":"Distingue si, al momento del ingreso, ya se sabe que reparacion necesita el equipo.\n"},"PROC-REP-050":{"id":"PROC-REP-050","type":"decision","name":"Requiere comprobante de recepcion","description":"Las ordenes que requieren comprobante de recepcion son CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION. RT_INTERNO no lo requiere. Se evalua tanto si la reparacion ya se conoce como si la Orden esta EN_REVISION: el comprobante es independiente de si la reparacion ya fue diagnosticada.\n"},"PROC-REP-055":{"id":"PROC-REP-055","type":"activity","name":"Marcar Orden en revision","description":"La reparacion requerida todavia no se conoce. La Orden pasa a EN_REVISION con tipo de reparacion sin definir (no usar REVISION como tipo de reparacion).\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Estado EN_REVISION"]},"PROC-REP-060":{"id":"PROC-REP-060","type":"activity","name":"Generar comprobante de recepcion","description":"Se genera el documento que acredita que el cliente dejo el equipo para ser reparado, para ordenes cuyo origen lo requiere (CLIENTE_EXTERNO, RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION). Si la reparacion ya se conoce, el comprobante muestra la Orden, el cliente, el equipo y la reparacion requerida. Si la Orden esta EN_REVISION, el comprobante muestra la Orden, el cliente y el equipo, e indica conceptualmente \"reparacion pendiente de diagnostico\", sin inventar un tipo de reparacion.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Comprobante de recepcion"]},"PROC-REP-065":{"id":"PROC-REP-065","type":"activity","name":"Realizar revision tecnica","description":"Para una Orden EN_REVISION, el tecnico revisa/diagnostica el equipo y registra el resultado de la revision.\n","actor":{"id":"ACT-TECH","name":"Tecnico"},"outputs":["Resultado de revision tecnica"]},"PROC-REP-068":{"id":"PROC-REP-068","type":"decision","name":"Se pudo definir la reparacion requerida","description":"Distingue si, luego de la revision tecnica, se pudo determinar que reparacion necesita el equipo.\n"},"PROC-REP-069":{"id":"PROC-REP-069","type":"activity","name":"Registrar finalizacion sin reparacion","description":"La revision tecnica no permitio determinar que reparacion necesita el equipo. La Orden fue procesada correctamente pero concluye sin que se haya realizado una reparacion: resultado SIN_REPARACION. SIN_REPARACION no equivale a CANCELADA (una Orden cancelada fue interrumpida; una Orden SIN_REPARACION fue procesada hasta su fin sin necesitar o poder realizarse una reparacion). El motivo es obligatorio; ejemplos conceptuales: no se pudo determinar la falla, equipo no reparable, reparacion no disponible, otro. No se define todavia un catalogo rigido de motivos.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"outputs":["Resultado SIN_REPARACION","Motivo (obligatorio)","Observaciones de diagnostico/revision","Usuario que registra la decision","Fecha"],"rules":[{"id":"BR-REP-010","name":"Finalizacion sin reparacion trazable","description":"Toda Orden que finalice sin reparacion debe registrar como minimo el motivo, las observaciones, el usuario y la fecha de la decision. Este resultado (SIN_REPARACION) debe quedar distinguido de una Orden cancelada (CANCELADA).\n","status":"draft"}]},"PROC-REP-070":{"id":"PROC-REP-070","type":"activity","name":"Definir requerimiento de reparacion","description":"Se registra que reparacion se necesita realizar y, opcionalmente, restricciones como marca de repuesto o tecnico requerido.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"inputs":["Orden de Reparacion"],"outputs":["Reparacion requerida"],"rules":[{"id":"BR-REP-001","name":"Definicion del requerimiento","description":"Toda Orden de Reparacion debe indicar al menos una reparacion requerida antes de continuar con el proceso, excepto mientras se encuentra en estado EN_REVISION. En ese caso, la reparacion requerida debe quedar definida antes de validar factibilidad.\n","status":"draft"}]},"PROC-REP-075":{"id":"PROC-REP-075","type":"activity","name":"Definir requerimiento luego de revision","description":"Recepcion utiliza el resultado de la revision tecnica (PROC-REP-065) para definir finalmente la reparacion requerida de una Orden que estaba EN_REVISION.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"inputs":["Resultado de revision tecnica"],"outputs":["Reparacion requerida"],"rules":[{"id":"BR-REP-001","name":"Definicion del requerimiento","description":"Toda Orden de Reparacion debe indicar al menos una reparacion requerida antes de continuar con el proceso, excepto mientras se encuentra en estado EN_REVISION. En ese caso, la reparacion requerida debe quedar definida antes de validar factibilidad.\n","status":"draft"}]},"PROC-REP-080":{"id":"PROC-REP-080","type":"activity","name":"Validar factibilidad","description":"Se valida que exista la informacion y los recursos necesarios para habilitar la orden. Requiere que la reparacion requerida ya este definida (una Orden EN_REVISION no puede validarse hasta que se defina que reparacion necesita).\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"rules":[{"id":"BR-REP-001","name":"Definicion del requerimiento","description":"Toda Orden de Reparacion debe indicar al menos una reparacion requerida antes de continuar con el proceso, excepto mientras se encuentra en estado EN_REVISION. En ese caso, la reparacion requerida debe quedar definida antes de validar factibilidad.\n","status":"draft"},{"id":"BR-REP-002","name":"Validacion previa de recursos","description":"Antes de habilitar una Orden de Reparacion deben validarse los recursos y condiciones necesarias para su ejecucion.\n","status":"draft"}]},"PROC-REP-090":{"id":"PROC-REP-090","type":"decision","name":"Estan disponibles los recursos necesarios"},"PROC-REP-100":{"id":"PROC-REP-100","type":"activity","name":"Registrar advertencia de faltante","description":"El sistema informa los recursos o condiciones que impiden habilitar normalmente la orden.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"}},"PROC-REP-110":{"id":"PROC-REP-110","type":"decision","name":"Usuario autorizado fuerza la orden"},"PROC-REP-120":{"id":"PROC-REP-120","type":"activity","name":"Orden pendiente por recursos","description":"La orden permanece en PENDIENTE_RECURSOS hasta que puedan volver a validarse las condiciones necesarias.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"}},"PROC-REP-130":{"id":"PROC-REP-130","type":"activity","name":"Registrar override","description":"Un usuario autorizado decide continuar a pesar de una validacion fallida y debe registrar el motivo.\n","actor":{"id":"ACT-COORD","name":"Coordinador RMA"},"outputs":["Usuario responsable","Fecha","Motivo","Validacion ignorada"],"rules":[{"id":"BR-REP-003","name":"Override justificado","description":"Si un usuario autorizado fuerza una Orden de Reparacion que no supera alguna validacion, debe registrarse usuario, fecha, validacion ignorada y motivo.\n","status":"draft"}]},"PROC-REP-140":{"id":"PROC-REP-140","type":"activity","name":"Habilitar Orden de Reparacion","description":"La orden pasa a HABILITADA y queda en condiciones de ingresar al circuito operativo.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"}},"PROC-REP-150":{"id":"PROC-REP-150","type":"activity","name":"Definir prioridad","description":"El coordinador establece inicialmente la prioridad de ejecucion de la orden. El catalogo definitivo de prioridades queda pendiente.\n","actor":{"id":"ACT-COORD","name":"Coordinador RMA"}},"PROC-REP-170":{"id":"PROC-REP-170","type":"activity","name":"Ingresar orden a cola de trabajo","description":"La orden pasa a EN_COLA, disponible para que cualquier tecnico pueda tomarla. El coordinador no asigna obligatoriamente el tecnico.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"}},"PROC-REP-172":{"id":"PROC-REP-172","type":"activity","name":"Validar estacion de trabajo","description":"Se dispara cuando un tecnico intenta tomar una Orden EN_COLA. El sistema valida, en este orden conceptual: (1) que el tecnico tenga una sesion activa; (2) que esa sesion tenga una Estacion de Trabajo asociada/confirmada (ver docs/discovery/README.md - Estaciones de Trabajo); (3) que esa estacion este configurada; (4) que la estacion este OPERATIVA. Si cualquiera de estas cuatro validaciones falla -Caso A: sin sesion activa, sesion sin estacion confirmada, estacion no configurada, o estacion NO OPERATIVA- no se autoasigna la Orden, no se permite continuar y no se ofrece override bajo ninguna circunstancia: la Orden permanece EN_COLA, disponible para un nuevo intento (del mismo tecnico u otro, eventualmente desde otra estacion). Unicamente cuando las cuatro validaciones son correctas (sesion y estacion validas) continua hacia PROC-REP-174, que evalua si ademas esa estacion esta configurada para el tipo de reparacion requerido por la Orden (Caso B: compatible; Caso C: operativa pero incompatible, con posibilidad de override).\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Resultado de validacion de sesion/estacion"],"rules":[{"id":"BR-REP-011","name":"Compatibilidad de estacion de trabajo","description":"Para tomar una Orden de Reparacion deben cumplirse, en orden: el tecnico debe tener una sesion activa; esa sesion debe tener una Estacion de Trabajo asociada/confirmada; esa estacion debe estar configurada; y esa estacion debe estar OPERATIVA. Si falta la sesion activa, la sesion no tiene estacion confirmada, la estacion no esta configurada, o la estacion esta NO OPERATIVA, no se permite tomar la Orden bajo ninguna circunstancia: ninguno de estos casos admite override, y la Orden permanece disponible en EN_COLA. Unicamente cuando la sesion y la estacion son validas y la estacion esta OPERATIVA se evalua si, ademas, esa estacion esta configurada para el tipo de reparacion requerido. Si no lo esta, el sistema debe advertirlo y permitir dos alternativas: (1) mantener la Orden disponible en EN_COLA para que sea tomada por otro tecnico desde otra estacion; o (2) permitir que un usuario autorizado fuerce la continuidad, registrando usuario, fecha, estacion, reparacion incompatible y motivo. El override aplica unicamente a esta incompatibilidad estacion/reparacion: nunca a sesion inexistente, estacion no confirmada, estacion no configurada o estacion NO OPERATIVA. Distinta de BR-REP-003 (override de validacion de recursos/factibilidad): no deben mezclarse.\n","status":"draft"}]},"PROC-REP-174":{"id":"PROC-REP-174","type":"decision","name":"Estacion habilitada para esta reparacion","description":"Se alcanza unicamente cuando la sesion y la estacion son validas (PROC-REP-172: sesion activa, estacion confirmada, configurada y OPERATIVA). Distingue si, ademas, esa estacion esta configurada -relacion configurable y many-to-many entre Estacion y tipo de reparacion- para el tipo de reparacion requerido por la Orden.\n"},"PROC-REP-176":{"id":"PROC-REP-176","type":"activity","name":"Registrar advertencia de estacion incompatible","description":"La estacion esta operativa, pero no esta configurada entre las estaciones habilitadas para ejecutar el tipo de reparacion requerido por la Orden. Luego debe evaluarse si se desea forzar la continuidad (PROC-REP-178).\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"rules":[{"id":"BR-REP-011","name":"Compatibilidad de estacion de trabajo","description":"Para tomar una Orden de Reparacion deben cumplirse, en orden: el tecnico debe tener una sesion activa; esa sesion debe tener una Estacion de Trabajo asociada/confirmada; esa estacion debe estar configurada; y esa estacion debe estar OPERATIVA. Si falta la sesion activa, la sesion no tiene estacion confirmada, la estacion no esta configurada, o la estacion esta NO OPERATIVA, no se permite tomar la Orden bajo ninguna circunstancia: ninguno de estos casos admite override, y la Orden permanece disponible en EN_COLA. Unicamente cuando la sesion y la estacion son validas y la estacion esta OPERATIVA se evalua si, ademas, esa estacion esta configurada para el tipo de reparacion requerido. Si no lo esta, el sistema debe advertirlo y permitir dos alternativas: (1) mantener la Orden disponible en EN_COLA para que sea tomada por otro tecnico desde otra estacion; o (2) permitir que un usuario autorizado fuerce la continuidad, registrando usuario, fecha, estacion, reparacion incompatible y motivo. El override aplica unicamente a esta incompatibilidad estacion/reparacion: nunca a sesion inexistente, estacion no confirmada, estacion no configurada o estacion NO OPERATIVA. Distinta de BR-REP-003 (override de validacion de recursos/factibilidad): no deben mezclarse.\n","status":"draft"}]},"PROC-REP-178":{"id":"PROC-REP-178","type":"decision","name":"Usuario autorizado fuerza continuidad","description":"Distingue si un usuario autorizado decide forzar la toma de la Orden desde una estacion operativa pero no habilitada para ese tipo de reparacion. Si no se fuerza, la Orden no se autoasigna: permanece EN_COLA para ser tomada desde otra estacion compatible.\n","rules":[{"id":"BR-REP-011","name":"Compatibilidad de estacion de trabajo","description":"Para tomar una Orden de Reparacion deben cumplirse, en orden: el tecnico debe tener una sesion activa; esa sesion debe tener una Estacion de Trabajo asociada/confirmada; esa estacion debe estar configurada; y esa estacion debe estar OPERATIVA. Si falta la sesion activa, la sesion no tiene estacion confirmada, la estacion no esta configurada, o la estacion esta NO OPERATIVA, no se permite tomar la Orden bajo ninguna circunstancia: ninguno de estos casos admite override, y la Orden permanece disponible en EN_COLA. Unicamente cuando la sesion y la estacion son validas y la estacion esta OPERATIVA se evalua si, ademas, esa estacion esta configurada para el tipo de reparacion requerido. Si no lo esta, el sistema debe advertirlo y permitir dos alternativas: (1) mantener la Orden disponible en EN_COLA para que sea tomada por otro tecnico desde otra estacion; o (2) permitir que un usuario autorizado fuerce la continuidad, registrando usuario, fecha, estacion, reparacion incompatible y motivo. El override aplica unicamente a esta incompatibilidad estacion/reparacion: nunca a sesion inexistente, estacion no confirmada, estacion no configurada o estacion NO OPERATIVA. Distinta de BR-REP-003 (override de validacion de recursos/factibilidad): no deben mezclarse.\n","status":"draft"}]},"PROC-REP-179":{"id":"PROC-REP-179","type":"activity","name":"Registrar override de estacion","description":"Un usuario autorizado decide continuar a pesar de que la estacion no esta configurada para el tipo de reparacion requerido. El override autoriza unicamente esa continuidad de trabajo: no modifica automaticamente la configuracion de la estacion.\n","actor":{"id":"ACT-COORD","name":"Coordinador RMA"},"outputs":["Usuario responsable","Fecha/hora","Estacion","Tipo de reparacion no habilitado","Motivo"],"rules":[{"id":"BR-REP-011","name":"Compatibilidad de estacion de trabajo","description":"Para tomar una Orden de Reparacion deben cumplirse, en orden: el tecnico debe tener una sesion activa; esa sesion debe tener una Estacion de Trabajo asociada/confirmada; esa estacion debe estar configurada; y esa estacion debe estar OPERATIVA. Si falta la sesion activa, la sesion no tiene estacion confirmada, la estacion no esta configurada, o la estacion esta NO OPERATIVA, no se permite tomar la Orden bajo ninguna circunstancia: ninguno de estos casos admite override, y la Orden permanece disponible en EN_COLA. Unicamente cuando la sesion y la estacion son validas y la estacion esta OPERATIVA se evalua si, ademas, esa estacion esta configurada para el tipo de reparacion requerido. Si no lo esta, el sistema debe advertirlo y permitir dos alternativas: (1) mantener la Orden disponible en EN_COLA para que sea tomada por otro tecnico desde otra estacion; o (2) permitir que un usuario autorizado fuerce la continuidad, registrando usuario, fecha, estacion, reparacion incompatible y motivo. El override aplica unicamente a esta incompatibilidad estacion/reparacion: nunca a sesion inexistente, estacion no confirmada, estacion no configurada o estacion NO OPERATIVA. Distinta de BR-REP-003 (override de validacion de recursos/factibilidad): no deben mezclarse.\n","status":"draft"}]},"PROC-REP-180":{"id":"PROC-REP-180","type":"activity","name":"Tomar Orden de Reparacion","description":"El tecnico se autoasigna la Orden luego de superar la validacion de estacion (PROC-REP-172 / PROC-REP-174) o luego de un override de estacion autorizado (PROC-REP-179); la orden pasa a EN_REPARACION. Al tomar la Orden debe quedar registrado conceptualmente la Orden de Reparacion, el Tecnico, la Estacion de Trabajo utilizada y la fecha/hora de la toma. Debe quedar registrado tambien el historial de tecnicos que participaron: una Orden puede ser iniciada por un tecnico desde una estacion y continuada por otro tecnico desde otra estacion, sin sobrescribir conceptualmente al tecnico ni a la estacion anteriores. La Orden queda en modo EXCLUSIVA (otro tecnico no deberia poder tomarla, salvo override justificado con usuario, fecha y motivo) o en modo ABIERTA (otro tecnico puede continuarla); la estructura tecnica de este modo, asi como la del historial de tecnicos/estaciones, queda pendiente de definicion.\n","actor":{"id":"ACT-TECH","name":"Tecnico"},"rules":[{"id":"BR-REP-007","name":"Asignacion tecnica flexible","description":"Una Orden en EN_REPARACION puede quedar en modo EXCLUSIVA (solo el tecnico asignado puede continuarla, salvo override justificado con usuario, fecha y motivo) o en modo ABIERTA (otro tecnico puede continuarla). La estructura tecnica de este modo queda pendiente de definicion.\n","status":"draft"},{"id":"BR-REP-011","name":"Compatibilidad de estacion de trabajo","description":"Para tomar una Orden de Reparacion deben cumplirse, en orden: el tecnico debe tener una sesion activa; esa sesion debe tener una Estacion de Trabajo asociada/confirmada; esa estacion debe estar configurada; y esa estacion debe estar OPERATIVA. Si falta la sesion activa, la sesion no tiene estacion confirmada, la estacion no esta configurada, o la estacion esta NO OPERATIVA, no se permite tomar la Orden bajo ninguna circunstancia: ninguno de estos casos admite override, y la Orden permanece disponible en EN_COLA. Unicamente cuando la sesion y la estacion son validas y la estacion esta OPERATIVA se evalua si, ademas, esa estacion esta configurada para el tipo de reparacion requerido. Si no lo esta, el sistema debe advertirlo y permitir dos alternativas: (1) mantener la Orden disponible en EN_COLA para que sea tomada por otro tecnico desde otra estacion; o (2) permitir que un usuario autorizado fuerce la continuidad, registrando usuario, fecha, estacion, reparacion incompatible y motivo. El override aplica unicamente a esta incompatibilidad estacion/reparacion: nunca a sesion inexistente, estacion no confirmada, estacion no configurada o estacion NO OPERATIVA. Distinta de BR-REP-003 (override de validacion de recursos/factibilidad): no deben mezclarse.\n","status":"draft"}]},"PROC-REP-185":{"id":"PROC-REP-185","type":"activity","name":"Reservar insumos previstos","description":"Al tomar la Orden se reservan conceptualmente los insumos que deberian utilizarse segun la reparacion requerida, antes de ejecutar la reparacion. No se reservan insumos mientras la Orden esta EN_REVISION (por construccion del flujo, a esta altura la reparacion ya esta definida).\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"rules":[{"id":"BR-REP-006","name":"Reserva de insumos al tomar Orden","description":"Al tomar una Orden de Reparacion habilitada, deben reservarse conceptualmente los insumos previstos segun la reparacion requerida. La reserva no aplica mientras la Orden se encuentra en EN_REVISION.\n","status":"draft"}]},"PROC-REP-190":{"id":"PROC-REP-190","type":"activity","name":"Ejecutar reparacion","actor":{"id":"ACT-TECH","name":"Tecnico"}},"PROC-REP-200":{"id":"PROC-REP-200","type":"activity","name":"Registrar ejecucion real","description":"El tecnico confirma o modifica los trabajos efectivamente realizados, repuestos utilizados, cantidades, observaciones y eventuales desperdicios.\n","actor":{"id":"ACT-TECH","name":"Tecnico"},"outputs":["Reparaciones realizadas","Repuestos utilizados","Cantidades utilizadas","Observaciones"],"rules":[{"id":"BR-REP-004","name":"Registro de ejecucion real","description":"El tecnico debe registrar lo efectivamente realizado y los repuestos realmente utilizados durante la reparacion.\n","status":"draft"}]},"PROC-REP-210":{"id":"PROC-REP-210","type":"activity","name":"Generar movimientos de inventario","description":"A partir de la ejecucion registrada, los insumos reservados (PROC-REP-185) se consumen segun lo efectivamente utilizado y se liberan las reservas no utilizadas; se registran desperdicios cuando corresponda. El inventario asociado a la orden distingue conceptualmente RESERVADO, CONSUMIDO y LIBERADO.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"rules":[{"id":"BR-REP-005","name":"Inventario consecuencia de ejecucion","description":"Los movimientos de inventario asociados a una reparacion (consumo de lo utilizado y liberacion de reservas no utilizadas) deben originarse a partir de los repuestos y cantidades registrados en su ejecucion.\n","status":"draft"}]},"PROC-REP-220":{"id":"PROC-REP-220","type":"activity","name":"Realizar control tecnico","description":"Recepcion realiza la validacion final del funcionamiento de la reparacion antes de marcarla como lista.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"rules":[{"id":"BR-REP-008","name":"Control tecnico por Recepcion","description":"El control tecnico final es responsabilidad de Recepcion. Si el control es rechazado, debe registrarse fecha, usuario, observacion y resultado, y la Orden vuelve a EN_COLA para que un tecnico la retome.\n","status":"draft"}]},"PROC-REP-230":{"id":"PROC-REP-230","type":"decision","name":"Resultado tecnico correcto"},"PROC-REP-235":{"id":"PROC-REP-235","type":"activity","name":"Registrar control rechazado","description":"Si el control tecnico falla, se registra el rechazo y la Orden vuelve a EN_COLA para que un tecnico (el mismo u otro) pueda retomarla.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"},"outputs":["Fecha","Usuario","Observacion","Resultado control"],"rules":[{"id":"BR-REP-008","name":"Control tecnico por Recepcion","description":"El control tecnico final es responsabilidad de Recepcion. Si el control es rechazado, debe registrarse fecha, usuario, observacion y resultado, y la Orden vuelve a EN_COLA para que un tecnico la retome.\n","status":"draft"}]},"PROC-REP-245":{"id":"PROC-REP-245","type":"activity","name":"Calcular puntaje de la reparacion","description":"Cada reparacion realizada tiene una ponderacion configurable. Una vez que Recepcion aprueba el control tecnico, el sistema calcula el puntaje total correspondiente a la reparacion. Todavia no esta definida la distribucion o acreditacion de ese puntaje entre los distintos tecnicos que participaron: no debe asumirse que se asigna automaticamente a un unico tecnico.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Puntaje de la reparacion"],"rules":[{"id":"BR-REP-009","name":"Puntaje de la reparacion posterior a control aprobado","description":"El puntaje correspondiente a una reparacion se calcula segun su ponderacion configurada, unicamente despues de que el control tecnico haya sido aprobado por Recepcion. La distribucion o acreditacion de ese puntaje entre los distintos tecnicos que participaron en la reparacion queda pendiente de definicion funcional.\n","status":"draft"}]},"PROC-REP-240":{"id":"PROC-REP-240","type":"activity","name":"Marcar reparacion lista","description":"La orden pasa a REPARACION_LISTA.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"}},"PROC-REP-250":{"id":"PROC-REP-250","type":"decision","name":"Requiere entrega a cliente","description":"Se alcanza tanto cuando la reparacion quedo lista (PROC-REP-240) como cuando la Orden finalizo SIN_REPARACION (PROC-REP-069). Las ordenes que requieren entrega/documentacion al cliente son CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION. RT_INTERNO continua hacia informar el resultado al sistema RT.\n"},"PROC-REP-260":{"id":"PROC-REP-260","type":"activity","name":"Notificar cliente","description":"El sistema asiste a Recepcion preparando el mensaje de WhatsApp para avisar que la reparacion esta lista, o que la Orden concluyo SIN_REPARACION segun corresponda; Recepcion confirma y envia. Por ahora no se automatiza completamente el envio por WhatsApp; a futuro podra integrarse con WhatsApp, chatbot o portal web.\n","actor":{"id":"ACT-RECEP","name":"Recepcion"}},"PROC-REP-280":{"id":"PROC-REP-280","type":"activity","name":"Generar comprobante final","description":"Se genera el documento final que informa el trabajo efectivamente realizado. Si la Orden tuvo una reparacion, el comprobante incluye ademas las condiciones y vencimiento de la garantia de reparacion. Si el resultado de la Orden es SIN_REPARACION, no se genera garantia de reparacion.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"},"outputs":["Comprobante final","Garantia de reparacion (unicamente si hubo reparacion)"]},"PROC-REP-270":{"id":"PROC-REP-270","type":"activity","name":"Entregar equipo","description":"Se entrega el equipo al cliente; la orden pasa a ENTREGADA.\n","actor":{"id":"ACT-ADMIN","name":"Administrador"}},"PROC-REP-290":{"id":"PROC-REP-290","type":"activity","name":"Informar resultado al sistema RT","description":"Para equipos de Rosario Tecno, el resultado de la Orden (incluida la reparacion realizada o, si corresponde, SIN_REPARACION) debera poder informarse a futuro al sistema que gestiona stock y ventas. El estado terminal definitivo para RT_INTERNO queda pendiente de definicion.\n","actor":{"id":"ACT-SYSTEM","name":"Sistema"}},"EVT-REP-999":{"id":"EVT-REP-999","type":"end","name":"Fin del flujo de Orden de Reparacion"}};
+    var EDGES = [{"from":"EVT-REP-001","to":"PROC-REP-010"},{"from":"PROC-REP-010","to":"PROC-REP-030","condition":"CLIENTE_EXTERNO"},{"from":"PROC-REP-010","to":"PROC-REP-020","condition":"RT_INTERNO"},{"from":"PROC-REP-010","to":"PROC-REP-025","condition":"RT_GARANTIA_VENTA"},{"from":"PROC-REP-010","to":"PROC-REP-035","condition":"RMA_GARANTIA_REPARACION"},{"from":"PROC-REP-020","to":"PROC-REP-040"},{"from":"PROC-REP-025","to":"PROC-REP-040"},{"from":"PROC-REP-030","to":"PROC-REP-040"},{"from":"PROC-REP-035","to":"PROC-REP-040"},{"from":"PROC-REP-040","to":"PROC-REP-045"},{"from":"PROC-REP-045","to":"PROC-REP-070","condition":"Si"},{"from":"PROC-REP-045","to":"PROC-REP-055","condition":"No"},{"from":"PROC-REP-070","to":"PROC-REP-050"},{"from":"PROC-REP-055","to":"PROC-REP-050"},{"from":"PROC-REP-050","to":"PROC-REP-060","condition":"Si"},{"from":"PROC-REP-050","to":"PROC-REP-080","condition":"No - reparacion definida"},{"from":"PROC-REP-050","to":"PROC-REP-065","condition":"No - aun en revision"},{"from":"PROC-REP-060","to":"PROC-REP-080","condition":"Reparacion definida"},{"from":"PROC-REP-060","to":"PROC-REP-065","condition":"Aun en revision"},{"from":"PROC-REP-065","to":"PROC-REP-068"},{"from":"PROC-REP-068","to":"PROC-REP-075","condition":"Si"},{"from":"PROC-REP-068","to":"PROC-REP-069","condition":"No"},{"from":"PROC-REP-069","to":"PROC-REP-250"},{"from":"PROC-REP-075","to":"PROC-REP-080"},{"from":"PROC-REP-080","to":"PROC-REP-090"},{"from":"PROC-REP-090","to":"PROC-REP-140","condition":"Si"},{"from":"PROC-REP-090","to":"PROC-REP-100","condition":"No"},{"from":"PROC-REP-100","to":"PROC-REP-110"},{"from":"PROC-REP-110","to":"PROC-REP-120","condition":"No"},{"from":"PROC-REP-110","to":"PROC-REP-130","condition":"Si"},{"from":"PROC-REP-120","to":"PROC-REP-080","condition":"Revalidar"},{"from":"PROC-REP-130","to":"PROC-REP-140"},{"from":"PROC-REP-140","to":"PROC-REP-150"},{"from":"PROC-REP-150","to":"PROC-REP-170"},{"from":"PROC-REP-170","to":"PROC-REP-172"},{"from":"PROC-REP-172","to":"PROC-REP-174","condition":"Sesion y estacion validas"},{"from":"PROC-REP-172","to":"PROC-REP-170","condition":"Sesion o estacion invalida"},{"from":"PROC-REP-174","to":"PROC-REP-180","condition":"Si"},{"from":"PROC-REP-174","to":"PROC-REP-176","condition":"No"},{"from":"PROC-REP-176","to":"PROC-REP-178"},{"from":"PROC-REP-178","to":"PROC-REP-179","condition":"Si"},{"from":"PROC-REP-178","to":"PROC-REP-170","condition":"No"},{"from":"PROC-REP-179","to":"PROC-REP-180"},{"from":"PROC-REP-180","to":"PROC-REP-185"},{"from":"PROC-REP-185","to":"PROC-REP-190"},{"from":"PROC-REP-190","to":"PROC-REP-200"},{"from":"PROC-REP-200","to":"PROC-REP-210"},{"from":"PROC-REP-210","to":"PROC-REP-220"},{"from":"PROC-REP-220","to":"PROC-REP-230"},{"from":"PROC-REP-230","to":"PROC-REP-235","condition":"No"},{"from":"PROC-REP-230","to":"PROC-REP-245","condition":"Si"},{"from":"PROC-REP-235","to":"PROC-REP-170"},{"from":"PROC-REP-245","to":"PROC-REP-240"},{"from":"PROC-REP-240","to":"PROC-REP-250"},{"from":"PROC-REP-250","to":"PROC-REP-260","condition":"Si"},{"from":"PROC-REP-250","to":"PROC-REP-290","condition":"No"},{"from":"PROC-REP-260","to":"PROC-REP-280"},{"from":"PROC-REP-280","to":"PROC-REP-270"},{"from":"PROC-REP-270","to":"EVT-REP-999"},{"from":"PROC-REP-290","to":"EVT-REP-999"}];
     var DIAGRAM_SOURCE = "flowchart TD\n    EVT-REP-001{{\"Surge necesidad de reparacion\"}}\n    PROC-REP-010{\"Cual es el origen de la Orden de Reparacion\"}\n    PROC-REP-020[\"Recibir referencia y contexto del equipo RT\"]\n    PROC-REP-025[\"Recibir referencia de garantia de venta RT\"]\n    PROC-REP-030[\"Registrar cliente y equipo\"]\n    PROC-REP-035[\"Identificar reparacion original en garantia\"]\n    PROC-REP-040[\"Crear Orden de Reparacion\"]\n    PROC-REP-045{\"Se conoce la reparacion requerida\"}\n    PROC-REP-050{\"Requiere comprobante de recepcion\"}\n    PROC-REP-055[\"Marcar Orden en revision\"]\n    PROC-REP-060[\"Generar comprobante de recepcion\"]\n    PROC-REP-065[\"Realizar revision tecnica\"]\n    PROC-REP-068{\"Se pudo definir la reparacion requerida\"}\n    PROC-REP-069[\"Registrar finalizacion sin reparacion\"]\n    PROC-REP-070[\"Definir requerimiento de reparacion\"]\n    PROC-REP-075[\"Definir requerimiento luego de revision\"]\n    PROC-REP-080[\"Validar factibilidad\"]\n    PROC-REP-090{\"Estan disponibles los recursos necesarios\"}\n    PROC-REP-100[\"Registrar advertencia de faltante\"]\n    PROC-REP-110{\"Usuario autorizado fuerza la orden\"}\n    PROC-REP-120[\"Orden pendiente por recursos\"]\n    PROC-REP-130[\"Registrar override\"]\n    PROC-REP-140[\"Habilitar Orden de Reparacion\"]\n    PROC-REP-150[\"Definir prioridad\"]\n    PROC-REP-170[\"Ingresar orden a cola de trabajo\"]\n    PROC-REP-172[\"Validar estacion de trabajo\"]\n    PROC-REP-174{\"Estacion habilitada para esta reparacion\"}\n    PROC-REP-176[\"Registrar advertencia de estacion incompatible\"]\n    PROC-REP-178{\"Usuario autorizado fuerza continuidad\"}\n    PROC-REP-179[\"Registrar override de estacion\"]\n    PROC-REP-180[\"Tomar Orden de Reparacion\"]\n    PROC-REP-185[\"Reservar insumos previstos\"]\n    PROC-REP-190[\"Ejecutar reparacion\"]\n    PROC-REP-200[\"Registrar ejecucion real\"]\n    PROC-REP-210[\"Generar movimientos de inventario\"]\n    PROC-REP-220[\"Realizar control tecnico\"]\n    PROC-REP-230{\"Resultado tecnico correcto\"}\n    PROC-REP-235[\"Registrar control rechazado\"]\n    PROC-REP-245[\"Calcular puntaje de la reparacion\"]\n    PROC-REP-240[\"Marcar reparacion lista\"]\n    PROC-REP-250{\"Requiere entrega a cliente\"}\n    PROC-REP-260[\"Notificar cliente\"]\n    PROC-REP-280[\"Generar comprobante final\"]\n    PROC-REP-270[\"Entregar equipo\"]\n    PROC-REP-290[\"Informar resultado al sistema RT\"]\n    EVT-REP-999(((\"Fin del flujo de Orden de Reparacion\")))\n\n    EVT-REP-001 --> PROC-REP-010\n    PROC-REP-010 -->|CLIENTE_EXTERNO| PROC-REP-030\n    PROC-REP-010 -->|RT_INTERNO| PROC-REP-020\n    PROC-REP-010 -->|RT_GARANTIA_VENTA| PROC-REP-025\n    PROC-REP-010 -->|RMA_GARANTIA_REPARACION| PROC-REP-035\n    PROC-REP-020 --> PROC-REP-040\n    PROC-REP-025 --> PROC-REP-040\n    PROC-REP-030 --> PROC-REP-040\n    PROC-REP-035 --> PROC-REP-040\n    PROC-REP-040 --> PROC-REP-045\n    PROC-REP-045 -->|Si| PROC-REP-070\n    PROC-REP-045 -->|No| PROC-REP-055\n    PROC-REP-070 --> PROC-REP-050\n    PROC-REP-055 --> PROC-REP-050\n    PROC-REP-050 -->|Si| PROC-REP-060\n    PROC-REP-050 -->|No - reparacion definida| PROC-REP-080\n    PROC-REP-050 -->|No - aun en revision| PROC-REP-065\n    PROC-REP-060 -->|Reparacion definida| PROC-REP-080\n    PROC-REP-060 -->|Aun en revision| PROC-REP-065\n    PROC-REP-065 --> PROC-REP-068\n    PROC-REP-068 -->|Si| PROC-REP-075\n    PROC-REP-068 -->|No| PROC-REP-069\n    PROC-REP-069 --> PROC-REP-250\n    PROC-REP-075 --> PROC-REP-080\n    PROC-REP-080 --> PROC-REP-090\n    PROC-REP-090 -->|Si| PROC-REP-140\n    PROC-REP-090 -->|No| PROC-REP-100\n    PROC-REP-100 --> PROC-REP-110\n    PROC-REP-110 -->|No| PROC-REP-120\n    PROC-REP-110 -->|Si| PROC-REP-130\n    PROC-REP-120 -->|Revalidar| PROC-REP-080\n    PROC-REP-130 --> PROC-REP-140\n    PROC-REP-140 --> PROC-REP-150\n    PROC-REP-150 --> PROC-REP-170\n    PROC-REP-170 --> PROC-REP-172\n    PROC-REP-172 -->|Sesion y estacion validas| PROC-REP-174\n    PROC-REP-172 -->|Sesion o estacion invalida| PROC-REP-170\n    PROC-REP-174 -->|Si| PROC-REP-180\n    PROC-REP-174 -->|No| PROC-REP-176\n    PROC-REP-176 --> PROC-REP-178\n    PROC-REP-178 -->|Si| PROC-REP-179\n    PROC-REP-178 -->|No| PROC-REP-170\n    PROC-REP-179 --> PROC-REP-180\n    PROC-REP-180 --> PROC-REP-185\n    PROC-REP-185 --> PROC-REP-190\n    PROC-REP-190 --> PROC-REP-200\n    PROC-REP-200 --> PROC-REP-210\n    PROC-REP-210 --> PROC-REP-220\n    PROC-REP-220 --> PROC-REP-230\n    PROC-REP-230 -->|No| PROC-REP-235\n    PROC-REP-230 -->|Si| PROC-REP-245\n    PROC-REP-235 --> PROC-REP-170\n    PROC-REP-245 --> PROC-REP-240\n    PROC-REP-240 --> PROC-REP-250\n    PROC-REP-250 -->|Si| PROC-REP-260\n    PROC-REP-250 -->|No| PROC-REP-290\n    PROC-REP-260 --> PROC-REP-280\n    PROC-REP-280 --> PROC-REP-270\n    PROC-REP-270 --> EVT-REP-999\n    PROC-REP-290 --> EVT-REP-999\n\n    click EVT-REP-001 call selectNode(\"EVT-REP-001\")\n    click PROC-REP-010 call selectNode(\"PROC-REP-010\")\n    click PROC-REP-020 call selectNode(\"PROC-REP-020\")\n    click PROC-REP-025 call selectNode(\"PROC-REP-025\")\n    click PROC-REP-030 call selectNode(\"PROC-REP-030\")\n    click PROC-REP-035 call selectNode(\"PROC-REP-035\")\n    click PROC-REP-040 call selectNode(\"PROC-REP-040\")\n    click PROC-REP-045 call selectNode(\"PROC-REP-045\")\n    click PROC-REP-050 call selectNode(\"PROC-REP-050\")\n    click PROC-REP-055 call selectNode(\"PROC-REP-055\")\n    click PROC-REP-060 call selectNode(\"PROC-REP-060\")\n    click PROC-REP-065 call selectNode(\"PROC-REP-065\")\n    click PROC-REP-068 call selectNode(\"PROC-REP-068\")\n    click PROC-REP-069 call selectNode(\"PROC-REP-069\")\n    click PROC-REP-070 call selectNode(\"PROC-REP-070\")\n    click PROC-REP-075 call selectNode(\"PROC-REP-075\")\n    click PROC-REP-080 call selectNode(\"PROC-REP-080\")\n    click PROC-REP-090 call selectNode(\"PROC-REP-090\")\n    click PROC-REP-100 call selectNode(\"PROC-REP-100\")\n    click PROC-REP-110 call selectNode(\"PROC-REP-110\")\n    click PROC-REP-120 call selectNode(\"PROC-REP-120\")\n    click PROC-REP-130 call selectNode(\"PROC-REP-130\")\n    click PROC-REP-140 call selectNode(\"PROC-REP-140\")\n    click PROC-REP-150 call selectNode(\"PROC-REP-150\")\n    click PROC-REP-170 call selectNode(\"PROC-REP-170\")\n    click PROC-REP-172 call selectNode(\"PROC-REP-172\")\n    click PROC-REP-174 call selectNode(\"PROC-REP-174\")\n    click PROC-REP-176 call selectNode(\"PROC-REP-176\")\n    click PROC-REP-178 call selectNode(\"PROC-REP-178\")\n    click PROC-REP-179 call selectNode(\"PROC-REP-179\")\n    click PROC-REP-180 call selectNode(\"PROC-REP-180\")\n    click PROC-REP-185 call selectNode(\"PROC-REP-185\")\n    click PROC-REP-190 call selectNode(\"PROC-REP-190\")\n    click PROC-REP-200 call selectNode(\"PROC-REP-200\")\n    click PROC-REP-210 call selectNode(\"PROC-REP-210\")\n    click PROC-REP-220 call selectNode(\"PROC-REP-220\")\n    click PROC-REP-230 call selectNode(\"PROC-REP-230\")\n    click PROC-REP-235 call selectNode(\"PROC-REP-235\")\n    click PROC-REP-245 call selectNode(\"PROC-REP-245\")\n    click PROC-REP-240 call selectNode(\"PROC-REP-240\")\n    click PROC-REP-250 call selectNode(\"PROC-REP-250\")\n    click PROC-REP-260 call selectNode(\"PROC-REP-260\")\n    click PROC-REP-280 call selectNode(\"PROC-REP-280\")\n    click PROC-REP-270 call selectNode(\"PROC-REP-270\")\n    click PROC-REP-290 call selectNode(\"PROC-REP-290\")\n    click EVT-REP-999 call selectNode(\"EVT-REP-999\")";
     
+  var CURRENT_SELECTED_ID = null;
+
+  var TYPE_LABELS = { event: "Evento", activity: "Actividad", decision: "Decision", start: "Inicio", end: "Fin" };
+  var TYPE_SHAPES = { event: "shape-hexagon", activity: "shape-rect", decision: "shape-diamond", start: "shape-circle", end: "shape-circle" };
+
+  function typeLabel(type) {
+    return TYPE_LABELS[type] || type;
+  }
+
   function escapeHtml(text) {
     return String(text)
       .replace(/&/g, "&amp;")
@@ -2310,6 +2458,43 @@ Expecting `+Ze.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
     return '<div class="field"><div class="field-label">Reglas</div>' + cards + "</div>";
   }
 
+  // --- Navigation derived from EDGES (never duplicated by hand) ----------
+  // "Llega desde" and "Continua hacia" are computed straight from EDGES on
+  // every render: incoming = EDGES where edge.to === nodeId, outgoing =
+  // EDGES where edge.from === nodeId. Nothing about the graph is hardcoded.
+
+  function getIncomingEdges(nodeId) {
+    return EDGES.filter(function (edge) { return edge.to === nodeId; });
+  }
+
+  function getOutgoingEdges(nodeId) {
+    return EDGES.filter(function (edge) { return edge.from === nodeId; });
+  }
+
+  function renderNavCard(edge, direction) {
+    var otherId = direction === "in" ? edge.from : edge.to;
+    var otherNode = NODES_BY_ID[otherId];
+    var name = otherNode ? otherNode.name : otherId;
+    var condition = edge.condition
+      ? '<div class="nav-condition">Condicion: <span class="nav-condition-value">' + escapeHtml(edge.condition) + "</span></div>"
+      : "";
+    return '<button type="button" class="nav-card" data-nav-node="' + escapeHtml(otherId) + '">' +
+      '<div class="nav-name">' + escapeHtml(name) + "</div>" +
+      '<div class="nav-id">' + escapeHtml(otherId) + "</div>" +
+      condition +
+      "</button>";
+  }
+
+  function renderNavSection(title, edges, direction, extraListClass) {
+    var emptyText = direction === "in" ? "Sin conexiones entrantes." : "Sin conexiones salientes.";
+    var body = edges.length
+      ? '<div class="nav-list' + (extraListClass ? " " + extraListClass : "") + '">' +
+          edges.map(function (edge) { return renderNavCard(edge, direction); }).join("") +
+        "</div>"
+      : '<p class="hint nav-empty">' + emptyText + "</p>";
+    return '<div class="field"><div class="field-label">' + title + "</div>" + body + "</div>";
+  }
+
   function panelBody() {
     return document.querySelector("#detail-pane .panel-inner");
   }
@@ -2322,37 +2507,256 @@ Expecting `+Ze.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
       '<div class="field"><div class="field-label">Version</div><div class="field-value">' + escapeHtml(p.version) + "</div></div>" +
       (p.status ? '<div class="field"><div class="field-label">Status</div><div class="field-value">' + escapeHtml(p.status) + "</div></div>" : "") +
       '<hr class="divider">' +
-      '<p class="hint">Seleccione un nodo del proceso para ver su detalle.</p>';
+      '<p class="hint">Seleccione un nodo del proceso, o use el buscador, para ver su detalle.</p>';
     panelBody().innerHTML = html;
   }
 
+  // Panel order: Nombre, ID+tipo, Actor, Descripcion, navegacion (Llega
+  // desde / Continua hacia), Inputs, Outputs, Business Rules. Para nodos
+  // decision, "Continua hacia" se muestra primero porque son sus
+  // alternativas de decision.
   function renderNodeDetail(nodeId) {
     var node = NODES_BY_ID[nodeId];
     if (!node) return;
+
+    var incoming = getIncomingEdges(nodeId);
+    var outgoing = getOutgoingEdges(nodeId);
+    var isDecision = node.type === "decision";
+
+    var incomingSection = renderNavSection("Llega desde", incoming, "in");
+    var outgoingSection = renderNavSection("Continua hacia", outgoing, "out", isDecision ? "decision-list" : "");
+    var navigation = isDecision ? outgoingSection + incomingSection : incomingSection + outgoingSection;
+
     var html = "<h2>Detalle del nodo</h2>" +
       '<div class="field"><div class="field-value big">' + escapeHtml(node.name) + "</div>" +
-      '<span class="badge type-' + escapeHtml(node.type) + '">' + escapeHtml(node.type) + "</span></div>" +
+      '<span class="badge type-' + escapeHtml(node.type) + '">' + escapeHtml(typeLabel(node.type)) + "</span></div>" +
       '<div class="field"><div class="field-label">ID</div><div class="field-value">' + escapeHtml(node.id) + "</div></div>" +
       '<hr class="divider">' +
       renderActor(node.actor) +
       (node.description ? '<div class="field"><div class="field-label">Descripcion</div><div class="field-value">' + escapeHtml(node.description) + "</div></div>" : "") +
+      '<hr class="divider">' +
+      navigation +
+      '<hr class="divider">' +
       renderList("Inputs", node.inputs) +
       renderList("Outputs", node.outputs) +
       renderRules(node.rules);
     panelBody().innerHTML = html;
   }
 
+  // --- Highlight of the selected node's immediate context -----------------
+  // Every node/edge in the rendered SVG gets exactly one of: selected,
+  // context (direct predecessor/successor) or dimmed. Predecessors and
+  // successors share one "context" style on purpose (kept to a single
+  // accent color throughout, per the minimal/professional look this
+  // viewer aims for) - direction is still conveyed by the arrowheads and
+  // by the "Llega desde" / "Continua hacia" sections themselves.
+
+  function clearHighlights() {
+    var container = document.getElementById("diagram-inner");
+    var nodes = container.querySelectorAll(".node.selected, .node.context, .node.dimmed");
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.remove("selected", "context", "dimmed");
+    var edgeEls = container.querySelectorAll("path.edge-context, path.edge-dimmed");
+    for (var j = 0; j < edgeEls.length; j++) edgeEls[j].classList.remove("edge-context", "edge-dimmed");
+  }
+
   function highlightNode(nodeId) {
-    var previous = document.querySelectorAll("#diagram-inner .node.selected");
-    for (var i = 0; i < previous.length; i++) previous[i].classList.remove("selected");
-    var current = document.getElementById("diagram-inner").querySelector('[id^="flowchart-' + nodeId + '-"]');
-    if (current) current.classList.add("selected");
+    var container = document.getElementById("diagram-inner");
+    clearHighlights();
+
+    var contextIds = {};
+    getIncomingEdges(nodeId).forEach(function (edge) { contextIds[edge.from] = true; });
+    getOutgoingEdges(nodeId).forEach(function (edge) { contextIds[edge.to] = true; });
+
+    var nodeEls = container.querySelectorAll(".node");
+    for (var i = 0; i < nodeEls.length; i++) {
+      var el = nodeEls[i];
+      var id = el.getAttribute("data-id");
+      if (id === nodeId) {
+        el.classList.add("selected");
+      } else if (contextIds[id]) {
+        el.classList.add("context");
+      } else {
+        el.classList.add("dimmed");
+      }
+    }
+
+    var edgeEls = container.querySelectorAll("path.flowchart-link");
+    for (var k = 0; k < edgeEls.length; k++) {
+      var edgeEl = edgeEls[k];
+      var touches = edgeEl.classList.contains("LS-" + nodeId) || edgeEl.classList.contains("LE-" + nodeId);
+      edgeEl.classList.add(touches ? "edge-context" : "edge-dimmed");
+    }
   }
 
   window.selectNode = function (nodeId) {
+    CURRENT_SELECTED_ID = nodeId;
     renderNodeDetail(nodeId);
     highlightNode(nodeId);
+    var focusBtn = document.getElementById("mode-focus");
+    if (focusBtn) focusBtn.disabled = false;
   };
+
+  // Used by direct diagram clicks (no scrolling - the user already sees
+  // the node they clicked). Search results and "Llega desde" / "Continua
+  // hacia" cards use navigateToNode below instead, which also centers it.
+  function navigateToNode(nodeId) {
+    window.selectNode(nodeId);
+    centerNodeInView(nodeId);
+  }
+
+  function wireDetailNavigation() {
+    document.getElementById("detail-pane").addEventListener("click", function (event) {
+      var target = event.target.closest("[data-nav-node]");
+      if (!target) return;
+      navigateToNode(target.getAttribute("data-nav-node"));
+    });
+  }
+
+  // --- Centering -----------------------------------------------------------
+  // Scrolls #diagram-pane so the given node ends up roughly centered,
+  // without touching the current zoom level. getBoundingClientRect()
+  // already reflects the current CSS transform scale, so the delta between
+  // the node's on-screen center and the pane's center works at any zoom.
+  function centerNodeInView(nodeId) {
+    var pane = document.getElementById("diagram-pane");
+    var target = document.querySelector('#diagram-inner [data-id="' + nodeId + '"]');
+    if (!pane || !target) return;
+
+    var paneRect = pane.getBoundingClientRect();
+    var nodeRect = target.getBoundingClientRect();
+    var deltaX = (nodeRect.left + nodeRect.width / 2) - (paneRect.left + paneRect.width / 2);
+    var deltaY = (nodeRect.top + nodeRect.height / 2) - (paneRect.top + paneRect.height / 2);
+
+    pane.scrollBy({ left: deltaX, top: deltaY, behavior: "smooth" });
+  }
+
+  function wireCenterButton() {
+    document.getElementById("center-btn").addEventListener("click", function () {
+      if (CURRENT_SELECTED_ID) centerNodeInView(CURRENT_SELECTED_ID);
+    });
+  }
+
+  // --- Fullscreen ------------------------------------------------------------
+  function wireFullscreen() {
+    var btn = document.getElementById("fullscreen-btn");
+    if (!document.documentElement.requestFullscreen) {
+      btn.hidden = true;
+      return;
+    }
+    btn.addEventListener("click", function () {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    });
+    document.addEventListener("fullscreenchange", function () {
+      var active = Boolean(document.fullscreenElement);
+      btn.textContent = active ? "⛶ Salir de pantalla completa" : "⛶ Pantalla completa";
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  // --- Modo foco -------------------------------------------------------------
+  // Purely visual: reuses the same selected/context/dimmed classes that
+  // highlightNode() already assigns, just intensifies the "dimmed" opacity
+  // via the .focus-mode modifier class (see CSS). No new grafo, no data
+  // change - only a viewing preference.
+  function setFocusMode(active) {
+    document.getElementById("diagram-inner").classList.toggle("focus-mode", active);
+    var fullBtn = document.getElementById("mode-full");
+    var focusBtn = document.getElementById("mode-focus");
+    fullBtn.classList.toggle("active", !active);
+    focusBtn.classList.toggle("active", active);
+    fullBtn.setAttribute("aria-pressed", active ? "false" : "true");
+    focusBtn.setAttribute("aria-pressed", active ? "true" : "false");
+  }
+
+  function wireFocusToggle() {
+    document.getElementById("mode-full").addEventListener("click", function () { setFocusMode(false); });
+    document.getElementById("mode-focus").addEventListener("click", function () {
+      if (document.getElementById("mode-focus").disabled) return;
+      setFocusMode(true);
+    });
+  }
+
+  // --- Buscador de nodos -------------------------------------------------
+  // Simple case-insensitive substring match over id/name, no fuzzy search.
+  function closeSearchResults() {
+    var results = document.getElementById("search-results");
+    results.hidden = true;
+    results.innerHTML = "";
+  }
+
+  function renderSearchResults(matches) {
+    var results = document.getElementById("search-results");
+    if (!matches.length) {
+      results.innerHTML = '<div class="search-empty">Sin resultados.</div>';
+    } else {
+      results.innerHTML = matches.map(function (node) {
+        return '<button type="button" class="search-result" data-nav-node="' + escapeHtml(node.id) + '">' +
+          '<div class="nav-id">' + escapeHtml(node.id) + "</div>" +
+          '<div class="nav-name">' + escapeHtml(node.name) + "</div>" +
+          "</button>";
+      }).join("");
+    }
+    results.hidden = false;
+  }
+
+  function wireSearch() {
+    var input = document.getElementById("node-search");
+    var results = document.getElementById("search-results");
+
+    input.addEventListener("input", function () {
+      var query = input.value.trim().toLowerCase();
+      if (!query) { closeSearchResults(); return; }
+      var matches = Object.keys(NODES_BY_ID)
+        .map(function (id) { return NODES_BY_ID[id]; })
+        .filter(function (node) {
+          return node.id.toLowerCase().indexOf(query) !== -1 || node.name.toLowerCase().indexOf(query) !== -1;
+        })
+        .slice(0, 20);
+      renderSearchResults(matches);
+    });
+
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        input.value = "";
+        closeSearchResults();
+        input.blur();
+      }
+    });
+
+    // Delay so a click on a result (which also blurs the input) still
+    // registers before the dropdown disappears.
+    input.addEventListener("blur", function () { setTimeout(closeSearchResults, 150); });
+
+    results.addEventListener("click", function (event) {
+      var target = event.target.closest("[data-nav-node]");
+      if (!target) return;
+      var nodeId = target.getAttribute("data-nav-node");
+      input.value = "";
+      closeSearchResults();
+      navigateToNode(nodeId);
+    });
+  }
+
+  // --- Leyenda -------------------------------------------------------------
+  // Derived from the types actually present in NODES_BY_ID - never assumes
+  // "start" exists just because the schema allows it.
+  function renderLegend() {
+    var present = {};
+    Object.keys(NODES_BY_ID).forEach(function (id) { present[NODES_BY_ID[id].type] = true; });
+    var order = ["start", "event", "activity", "decision", "end"];
+    var body = document.getElementById("legend-body");
+    body.innerHTML = order
+      .filter(function (type) { return present[type]; })
+      .map(function (type) {
+        var shape = TYPE_SHAPES[type] || "shape-rect";
+        return '<div class="legend-item"><span class="legend-swatch ' + shape + '"></span>' + typeLabel(type) + "</div>";
+      })
+      .join("");
+  }
 
   function computeInitialScale() {
     var pane = document.getElementById("diagram-pane");
@@ -2397,6 +2801,12 @@ Expecting `+Ze.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
       initZoom(computeInitialScale());
     });
     renderProcessSummary();
+    renderLegend();
+    wireDetailNavigation();
+    wireCenterButton();
+    wireFullscreen();
+    wireFocusToggle();
+    wireSearch();
   });
 
   </script>
