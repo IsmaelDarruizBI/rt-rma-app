@@ -131,11 +131,17 @@ npm run generate
 
 Etapa: **Business Process Discovery & Modeling**
 
-Actualmente se encuentra definida la **V1.2 (draft) del proceso de Gestion
-de Ordenes de Reparacion de Rosario Tecno**, baseline funcional final de
-esta etapa de Business Process Discovery & Modeling. Incorpora sobre la
-V1.1 la validacion de Estacion de Trabajo al momento de tomar una Orden, y
-sigue pendiente de validacion funcional final con el negocio.
+Actualmente se encuentra definida la **V1.2 (approved) del proceso de
+Gestion de Ordenes de Reparacion de Rosario Tecno**, Business Process
+validado con negocio. Esta version constituye la baseline funcional
+aprobada para iniciar la siguiente etapa del proyecto. Incorpora sobre la
+V1.1 la validacion de Estacion de Trabajo al momento de tomar una Orden.
+
+La aprobacion es documental (estado del proceso): no implica que los
+pendientes funcionales ya identificados (tercerizacion, scrap, reproceso
+definitivo, compras, ventas mayoristas, etc.) esten resueltos. Ver
+[docs/discovery/README.md](docs/discovery/README.md) (seccion Pendientes)
+para el detalle completo.
 
 La fuente de verdad continua siendo:
 

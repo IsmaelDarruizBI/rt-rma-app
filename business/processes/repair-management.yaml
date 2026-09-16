@@ -1,6 +1,13 @@
-# Gestion de Ordenes de Reparacion - V1.2 (draft).
-# Baseline funcional final de la etapa de Business Process Discovery &
-# Modeling. Incorpora sobre la V1.1 la validacion de Estacion de Trabajo
+# Gestion de Ordenes de Reparacion - V1.2 (approved).
+# Baseline funcional aprobada de la etapa de Business Process Discovery &
+# Modeling: esta etapa queda cerrada para esta version. La aprobacion es
+# documental (estado del proceso) y no resuelve por si sola los pendientes
+# funcionales ya identificados (tercerizacion, scrap, reproceso definitivo,
+# compras, ventas, etc.): siguen pendientes tal como se documentan en
+# docs/discovery/README.md (seccion Pendientes). Cualquier cambio
+# funcional posterior debera generar una nueva revision del proceso (por
+# ejemplo V1.3), no una modificacion silenciosa de esta V1.2.
+# Incorpora sobre la V1.1 la validacion de Estacion de Trabajo
 # al intentar tomar una Orden EN_COLA: la estacion debe estar OPERATIVA
 # (sin excepcion posible) y, si esta operativa pero no esta configurada
 # para el tipo de reparacion requerido, un usuario autorizado puede
@@ -32,7 +39,7 @@ process:
   id: PROC-REP
   name: Gestion de Ordenes de Reparacion
   version: "1.2"
-  status: draft
+  status: approved
 
 nodes:
 

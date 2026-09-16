@@ -28,14 +28,22 @@ la primera etapa de la trazabilidad E2E descrita en el
    `business/schemas/process.schema.json`.
 4. Ejecutar `npm run generate:mermaid` para producir el diagrama.
 
-`repair-management.yaml` contiene actualmente la V1.2 (draft) del proceso de
-Gestion de Ordenes de Reparacion de Rosario Tecno, baseline funcional final
-de esta etapa de Business Process Discovery & Modeling. Sobre la V1.1,
-incorpora la validacion de Estacion de Trabajo al momento de tomar una
-Orden (ver "Estaciones de Trabajo" mas abajo) y sigue pendiente de
-validacion funcional final con el negocio. Ver "Estados conceptuales V1.2",
-"Estaciones de Trabajo", "Procesos adicionales descubiertos" y
-"Pendientes" mas abajo.
+`repair-management.yaml` contiene actualmente la V1.2 (approved) del
+proceso de Gestion de Ordenes de Reparacion de Rosario Tecno: Business
+Process validado con negocio. Esta version constituye la baseline
+funcional aprobada para iniciar la siguiente etapa del proyecto, y con
+ella **queda cerrada la etapa de Business Process Discovery & Modeling
+para esta baseline**. Sobre la V1.1, incorpora la validacion de Estacion
+de Trabajo al momento de tomar una Orden (ver "Estaciones de Trabajo" mas
+abajo). Ver "Estados conceptuales V1.2", "Estaciones de Trabajo",
+"Procesos adicionales descubiertos" y "Pendientes" mas abajo.
+
+La aprobacion es documental (estado del proceso) y no resuelve por si sola
+los pendientes funcionales ya identificados (ver "Pendientes" mas abajo):
+siguen abiertos exactamente igual que antes de la aprobacion. Cualquier
+cambio funcional posterior -incluida la resolucion de esos pendientes-
+debera generar una nueva revision del proceso (por ejemplo V1.3), no una
+modificacion silenciosa de esta V1.2 aprobada.
 
 ## Estados conceptuales V1.2
 

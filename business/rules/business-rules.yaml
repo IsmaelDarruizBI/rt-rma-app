@@ -1,6 +1,6 @@
-# Reglas de negocio V1.2 del proceso de Gestion de Ordenes de Reparacion.
-# Son afirmaciones funcionales en estado draft, pendientes de validacion con
-# el negocio. Todavia no se transforman en Functional Requirements.
+# Reglas de negocio V1.2 (approved) del proceso de Gestion de Ordenes de
+# Reparacion. Forman parte de la baseline funcional aprobada de esta etapa.
+# Todavia no se transforman en Functional Requirements.
 
 rules:
 
@@ -11,14 +11,14 @@ rules:
       antes de continuar con el proceso, excepto mientras se encuentra en
       estado EN_REVISION. En ese caso, la reparacion requerida debe quedar
       definida antes de validar factibilidad.
-    status: draft
+    status: approved
 
   - id: BR-REP-002
     name: Validacion previa de recursos
     description: >
       Antes de habilitar una Orden de Reparacion deben validarse los recursos
       y condiciones necesarias para su ejecucion.
-    status: draft
+    status: approved
 
   - id: BR-REP-003
     name: Override justificado
@@ -26,14 +26,14 @@ rules:
       Si un usuario autorizado fuerza una Orden de Reparacion que no supera
       alguna validacion, debe registrarse usuario, fecha, validacion ignorada
       y motivo.
-    status: draft
+    status: approved
 
   - id: BR-REP-004
     name: Registro de ejecucion real
     description: >
       El tecnico debe registrar lo efectivamente realizado y los repuestos
       realmente utilizados durante la reparacion.
-    status: draft
+    status: approved
 
   - id: BR-REP-005
     name: Inventario consecuencia de ejecucion
@@ -41,7 +41,7 @@ rules:
       Los movimientos de inventario asociados a una reparacion (consumo de
       lo utilizado y liberacion de reservas no utilizadas) deben originarse
       a partir de los repuestos y cantidades registrados en su ejecucion.
-    status: draft
+    status: approved
 
   - id: BR-REP-006
     name: Reserva de insumos al tomar Orden
@@ -49,7 +49,7 @@ rules:
       Al tomar una Orden de Reparacion habilitada, deben reservarse
       conceptualmente los insumos previstos segun la reparacion requerida.
       La reserva no aplica mientras la Orden se encuentra en EN_REVISION.
-    status: draft
+    status: approved
 
   - id: BR-REP-007
     name: Asignacion tecnica flexible
@@ -59,7 +59,7 @@ rules:
       usuario, fecha y motivo) o en modo ABIERTA (otro tecnico puede
       continuarla). La estructura tecnica de este modo queda pendiente de
       definicion.
-    status: draft
+    status: approved
 
   - id: BR-REP-008
     name: Control tecnico por Recepcion
@@ -67,7 +67,7 @@ rules:
       El control tecnico final es responsabilidad de Recepcion. Si el
       control es rechazado, debe registrarse fecha, usuario, observacion y
       resultado, y la Orden vuelve a EN_COLA para que un tecnico la retome.
-    status: draft
+    status: approved
 
   - id: BR-REP-009
     name: Puntaje de la reparacion posterior a control aprobado
@@ -78,7 +78,7 @@ rules:
       acreditacion de ese puntaje entre los distintos tecnicos que
       participaron en la reparacion queda pendiente de definicion
       funcional.
-    status: draft
+    status: approved
 
   - id: BR-REP-010
     name: Finalizacion sin reparacion trazable
@@ -87,7 +87,7 @@ rules:
       el motivo, las observaciones, el usuario y la fecha de la decision.
       Este resultado (SIN_REPARACION) debe quedar distinguido de una
       Orden cancelada (CANCELADA).
-    status: draft
+    status: approved
 
   - id: BR-REP-011
     name: Compatibilidad de estacion de trabajo
@@ -112,4 +112,4 @@ rules:
       estacion no confirmada, estacion no configurada o estacion NO
       OPERATIVA. Distinta de BR-REP-003 (override de validacion de
       recursos/factibilidad): no deben mezclarse.
-    status: draft
+    status: approved
