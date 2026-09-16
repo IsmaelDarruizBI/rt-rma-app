@@ -5,33 +5,43 @@ Rosario Tecno.
 
 ## Objetivo
 
-Este repositorio busca mantener trazabilidad end-to-end entre:
+Este repositorio busca mantener trazabilidad end-to-end. La jerarquia
+principal, definida en detalle en
+[traceability/README.md](traceability/README.md), es:
 
 ```text
-Business Process
-→ Epic
+Business Domain
+→ Business Process
+→ Feature
 → User Story
+→ System Action
 → Functional Requirement
-→ Data Model
 → Technical Requirement
-→ Development Task
-→ Code
+→ Task
+→ Code / Artifact
 → Internal Test
-→ User Acceptance Test
+→ UAT
 → Bug / Issue
-→ Fix
-→ Retest
-→ Approval
+→ Fix / Retest / Approval
 ```
 
-Actualmente el repositorio trabaja solamente sobre la primera etapa:
+Epic es opcional: no sustituye a Feature, y puede usarse como agrupacion
+transversal de planificacion (por ejemplo, agrupando Features de distintos
+Business Process) sin formar parte de la cadena obligatoria.
 
-**Business Process Discovery & Modeling**
+El Data Model / Architecture sigue siendo una etapa fundamental del
+proyecto, pero se trata como un artefacto arquitectonico transversal, no
+como un nivel jerarquico rigido entre Functional Requirement y Technical
+Requirement: una misma entidad puede satisfacer varios Functional
+Requirements y varios Technical Requirements pueden depender de ella
+(relacion N:M, no 1:1).
 
-No hay todavia aplicacion, frontend, backend ni base de datos. Ver
-[docs/discovery/README.md](docs/discovery/README.md) para el detalle de esta
-etapa y [traceability/README.md](traceability/README.md) para la convencion
-de IDs que sostendra la trazabilidad futura.
+Ver [traceability/README.md](traceability/README.md) para la convencion
+completa de IDs y las relaciones 1:N / N:M entre niveles, y
+[docs/discovery/README.md](docs/discovery/README.md) para el detalle de la
+etapa de Business Process Discovery & Modeling.
+
+No hay todavia aplicacion, frontend, backend ni base de datos.
 
 ## Principio arquitectonico
 
@@ -129,19 +139,32 @@ npm run generate
 
 ## Estado actual
 
-Etapa: **Business Process Discovery & Modeling**
+**Etapa completada:** Business Process Discovery & Modeling, para el
+Business Process de Gestion de Ordenes de Reparacion.
 
-Actualmente se encuentra definida la **V1.2 (approved) del proceso de
-Gestion de Ordenes de Reparacion de Rosario Tecno**, Business Process
-validado con negocio. Esta version constituye la baseline funcional
-aprobada para iniciar la siguiente etapa del proyecto. Incorpora sobre la
-V1.1 la validacion de Estacion de Trabajo al momento de tomar una Orden.
+```text
+PROC-REP  Gestion de Ordenes de Reparacion  V1.2 — approved
+```
 
-La aprobacion es documental (estado del proceso): no implica que los
-pendientes funcionales ya identificados (tercerizacion, scrap, reproceso
-definitivo, compras, ventas mayoristas, etc.) esten resueltos. Ver
-[docs/discovery/README.md](docs/discovery/README.md) (seccion Pendientes)
-para el detalle completo.
+**Proxima etapa:** Feature Definition. Todavia no se crearon Features ni
+User Stories reales, ni se inicio la definicion de Functional Requirements
+o Technical Requirements: esta preparacion es unicamente documental
+(convencion de IDs y jerarquia de trazabilidad en
+[traceability/README.md](traceability/README.md), configuracion del
+repositorio).
+
+La V1.2 (approved) de `PROC-REP` es Business Process validado con negocio:
+baseline funcional aprobada para iniciar la siguiente etapa del proyecto.
+Incorpora sobre la V1.1 la validacion de Estacion de Trabajo al momento de
+tomar una Orden. La aprobacion es documental (estado del proceso): no
+implica que los pendientes funcionales ya identificados (tercerizacion,
+scrap, reproceso definitivo, compras, ventas mayoristas, etc.) esten
+resueltos. Ver [docs/discovery/README.md](docs/discovery/README.md)
+(seccion Pendientes) para el detalle completo.
+
+`PROC-VTA` (Gestion de Ventas de Repuestos) y `PROC-COM` (Gestion de
+Compras de Repuestos) siguen siendo procesos futuros identificados dentro
+de `DOM-RMA`: todavia no tienen YAML ni modelado propio.
 
 La fuente de verdad continua siendo:
 
@@ -158,9 +181,9 @@ Todavia no se incluyen deliberadamente:
 - React / Next.js
 - React Flow
 - Base de datos
-- User Stories
+- Features / User Stories reales
 - Spec Kit
-- Requerimientos tecnicos
+- Requerimientos funcionales o tecnicos formales
 - Validacion cruzada entre archivos
 - Desarrollo de aplicacion
 
@@ -172,3 +195,9 @@ npm run generate:mermaid
 npm run generate:viewer
 npm run generate
 ```
+
+### Nota sobre datos sensibles
+
+Este repositorio puede ser publico. Antes de incorporar datos reales,
+credenciales, configuraciones sensibles, documentacion interna sensible o
+evidencias reales de UAT, debe revisarse su politica de visibilidad/acceso.

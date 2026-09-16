@@ -26,11 +26,13 @@ DOM-RMA  Business Domain / Area funcional RMA
 └── PROC-COM  Gestion de Compras de Repuestos
 ```
 
-**Importante:** de estos tres, unicamente `PROC-REP` esta modelado y
-aprobado (`business/processes/repair-management.yaml`, V1.2). `PROC-VTA` y
-`PROC-COM` son ejemplos de procesos futuros ya identificados durante el
-descubrimiento; todavia no se crean sus archivos YAML ni se modelan sus
-nodos. Sirven aqui solo para mostrar por que hace falta un nivel de
+**Importante:** de estos tres, unicamente `PROC-REP` existe actualmente
+como Business Process modelado, en su V1.2 (`approved`,
+`business/processes/repair-management.yaml`). `PROC-VTA` y `PROC-COM` son
+procesos futuros ya identificados durante el descubrimiento; todavia no se
+crean sus archivos YAML ni se modelan sus nodos, y sus prefijos (`VTA`,
+`COM`) siguen siendo conceptuales hasta que esos procesos se modelen
+formalmente. Sirven aqui solo para mostrar por que hace falta un nivel de
 agrupacion por encima de Business Process.
 
 ## Jerarquia principal
@@ -78,12 +80,43 @@ N:M segun corresponda. Por ejemplo:
   Requirements;
 - un Technical Requirement puede generar varias Tasks.
 
-Por esto, cuando se implemente, la trazabilidad debera soportarse mediante
-una estructura de **items + links** (elementos y relaciones explicitas),
-no mediante anidamiento rigido uno-a-uno. El proof of concept de
-`traceability/examples/create-repair-order.yaml` ya sigue este enfoque a
-proposito, precisamente para poder representar relaciones many-to-many mas
-adelante sin rediseñar el formato.
+Por esto, la trazabilidad futura debera soportarse mediante una estructura
+de **items + links** (elementos y relaciones explicitas), no mediante
+anidamiento rigido uno-a-uno, precisamente para poder representar
+relaciones many-to-many sin rediseñar el formato. Esto es todavia una
+decision de diseño conceptual: no hay hoy en este repositorio una
+implementacion de esa estructura ni herramientas que la generen o
+validen.
+
+## Data Model / Architecture (artefacto transversal)
+
+El modelo de datos sigue siendo una etapa fundamental del proyecto, pero
+no se documenta como un nivel jerarquico rigido de la cadena principal
+(por ejemplo, no se ubica de forma fija entre Functional Requirement y
+Technical Requirement). Se trata como un **artefacto arquitectonico
+transversal**, relacionado con varios niveles a la vez mediante items +
+links:
+
+```text
+Functional Requirements
+        ↓
+Data Model / Architecture
+        ↓
+Technical Requirements
+```
+
+pero permitiendo relaciones N:M, no 1:1:
+
+- una misma entidad del modelo de datos puede satisfacer varios
+  Functional Requirements;
+- varios Technical Requirements pueden depender de la misma entidad;
+- una modificacion del modelo de datos puede impactar varias Features a
+  la vez.
+
+Cuando la trazabilidad se implemente, estos artefactos (entidades,
+decisiones de arquitectura) tambien deberan participar mediante links
+explicitos, igual que el resto de los niveles. Todavia no se diseña el
+modelo de datos en esta etapa.
 
 ## Epic (opcional)
 
@@ -132,11 +165,11 @@ EPIC-RMA-XXX   Epic / iniciativa transversal (opcional)
 (Venta de repuestos) y `COM` (Compra de repuestos)-; sus nombres
 definitivos se confirman recien cuando esos procesos se modelen.
 
-`FEAT-REP-XXX`, `ACC-REP-XXX` y `TASK-REP-XXX` ya se evaluaron mediante un
-proof of concept de trazabilidad end-to-end acotado a un unico nodo
-(`PROC-REP-040`, ver `traceability/examples/create-repair-order.yaml`).
-Esa evaluacion valido el enfoque items + links, pero no implica que el
-diseño de trazabilidad este definitivamente aprobado para uso general.
+`FEAT-REP-XXX`, `ACC-REP-XXX` y `TASK-REP-XXX` forman parte de esta
+convencion conceptual desde el diseño de la jerarquia. Todavia no se
+crearon Features, System Actions ni Tasks reales, y el enfoque items +
+links descrito arriba sigue siendo una decision de diseño, no una
+implementacion aprobada para uso general.
 
 ## Que representa cada nivel
 
