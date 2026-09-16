@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rosario Tecno RMA · Jerarquía de Trazabilidad E2E</title>
+<style>
+:root{--bg:#f4f6f8;--paper:#fff;--ink:#18202a;--muted:#64748b;--line:#dbe2ea;--accent:#4f46e5;--accent-soft:#eef2ff;--shadow:0 18px 50px rgba(15,23,42,.08)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-snap-type:y mandatory}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.topbar{position:fixed;inset:0 0 auto 0;height:58px;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 22px;z-index:20}
+.brand{font-size:13px;font-weight:800;letter-spacing:.05em;color:var(--accent)}.progress{font-size:12px;color:var(--muted)}
+main{padding-top:58px}.page{min-height:calc(100vh - 58px);scroll-snap-align:start;display:flex;align-items:center;justify-content:center;padding:36px 28px;page-break-after:always}
+.sheet{width:min(1100px,96vw);min-height:min(760px,calc(100vh - 100px));background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:54px 62px 48px;display:flex;flex-direction:column;justify-content:center}
+.eyebrow{text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-size:12px;font-weight:800;margin-bottom:14px}
+h1,h2{margin:0}h1{font-size:48px;line-height:1.06;letter-spacing:-.035em;max-width:900px}h2{font-size:38px;line-height:1.1;letter-spacing:-.025em;margin-bottom:22px}
+.subtitle{margin-top:20px;font-size:20px;line-height:1.55;color:var(--muted);max-width:850px}p{font-size:18px;line-height:1.72;margin:0 0 18px}.lead{font-size:20px;line-height:1.65}
+.callout{margin:24px 0 8px;background:var(--accent-soft);border:1px solid #d8ddff;border-left:5px solid var(--accent);border-radius:14px;padding:18px 20px}.callout strong{color:var(--accent)}
+.example,.hierarchy{margin-top:22px;border:1px solid var(--line);border-radius:14px;padding:18px 20px;background:#fafbfc}.label{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+pre{white-space:pre-wrap;margin:0;font-family:"SFMono-Regular",Consolas,monospace;font-size:15px;line-height:1.55;color:#243244}.hierarchy pre{font-size:16px;line-height:1.7}
+.footer{margin-top:auto;padding-top:28px;color:#94a3b8;font-size:12px;display:flex;justify-content:space-between}.nav{position:fixed;right:18px;bottom:18px;display:flex;gap:8px;z-index:30}.nav button{width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid var(--line);box-shadow:0 6px 18px rgba(15,23,42,.08);cursor:pointer;font-size:18px}.accent{color:var(--accent);font-weight:700}
+@media(max-width:800px){.sheet{padding:34px 24px}h1{font-size:36px}h2{font-size:30px}p,.lead{font-size:16px}.topbar{padding:0 14px}}
+@media print{html{scroll-snap-type:none}body{background:#fff}.topbar,.nav{display:none}main{padding-top:0}.page{min-height:0;padding:0;page-break-after:always}.sheet{box-shadow:none;border:none;border-radius:0;width:100%;min-height:100vh;padding:48px 56px}}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="brand">ROSARIO TECNO · RMA</div><div class="progress" id="progress">Página 1 / 15</div></div>
+<main>
+<section class="page"><div class="sheet">
+<div class="eyebrow">Arquitectura funcional y trazabilidad</div>
+<h1>Cómo se organiza el proyecto desde el negocio hasta el código</h1>
+<p class="subtitle">Una guía conceptual para entender la jerarquía que vamos a usar en Rosario Tecno RMA: desde el dominio completo de RMA hasta los requisitos, tareas, código, pruebas y aprobación.</p>
+<div class="hierarchy"><pre>DOMAIN
+  ↓
+BUSINESS PROCESS
+  ↓
+FEATURE
+  ↓
+USER STORY
+  ↓
+SYSTEM ACTION
+  ↓
+FUNCTIONAL REQUIREMENT
+  ↓
+TECHNICAL REQUIREMENT
+  ↓
+TASK
+  ↓
+CODE / ARTIFACT
+  ↓
+INTERNAL TEST
+  ↓
+UAT
+  ↓
+BUG / FIX / RETEST / APPROVAL</pre></div>
+<div class="footer"><span>Baseline conceptual de trazabilidad E2E</span><span>01</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 1</div>
+<h2>Business Domain — el área grande del negocio</h2>
+<p class="lead">El <strong>Domain</strong> es la agrupación más amplia y estable. No describe todavía un flujo ni una pantalla: define el territorio funcional dentro del cual viven distintos procesos de negocio.</p>
+<p>En nuestro caso, el dominio puede pensarse como <span class="accent">DOM-RMA</span>. Allí conviven todas las capacidades que pertenecen al mundo operativo de RMA. Hoy el proceso de Reparaciones es el que está modelado y aprobado, pero ya sabemos que más adelante deberán incorporarse también las ventas mayoristas de repuestos y las compras de repuestos.</p>
+<p>Este nivel evita que el sistema quede conceptualmente limitado a “la app de reparaciones”. Desde el inicio asumimos que RMA será un dominio más amplio con varios procesos relacionados entre sí.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>DOM-RMA
+├── PROC-REP  Gestión de Órdenes de Reparación
+├── PROC-VTA  Gestión de Ventas de Repuestos
+└── PROC-COM  Gestión de Compras de Repuestos</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿En qué gran área del negocio estamos trabajando?</div>
+<div class="footer"><span>Domain = agrupación funcional superior</span><span>02</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 2</div>
+<h2>Business Process — cómo ocurre realmente el negocio</h2>
+<p class="lead">El <strong>Business Process</strong> describe un flujo end-to-end del negocio. Acá todavía estamos mirando qué sucede en la operación real, independientemente de cómo se programe después.</p>
+<p>Por ejemplo, <span class="accent">PROC-REP</span> representa la Gestión de Órdenes de Reparación. Dentro de ese proceso aparecen los eventos, decisiones, actividades, actores, reglas y caminos que llevan una orden desde que surge la necesidad hasta que se entrega el equipo o finaliza el circuito correspondiente.</p>
+<p>Otro proceso futuro, como Compras de Repuestos, tendrá su propio flujo. Puede compartir conceptos con Reparaciones, como inventario o proveedores, pero seguirá siendo un proceso diferente porque responde a otro recorrido de negocio.</p>
+<div class="example"><div class="label">Ejemplo simplificado</div><pre>Necesidad de reparación
+→ Registrar cliente/equipo
+→ Crear OR
+→ Definir reparación
+→ Validar recursos
+→ Ingresar a cola
+→ Reparar
+→ Controlar
+→ Entregar</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Cómo ocurre este proceso de negocio de principio a fin?</div>
+<div class="footer"><span>Business Process = flujo real de negocio</span><span>03</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 3</div>
+<h2>Feature — la capacidad funcional que debe ofrecer el sistema</h2>
+<p class="lead">Una <strong>Feature</strong> es una capacidad funcional coherente y desarrollable. Empieza a traducir el proceso de negocio a producto de software.</p>
+<p>No es una pantalla ni una tabla. Puede necesitar varias pantallas, servicios y validaciones para existir. Tampoco debería ser tan grande como “todo RMA”. Su tamaño ideal es el de una capacidad que pueda diseñarse, desarrollarse y probarse como una unidad con sentido.</p>
+<p>Dentro de Reparaciones, por ejemplo, podemos imaginar Features como Alta de Orden, Gestión de Cola, Ejecución de Reparación, Control Técnico o Entrega. Cada una toma una parte coherente del Business Process y la convierte en una capacidad concreta del sistema.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>PROC-REP
+├── FEAT-REP-001  Alta de Orden de Reparación
+├── FEAT-REP-002  Diagnóstico y definición de reparación
+├── FEAT-REP-003  Factibilidad y recursos
+├── FEAT-REP-004  Gestión de cola de trabajo
+├── FEAT-REP-005  Ejecución de reparación
+└── FEAT-REP-006  Control técnico y entrega</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué capacidad concreta debe ofrecer el sistema?</div>
+<div class="footer"><span>Feature ≠ pantalla · Feature = capacidad</span><span>04</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 4</div>
+<h2>User Story — qué necesita hacer un actor</h2>
+<p class="lead">La <strong>User Story</strong> expresa una necesidad desde la perspectiva de una persona o rol. Su foco no está en cómo se programa, sino en qué necesita lograr el actor y por qué eso le aporta valor.</p>
+<p>Una Feature puede contener varias User Stories. Por ejemplo, “Alta de Orden de Reparación” puede incluir registrar al cliente, asociar el equipo, crear la orden y generar el comprobante de recepción.</p>
+<p>La historia debe permanecer suficientemente cercana al lenguaje del usuario. Cuando empezamos a hablar de endpoints, tablas o funciones, ya estamos bajando a niveles técnicos posteriores.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>US-REP-001
+Como recepcionista quiero registrar un cliente y su equipo
+para poder iniciar una solicitud de reparación.
+
+US-REP-002
+Como recepcionista quiero crear una Orden de Reparación
+para formalizar el ingreso del equipo al circuito RMA.</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué necesita hacer el actor y qué valor obtiene?</div>
+<div class="footer"><span>User Story = necesidad del usuario</span><span>05</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 5</div>
+<h2>System Action — qué debe hacer concretamente el sistema</h2>
+<p class="lead">Las <strong>System Actions</strong> descomponen una User Story en acciones concretas que el sistema debe ejecutar para que esa historia sea posible.</p>
+<p>Este nivel evita crear User Stories artificialmente pequeñas. Una historia puede seguir representando una necesidad completa del usuario, mientras que debajo se detallan las distintas acciones necesarias: validar datos, crear una orden, asignar un estado, registrar auditoría o asociar entidades.</p>
+<p>Por eso una User Story normalmente tendrá varias System Actions, y una misma acción puede a su vez originar más de un requisito funcional.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>US-REP-002  Crear Orden de Reparación
+
+ACC-REP-001  Validar datos necesarios
+ACC-REP-002  Crear la Orden
+ACC-REP-003  Asignar estado inicial REQUERIMIENTO
+ACC-REP-004  Registrar usuario y fecha
+ACC-REP-005  Relacionar la OR con el equipo</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué acciones debe ejecutar el sistema para realizar la User Story?</div>
+<div class="footer"><span>System Action = acción concreta del sistema</span><span>06</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 6</div>
+<h2>Functional Requirement — el comportamiento verificable</h2>
+<p class="lead">El <strong>Functional Requirement</strong> transforma la necesidad en una afirmación precisa sobre cómo debe comportarse el sistema. Debe poder verificarse objetivamente.</p>
+<p>Mientras la User Story dice “quiero crear una orden”, el requisito funcional puede decir que toda orden debe tener un identificador único, quedar asociada a un equipo, iniciar en un estado determinado y registrar quién la creó y cuándo.</p>
+<p>Este nivel sigue hablando principalmente de comportamiento, no de tecnología. Todavía no debería definir si usamos PostgreSQL, FastAPI, UUID v4 o un endpoint específico, salvo que eso sea en sí mismo una restricción funcional acordada.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>FR-REP-001  Toda OR debe poseer un identificador único.
+FR-REP-002  Toda OR debe quedar asociada a un equipo.
+FR-REP-003  Toda OR nueva debe iniciar en REQUERIMIENTO.
+FR-REP-004  Toda creación debe registrar usuario y fecha/hora.</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué comportamiento verificable debe cumplir el sistema?</div>
+<div class="footer"><span>FR = contrato funcional</span><span>07</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 7</div>
+<h2>Technical Requirement — cómo debe resolverse técnicamente</h2>
+<p class="lead">El <strong>Technical Requirement</strong> es donde el diseño empieza a traducirse a arquitectura, datos, servicios, seguridad, APIs y decisiones de implementación.</p>
+<p>Un requisito funcional puede necesitar varios requisitos técnicos. A la vez, un requisito técnico puede satisfacer varios requisitos funcionales. Por eso no queremos forzar relaciones uno a uno.</p>
+<p>Si el requisito funcional dice que debemos registrar usuario y fecha de creación, el diseño técnico puede definir que el usuario se obtenga de la sesión autenticada y que la persistencia utilice campos como <code>created_at</code> y <code>created_by</code>. Ahí sí estamos especificando cómo debe construirse la solución.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>FR-REP-004
+Toda creación debe registrar usuario y fecha/hora.
+
+↓ puede requerir
+
+TR-REP-002
+El servicio debe obtener el usuario desde la sesión autenticada.
+
+TR-REP-003
+La persistencia debe almacenar created_at y created_by.</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué decisiones y contratos técnicos hacen posible el comportamiento funcional?</div>
+<div class="footer"><span>TR = diseño técnico verificable</span><span>08</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 8</div>
+<h2>Task — la unidad concreta de trabajo de desarrollo</h2>
+<p class="lead">Una <strong>Task</strong> es algo que un desarrollador puede tomar y ejecutar. Es una unidad de trabajo concreta derivada de uno o más requisitos técnicos.</p>
+<p>Por ejemplo, implementar un servicio puede requerir crear un modelo, una migración, un endpoint, validaciones y pruebas. Cada una de esas piezas puede ser una Task separada, aunque todas implementen el mismo Technical Requirement.</p>
+<p>Este nivel es útil para planificar, estimar y repartir trabajo sin perder la relación con los niveles superiores. Una Task nunca debería existir aislada: idealmente siempre podremos navegar hacia atrás y entender qué requisito técnico, funcional, acción, historia y Feature está implementando.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>TASK-REP-001  Crear modelo RepairOrder
+TASK-REP-002  Crear migration de repair_orders
+TASK-REP-003  Implementar create_repair_order()
+TASK-REP-004  Crear endpoint POST /repair-orders
+TASK-REP-005  Agregar validaciones del request</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué trabajo concreto tiene que realizar el equipo de desarrollo?</div>
+<div class="footer"><span>Task = trabajo ejecutable</span><span>09</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 9</div>
+<h2>Code / Artifact — qué produjo realmente la implementación</h2>
+<p class="lead">El nivel <strong>Code / Artifact</strong> representa el resultado concreto de una Task. Puede ser código fuente, una migration, un schema, una configuración, un componente de frontend o cualquier artefacto técnico relevante.</p>
+<p>Preferimos hablar de “Code / Artifact” porque no todo lo implementado termina necesariamente en una función Python. Una Task puede producir un archivo SQL, una definición OpenAPI, un componente React, una migración o un archivo de configuración.</p>
+<p>La trazabilidad ideal nos permitirá llegar desde un archivo o función hasta la razón de negocio que explica por qué existe.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>CODE-REP-001
+backend/services/repair_orders.py
+create_repair_order()
+
+CODE-REP-002
+backend/routes/repair_orders.py
+
+CODE-REP-003
+migrations/2026_09_create_repair_orders.sql</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué artefacto concreto implementó la Task?</div>
+<div class="footer"><span>Code / Artifact = resultado técnico tangible</span><span>10</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 10</div>
+<h2>Internal Test — comprobar internamente que lo desarrollado funciona</h2>
+<p class="lead">El <strong>Internal Test</strong> verifica que la implementación cumple los requisitos funcionales y técnicos antes de exponerla a negocio.</p>
+<p>Acá podemos tener pruebas unitarias, de integración o funcionales internas. Lo importante es que cada prueba pueda rastrearse hacia lo que está validando. Si un requisito dice que una OR nueva debe iniciar en REQUERIMIENTO, debería existir una prueba que compruebe exactamente eso.</p>
+<p>El Internal Test responde a “¿lo construimos correctamente?”. Todavía no responde necesariamente a “¿esto resuelve el trabajo real del usuario?”. Esa segunda pregunta pertenece al UAT.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>TEST-REP-001
+Crear OR válida → debe quedar en REQUERIMIENTO.
+
+TEST-REP-002
+Crear OR sin equipo → debe rechazarse.
+
+TEST-REP-003
+Crear OR → debe registrar usuario autenticado.</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿La implementación cumple técnicamente lo que definimos?</div>
+<div class="footer"><span>Internal Test = verificación interna</span><span>11</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 11</div>
+<h2>UAT — negocio confirma que realmente sirve</h2>
+<p class="lead">El <strong>User Acceptance Test</strong> valida que la funcionalidad funciona correctamente en términos de negocio y que puede utilizarse en la operación real.</p>
+<p>Un test interno puede verificar que un endpoint devuelve 201 y guarda los datos correctos. En cambio, un UAT puede pedir que Recepción registre un cliente, seleccione el equipo, cree una OR y genere el comprobante esperado. El foco está en el resultado de negocio, no en los detalles internos de implementación.</p>
+<p>Por eso Internal Test y UAT son niveles distintos. El primero protege la calidad técnica; el segundo protege la aceptación funcional.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>UAT-REP-001
+
+Recepción registra un cliente,
+selecciona su equipo,
+crea la Orden de Reparación
+y obtiene correctamente el comprobante de recepción.</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Negocio confirma que la funcionalidad resuelve su necesidad?</div>
+<div class="footer"><span>UAT = aceptación funcional</span><span>12</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Nivel 12</div>
+<h2>Bug / Issue — qué pasa cuando algo no cumple</h2>
+<p class="lead">Un <strong>Bug / Issue</strong> aparece cuando una prueba interna, un UAT o la operación real detectan un desvío respecto de lo esperado.</p>
+<p>La idea es que el bug no sea un ticket aislado. Debe quedar relacionado con el test o UAT que falló y, a través de esa relación, con el requisito funcional y la necesidad de negocio correspondiente.</p>
+<p>Luego del fix, el ciclo vuelve a pruebas. De esta manera podemos saber no solo qué se corrigió, sino también qué parte del negocio estaba afectada y cómo se confirmó finalmente la solución.</p>
+<div class="example"><div class="label">Ejemplo</div><pre>UAT-REP-001
+↓ FAILED
+
+BUG-REP-003
+La OR de garantía no queda vinculada a la OR original.
+
+↓ FIX
+↓ RETEST
+↓ UAT
+↓ APPROVED</pre></div>
+<div class="callout"><strong>Pregunta que responde este nivel:</strong> ¿Qué desvío apareció y cómo cerramos el ciclo de corrección?</div>
+<div class="footer"><span>Bug = desvío trazable, no ticket aislado</span><span>13</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Agrupación opcional</div>
+<h2>Epic — una iniciativa transversal, no un reemplazo de Feature</h2>
+<p class="lead">El <strong>Epic</strong> no forma parte obligatoria de la cadena principal. Lo pensamos como una agrupación de planificación capaz de reunir varias Features, incluso de procesos distintos.</p>
+<p>Esto es importante ahora que sabemos que RMA no tendrá solamente Reparaciones. Una iniciativa como “Gestión integral de repuestos” podría agrupar Features provenientes de Compras, Ventas y Reparaciones. En ese caso, el Epic atraviesa procesos y por eso no conviene colocarlo rígidamente entre Process y Feature.</p>
+<p>El Domain y los Business Processes representan la estructura estable del negocio. El Epic, en cambio, puede aparecer y desaparecer según la planificación del proyecto.</p>
+<div class="example"><div class="label">Ejemplo transversal</div><pre>EPIC-RMA-001  Gestión integral de repuestos
+│
+├── FEAT-COM-001  Crear órdenes de compra
+├── FEAT-COM-004  Recepcionar repuestos
+├── FEAT-VTA-001  Crear venta mayorista
+└── FEAT-REP-005  Consumir repuestos en reparación</pre></div>
+<div class="callout"><strong>Idea clave:</strong> Epic agrupa iniciativas; Feature representa capacidades concretas del producto.</div>
+<div class="footer"><span>Epic = agrupación opcional y transversal</span><span>14</span></div>
+</div></section><section class="page"><div class="sheet">
+<div class="eyebrow">Ejemplo completo</div>
+<h2>Cómo se ve la trazabilidad de punta a punta</h2>
+<p class="lead">Supongamos que queremos entender por qué existe la validación que impide a un técnico tomar una OR desde una estación no operativa. La trazabilidad nos permitirá recorrer la cadena completa desde negocio hasta implementación y pruebas.</p>
+<div class="example"><div class="label">Ejemplo E2E</div><pre>DOM-RMA
+↓
+PROC-REP / PROC-REP-180
+↓
+FEAT-REP-004  Gestión de cola de trabajo
+↓
+US-REP-021    Como técnico quiero tomar una OR disponible
+↓
+ACC-REP-041   Validar sesión y estación
+↓
+FR-REP-052    La estación debe estar operativa
+↓
+TR-REP-073    Validación técnica de estación
+↓
+TASK-REP-103  Implementar validación
+↓
+CODE-REP-...
+↓
+TEST-REP-...
+↓
+UAT-REP-...
+↓
+APPROVED</pre></div>
+<p>La misma cadena podrá recorrerse al revés. Desde una función o endpoint podremos entender qué Task lo creó, qué requisito técnico implementa, qué comportamiento funcional cubre, qué necesidad de usuario satisface y en qué proceso de negocio se origina.</p>
+<div class="callout"><strong>Objetivo final:</strong> poder responder tanto “¿qué código implementa esta regla de negocio?” como “¿por qué existe este código?” sin perder el contexto.</div>
+<div class="footer"><span>Trazabilidad E2E bidireccional</span><span>15</span></div>
+</div></section>
+</main>
+<div class="nav"><button id="prev" title="Página anterior">↑</button><button id="next" title="Página siguiente">↓</button></div>
+<script>
+const pages=Array.from(document.querySelectorAll('.page'));
+const progress=document.getElementById('progress');
+function currentIndex(){let best=0,bestDist=Infinity;pages.forEach((p,i)=>{const d=Math.abs(p.getBoundingClientRect().top-58);if(d<bestDist){bestDist=d;best=i}});return best}
+function update(){const i=currentIndex();progress.textContent=`Página ${i+1} / ${pages.length}`}
+function go(delta){const i=Math.max(0,Math.min(pages.length-1,currentIndex()+delta));pages[i].scrollIntoView({behavior:'smooth',block:'start'})}
+document.getElementById('prev').addEventListener('click',()=>go(-1));
+document.getElementById('next').addEventListener('click',()=>go(1));
+window.addEventListener('scroll',update,{passive:true});
+window.addEventListener('keydown',e=>{if(['ArrowDown','PageDown'].includes(e.key)){e.preventDefault();go(1)}if(['ArrowUp','PageUp'].includes(e.key)){e.preventDefault();go(-1)}});
+update();
+</script>
+</body></html>
