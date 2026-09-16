@@ -71,7 +71,8 @@ business/
   processes/   Procesos de negocio en YAML (fuente de verdad)
   actors/      Actores que participan en los procesos
   rules/       Reglas de negocio
-  schemas/     JSON Schema de validacion para los procesos
+  features/    Definiciones funcionales de Features
+  schemas/     JSON Schema de validacion para los procesos y Features
 
 generated/
   mermaid/     Diagramas Mermaid generados automaticamente (no editar)
@@ -146,12 +147,15 @@ Business Process de Gestion de Ordenes de Reparacion.
 PROC-REP  Gestion de Ordenes de Reparacion  V1.2 — approved
 ```
 
-**Proxima etapa:** Feature Definition. Todavia no se crearon Features ni
-User Stories reales, ni se inicio la definicion de Functional Requirements
-o Technical Requirements: esta preparacion es unicamente documental
-(convencion de IDs y jerarquia de trazabilidad en
-[traceability/README.md](traceability/README.md), configuracion del
-repositorio).
+**Etapa actual:** Feature Definition. Existen actualmente **7 Features en
+estado `draft`** para `PROC-REP` V1.2, definidas en
+[business/features/repair-management-features.yaml](business/features/repair-management-features.yaml)
+y validadas estructuralmente contra
+`business/schemas/feature.schema.json` (`npm run validate:features`).
+Todavia no se crearon User Stories, ni se inicio la definicion de
+Functional Requirements o Technical Requirements. Las Features siguen sin
+validacion cruzada contra `process_nodes` o `business_rules`: por ahora
+son referencias declarativas.
 
 La V1.2 (approved) de `PROC-REP` es Business Process validado con negocio:
 baseline funcional aprobada para iniciar la siguiente etapa del proyecto.
@@ -181,7 +185,7 @@ Todavia no se incluyen deliberadamente:
 - React / Next.js
 - React Flow
 - Base de datos
-- Features / User Stories reales
+- User Stories reales
 - Spec Kit
 - Requerimientos funcionales o tecnicos formales
 - Validacion cruzada entre archivos

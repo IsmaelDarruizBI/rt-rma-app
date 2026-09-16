@@ -1,0 +1,465 @@
+# Features funcionales de PROC-REP V1.2 (Gestion de Ordenes de Reparacion).
+# Etapa: Feature Definition. Todas en estado draft: son la descomposicion
+# funcional de la V1.2 aprobada en capacidades desarrollables, todavia sin
+# validacion cruzada contra process_nodes ni business_rules (evolucion
+# posterior) y sin User Stories todavia.
+
+process:
+  id: PROC-REP
+  version: "1.2"
+
+features:
+
+  - id: FEAT-REP-001
+    name: Ingreso y creacion de Orden de Reparacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Permitir que una necesidad de reparacion ingrese formalmente al
+      sistema RMA, identificando su origen, obteniendo o registrando la
+      informacion necesaria del cliente y del equipo, y creando la Orden
+      de Reparacion que dara inicio al circuito operativo.
+
+    inputs:
+      - Necesidad de reparacion
+
+    outputs:
+      - Orden de Reparacion creada
+      - Origen de la Orden identificado
+      - Cliente identificado cuando corresponda
+      - Equipo identificado y relacionado con la Orden
+      - Estado inicial REQUERIMIENTO
+      - Referencias de origen relacionadas cuando corresponda
+      - Comprobante de recepcion cuando corresponda
+
+    process_nodes:
+      - PROC-REP-010
+      - PROC-REP-020
+      - PROC-REP-025
+      - PROC-REP-030
+      - PROC-REP-035
+      - PROC-REP-040
+      - PROC-REP-050
+      - PROC-REP-060
+
+    business_rules: []
+
+    scope:
+      includes:
+        - Identificar el origen de la Orden de Reparacion
+        - Obtener contexto de equipos internos de Rosario Tecno
+        - Recibir referencias de garantias de venta
+        - Registrar o identificar cliente y equipo
+        - Relacionar una garantia de reparacion con la Orden original
+        - Crear la Orden de Reparacion
+        - Asignar el estado inicial REQUERIMIENTO
+        - Generar comprobante de recepcion cuando corresponda
+
+      excludes:
+        - Diagnosticar la reparacion requerida
+        - Validar factibilidad o disponibilidad de recursos
+        - Priorizar la Orden
+        - Asignar tecnicos
+        - Ejecutar reparaciones
+
+    open_questions: []
+
+
+  - id: FEAT-REP-002
+    name: Diagnostico y definicion de reparacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Permitir determinar que reparacion necesita una Orden, ya sea porque
+      la reparacion requerida se conoce desde el ingreso o porque debe
+      realizarse una revision tecnica previa. Si luego de la revision no
+      puede determinarse una reparacion, debe poder registrarse una
+      finalizacion SIN_REPARACION de forma trazable.
+
+    inputs:
+      - Orden de Reparacion creada
+      - Equipo identificado
+      - Informacion disponible sobre la necesidad de reparacion
+
+    outputs:
+      - Reparacion requerida definida
+      - Orden preparada para validacion de factibilidad
+      - Resultado SIN_REPARACION cuando no puede definirse una reparacion
+      - Informacion de diagnostico o revision registrada cuando corresponda
+
+    process_nodes:
+      - PROC-REP-045
+      - PROC-REP-055
+      - PROC-REP-065
+      - PROC-REP-068
+      - PROC-REP-069
+      - PROC-REP-070
+      - PROC-REP-075
+
+    business_rules:
+      - BR-REP-001
+      - BR-REP-010
+
+    scope:
+      includes:
+        - Determinar si la reparacion requerida ya es conocida
+        - Definir directamente la reparacion requerida cuando sea conocida
+        - Pasar la Orden a EN_REVISION cuando la reparacion sea desconocida
+        - Realizar y registrar una revision tecnica
+        - Definir la reparacion requerida luego de la revision
+        - Registrar resultado SIN_REPARACION cuando corresponda
+        - Registrar motivo y observaciones de una finalizacion sin reparacion
+
+      excludes:
+        - Validar disponibilidad de recursos
+        - Habilitar una Orden sin reparacion requerida definida
+        - Priorizar la Orden
+        - Ejecutar la reparacion
+        - Entregar el equipo al cliente
+
+    open_questions:
+      - >
+        Evaluar durante testing/UAT si aparecen nuevos motivos o caminos
+        validos hacia SIN_REPARACION que deban incorporarse a una futura
+        revision del Business Process.
+
+
+  - id: FEAT-REP-003
+    name: Validacion de factibilidad y habilitacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Determinar si una Orden con su reparacion requerida ya definida cuenta
+      con los recursos y condiciones necesarios para ingresar al circuito
+      operativo, administrando faltantes, espera, revalidacion y overrides
+      autorizados de factibilidad.
+
+    inputs:
+      - Orden de Reparacion
+      - Reparacion requerida definida
+
+    outputs:
+      - Orden HABILITADA para ingresar al circuito operativo
+      - Orden PENDIENTE_RECURSOS cuando no puede habilitarse
+      - Faltantes o validaciones incumplidas identificados
+      - Override de factibilidad registrado cuando corresponda
+
+    process_nodes:
+      - PROC-REP-080
+      - PROC-REP-090
+      - PROC-REP-100
+      - PROC-REP-110
+      - PROC-REP-120
+      - PROC-REP-130
+      - PROC-REP-140
+
+    business_rules:
+      - BR-REP-001
+      - BR-REP-002
+      - BR-REP-003
+
+    scope:
+      includes:
+        - Validar condiciones y recursos necesarios
+        - Identificar faltantes
+        - Mantener una Orden en PENDIENTE_RECURSOS
+        - Revalidar una Orden pendiente
+        - Permitir un override autorizado de factibilidad
+        - Registrar usuario, fecha, motivo y validacion ignorada del override
+        - Habilitar la Orden cuando corresponda
+
+      excludes:
+        - Habilitar una Orden cuya reparacion requerida aun no esta definida
+        - Definir prioridad
+        - Ingresar la Orden a la cola de trabajo
+        - Asignar tecnico
+        - Reservar insumos
+
+    open_questions:
+      - >
+        Evaluar durante testing/UAT si negocio necesita tipos adicionales
+        de override o excepciones de factibilidad. Cualquier ampliacion debe
+        validarse funcionalmente antes de modificar la baseline aprobada.
+
+
+  - id: FEAT-REP-004
+    name: Gestion de prioridad, cola y asignacion tecnica
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Administrar el ingreso de una Orden habilitada al trabajo operativo,
+      estableciendo su prioridad, incorporandola a la cola de trabajo y
+      controlando bajo que condiciones un tecnico puede tomarla y quedar
+      asociado a ella junto con su Estacion de Trabajo.
+
+    inputs:
+      - Orden de Reparacion HABILITADA
+
+    outputs:
+      - Prioridad de la Orden definida
+      - Orden disponible en EN_COLA
+      - Sesion y Estacion de Trabajo validadas
+      - Compatibilidad entre Estacion y tipo de reparacion validada
+      - Override de Estacion registrado cuando corresponda
+      - Orden tomada por un tecnico
+      - Tecnico y Estacion registrados
+      - Orden en estado EN_REPARACION
+
+    process_nodes:
+      - PROC-REP-150
+      - PROC-REP-170
+      - PROC-REP-172
+      - PROC-REP-174
+      - PROC-REP-176
+      - PROC-REP-178
+      - PROC-REP-179
+      - PROC-REP-180
+
+    business_rules:
+      - BR-REP-007
+      - BR-REP-011
+
+    scope:
+      includes:
+        - Definir prioridad de ejecucion
+        - Ingresar la Orden a EN_COLA
+        - Permitir que un tecnico intente tomar una Orden disponible
+        - Validar sesion activa del tecnico
+        - Validar Estacion de Trabajo
+        - Validar que la Estacion este OPERATIVA
+        - Validar compatibilidad Estacion y tipo de reparacion
+        - Registrar advertencias de incompatibilidad
+        - Permitir override autorizado de incompatibilidad de Estacion
+        - Registrar tecnico, Estacion y fecha/hora de toma
+        - Mantener historial de participacion tecnica conceptualmente
+        - Gestionar conceptualmente los modos EXCLUSIVA y ABIERTA
+
+      excludes:
+        - Configurar Estaciones de Trabajo
+        - Configurar computadoras asociadas a Estaciones
+        - Configurar tipos de reparacion habilitados por Estacion
+        - Administrar usuarios o permisos
+        - Reservar insumos
+        - Ejecutar la reparacion
+
+    open_questions:
+      - >
+        Definir durante etapas posteriores la administracion funcional de
+        prioridad, incluyendo el catalogo definitivo de prioridades.
+      - >
+        Definir durante etapas posteriores el comportamiento completo de
+        los modos EXCLUSIVA y ABIERTA y los overrides asociados cuando otro
+        tecnico intenta continuar una Orden.
+
+
+  - id: FEAT-REP-005
+    name: Ejecucion de reparacion y gestion de insumos
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Permitir que una Orden tomada por un tecnico sea ejecutada,
+      registrando lo efectivamente realizado y manteniendo consistentes los
+      movimientos de inventario asociados a los insumos previstos y
+      realmente utilizados.
+
+    inputs:
+      - Orden en estado EN_REPARACION
+      - Tecnico asignado
+      - Estacion de Trabajo registrada
+      - Reparacion requerida definida
+
+    outputs:
+      - Reparacion ejecutada
+      - Ejecucion real registrada
+      - Reparaciones realizadas registradas
+      - Repuestos y cantidades utilizados registrados
+      - Observaciones registradas
+      - Insumos consumidos, liberados o registrados como desperdicio
+      - Orden lista para control tecnico
+
+    process_nodes:
+      - PROC-REP-185
+      - PROC-REP-190
+      - PROC-REP-200
+      - PROC-REP-210
+
+    business_rules:
+      - BR-REP-004
+      - BR-REP-005
+      - BR-REP-006
+
+    scope:
+      includes:
+        - Reservar los insumos previstos al tomar la Orden
+        - Ejecutar la reparacion
+        - Registrar lo efectivamente realizado
+        - Registrar repuestos y cantidades realmente utilizados
+        - Registrar observaciones
+        - Consumir insumos utilizados
+        - Liberar reservas no utilizadas
+        - Registrar desperdicios cuando corresponda
+        - Preparar la Orden para control tecnico
+
+      excludes:
+        - Comprar o reponer inventario
+        - Administrar catalogos de repuestos
+        - Realizar control tecnico final
+        - Calcular puntaje de la reparacion
+        - Entregar el equipo
+
+    open_questions:
+      - >
+        El flujo completo de devolucion de repuestos, reposicion y compras
+        permanece fuera de esta Feature y debera resolverse en procesos o
+        Features correspondientes.
+
+
+  - id: FEAT-REP-006
+    name: Control tecnico y evaluacion de la reparacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Permitir validar tecnicamente el resultado de una reparacion antes de
+      finalizarla, registrando rechazos cuando corresponda y calculando la
+      evaluacion o puntaje de la reparacion una vez aprobado el control.
+
+    inputs:
+      - Orden con reparacion ejecutada
+      - Ejecucion real registrada
+      - Orden lista para control tecnico
+
+    outputs:
+      - Control tecnico registrado
+      - Orden rechazada y devuelta a EN_COLA cuando el control no es correcto
+      - Orden aprobada cuando el control es correcto
+      - Puntaje total de la reparacion calculado cuando corresponda
+      - Orden en estado REPARACION_LISTA luego de aprobacion
+
+    process_nodes:
+      - PROC-REP-220
+      - PROC-REP-230
+      - PROC-REP-235
+      - PROC-REP-245
+      - PROC-REP-240
+
+    business_rules:
+      - BR-REP-008
+      - BR-REP-009
+
+    scope:
+      includes:
+        - Realizar el control tecnico
+        - Registrar resultado del control
+        - Registrar rechazo, usuario, fecha y observaciones
+        - Retornar una Orden rechazada a EN_COLA
+        - Calcular el puntaje luego de un control aprobado
+        - Marcar una reparacion aprobada como REPARACION_LISTA
+
+      excludes:
+        - Ejecutar o corregir la reparacion
+        - Distribuir definitivamente el puntaje entre multiples tecnicos
+        - Notificar al cliente
+        - Generar comprobante final
+        - Entregar el equipo
+
+    open_questions:
+      - >
+        Evaluar durante testing/UAT si negocio necesita permitir que una
+        Orden con control tecnico rechazado pueda finalizarse igualmente
+        mediante una decision u override autorizado, por ejemplo para
+        devolver el equipo al cliente sin continuar con nuevos intentos de
+        reparacion. Este comportamiento no forma parte de PROC-REP V1.2.
+      - >
+        Definir posteriormente como se distribuye o acredita el puntaje
+        entre multiples tecnicos que participaron de una reparacion.
+
+
+  - id: FEAT-REP-007
+    name: Finalizacion, entrega e integracion de resultado
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.2"
+
+    purpose: >
+      Resolver la salida de una Orden una vez que existe un resultado apto
+      para finalizacion, comunicando dicho resultado, generando la
+      documentacion correspondiente y entregando el equipo al cliente o
+      informando el resultado al sistema de Gestion RT segun el origen de
+      la Orden.
+
+    inputs:
+      - Orden con reparacion aprobada y estado REPARACION_LISTA
+      - Orden con resultado SIN_REPARACION
+      - Origen de la Orden de Reparacion
+
+    outputs:
+      - Cliente notificado cuando corresponda
+      - Comprobante final generado cuando corresponda
+      - Garantia de reparacion generada unicamente cuando hubo reparacion
+      - Equipo entregado al cliente cuando corresponda
+      - Orden en estado ENTREGADA para los flujos de cliente
+      - Resultado informado al sistema de Gestion RT para equipos RT_INTERNO
+      - Flujo de Orden finalizado segun su origen
+
+    process_nodes:
+      - PROC-REP-250
+      - PROC-REP-260
+      - PROC-REP-280
+      - PROC-REP-270
+      - PROC-REP-290
+
+    business_rules: []
+
+    scope:
+      includes:
+        - Determinar si corresponde entrega a cliente
+        - Preparar y confirmar notificacion al cliente
+        - Generar comprobante final
+        - Incluir garantia de reparacion cuando corresponda
+        - Evitar generar garantia cuando el resultado sea SIN_REPARACION
+        - Entregar el equipo
+        - Registrar estado ENTREGADA para los flujos correspondientes
+        - Informar el resultado a Gestion RT para equipos internos
+
+      excludes:
+        - Diagnosticar la reparacion
+        - Ejecutar reparaciones
+        - Realizar control tecnico
+        - Definir el estado terminal definitivo de RT_INTERNO
+        - Resolver tecnicamente la integracion futura con Gestion RT
+
+    open_questions:
+      - >
+        Definir el estado terminal definitivo para Ordenes de origen
+        RT_INTERNO.
+      - >
+        Si durante testing/UAT se aprueba una salida excepcional desde un
+        control tecnico rechazado, esta Feature debera incorporar esa nueva
+        entrada unicamente despues de actualizar y aprobar la correspondiente
+        revision del Business Process.

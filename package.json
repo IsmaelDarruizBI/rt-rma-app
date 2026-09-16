@@ -9,7 +9,8 @@
     "generate:viewer": "tsx scripts/generate-process-viewer.ts",
     "generate": "npm run validate && npm run generate:mermaid && npm run generate:viewer",
     "validate:process": "tsx scripts/validate-process.ts",
-    "validate": "npm run validate:process"
+    "validate:features": "tsx scripts/validate-features.ts",
+    "validate": "npm run validate:process && npm run validate:features"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

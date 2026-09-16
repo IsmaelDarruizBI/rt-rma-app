@@ -165,11 +165,13 @@ EPIC-RMA-XXX   Epic / iniciativa transversal (opcional)
 (Venta de repuestos) y `COM` (Compra de repuestos)-; sus nombres
 definitivos se confirman recien cuando esos procesos se modelen.
 
-`FEAT-REP-XXX`, `ACC-REP-XXX` y `TASK-REP-XXX` forman parte de esta
-convencion conceptual desde el diseño de la jerarquia. Todavia no se
-crearon Features, System Actions ni Tasks reales, y el enfoque items +
-links descrito arriba sigue siendo una decision de diseño, no una
-implementacion aprobada para uso general.
+`FEAT-REP-XXX` ya tiene 7 Features reales en estado `draft` para `PROC-REP`
+V1.2 (`FEAT-REP-001` a `FEAT-REP-007`, ver
+`business/features/repair-management-features.yaml`). `ACC-REP-XXX` y
+`TASK-REP-XXX` siguen siendo unicamente convencion conceptual: todavia no
+se crearon System Actions ni Tasks reales. El enfoque items + links
+descrito arriba sigue siendo una decision de diseño, no una implementacion
+aprobada para uso general.
 
 ## Que representa cada nivel
 
@@ -196,9 +198,11 @@ implementacion aprobada para uso general.
 ## Objetivo futuro
 
 Poder navegar desde cualquier elemento hasta todos sus relacionados, en
-ambas direcciones. Ejemplo conceptual de navegacion (no implica que estos
-elementos ya existan; unicamente `DOM-RMA` y `PROC-REP-040` son reales
-hoy):
+ambas direcciones. Ejemplo conceptual de navegacion: hoy son reales
+`DOM-RMA`, `PROC-REP-040` y las 7 Features en estado `draft` (`FEAT-REP-001`
+a `FEAT-REP-007`); de `US-REP-001` en adelante, todo el resto de la cadena
+sigue siendo unicamente conceptual, no implica que esos elementos ya
+existan:
 
 ```text
 DOM-RMA
@@ -228,17 +232,30 @@ UAT-REP-001
 
 ## Estado actual
 
-No implementado como sistema. Esta convencion existe unicamente para que
-los IDs creados desde ahora (por ejemplo, en
-`business/processes/repair-management.yaml`) sean estables y reutilizables
-cuando se construya el sistema de trazabilidad.
+No implementado como sistema de trazabilidad completo. Esta convencion
+existe para que los IDs creados desde ahora (por ejemplo, en
+`business/processes/repair-management.yaml` y ahora tambien en
+`business/features/repair-management-features.yaml`) sean estables y
+reutilizables cuando se construya el sistema de trazabilidad.
+
+La Etapa 2 (Feature Definition) ya comenzo formalmente: existen 7
+Features reales en estado `draft` para `PROC-REP` V1.2 (`FEAT-REP-001` a
+`FEAT-REP-007`), validadas estructuralmente contra
+`business/schemas/feature.schema.json` mediante `npm run validate:features`.
 
 En particular:
 
+- las 7 Features son reales y estan en estado `draft`, no `approved`;
+- todavia no existen User Stories reales;
 - la trazabilidad automatizada (generacion de matrices, validacion
   cruzada, herramientas) todavia no existe;
-- esta etapa define unicamente la convencion, no una implementacion;
+- dentro de cada Feature, `process_nodes` y `business_rules` son
+  referencias declarativas (listas de IDs en texto): todavia no hay
+  validacion cruzada que confirme que esos IDs realmente existen en
+  `repair-management.yaml` o `business-rules.yaml`, ni que
+  `source_process.version` coincide con la version real del Business
+  Process. Eso es una evolucion posterior;
 - los IDs ya asignados a nodos de Business Process (por ejemplo los de
   `PROC-REP` en `repair-management.yaml`) deben mantenerse estables;
 - la V1.2 aprobada de Gestion de Ordenes de Reparacion no se modifica por
-  este documento ni por esta convencion.
+  este documento, por esta convencion, ni por la definicion de Features.
