@@ -124,6 +124,16 @@ outputs y reglas de negocio, resolviendo las referencias contra
 referencia no existe, el panel lo muestra como una advertencia visible en
 lugar de fallar silenciosamente.
 
+El viewer tambien permite navegar las **Features** (`business/features/`)
+como una capa sobre el mismo diagrama del Business Process: un selector en
+la toolbar ("Vista: Todas las Features") permite elegir una Feature y
+resalta unicamente sus `process_nodes` (atenuando el resto), sin alterar
+el diagrama ni convertir Features en nodos nuevos. El detalle de cada nodo
+incluye ademas sus "Features relacionadas", y el detalle de cada Feature
+incluye sus Process Nodes -en ambos casos clickeables-, permitiendo
+navegar en cualquier direccion entre un Process Node y las Features que lo
+agrupan.
+
 ### Comandos
 
 ```bash
