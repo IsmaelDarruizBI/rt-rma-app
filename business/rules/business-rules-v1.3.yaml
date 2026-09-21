@@ -1,0 +1,314 @@
+# Reglas de negocio V1.3 (draft) del proceso de Gestion de Ordenes de
+# Reparacion. Convive con business/rules/business-rules.yaml (BR-REP-001
+# a BR-REP-011, V1.2 approved), que permanece intacta y NO se modifica.
+#
+# BR-REP-001 a BR-REP-011 aqui son revisiones funcionales de las reglas
+# homonimas de V1.2 (mismo ID, wording actualizado para el modelo
+# Orden/Detalle/Ejecucion/Insumo); BR-REP-012 en adelante son reglas
+# nuevas que V1.3 necesita y que V1.2 no tenia. Son afirmaciones
+# funcionales en estado draft, pendientes de validacion final con el
+# negocio. Todavia no se transforman en Functional Requirements.
+
+rules:
+
+  - id: BR-REP-001
+    name: Definicion del requerimiento
+    description: >
+      Toda Orden de Reparacion debe tener definido al menos un Detalle de
+      Reparacion con Tipo de Reparacion asignado antes de continuar con
+      el proceso, excepto mientras se encuentra en estado EN_REVISION (sin
+      ningun Detalle con Tipo definido todavia). Reemplaza el enfoque
+      singular de V1.2 ("una reparacion requerida") por uno plural.
+    status: draft
+
+  - id: BR-REP-002
+    name: Validacion previa de recursos
+    description: >
+      La factibilidad se evalua por Detalle: para cada uno se consulta
+      -sin reservar- la disponibilidad de los insumos previstos segun su
+      Tipo de Reparacion. La Orden puede habilitarse mientras exista al
+      menos un Detalle trabajable, sin exigir que todos los Detalles sean
+      factibles. Un Detalle no factible no bloquea a los demas.
+    status: draft
+
+  - id: BR-REP-003
+    name: Override justificado
+    description: >
+      Si un usuario autorizado fuerza un Detalle de Reparacion que no
+      supero la validacion de factibilidad, debe registrarse usuario,
+      fecha, el Detalle especifico, la validacion ignorada y el motivo.
+      El override se aplica puntualmente sobre ese Detalle, no sobre la
+      Orden en abstracto.
+    status: draft
+
+  - id: BR-REP-004
+    name: Registro de ejecucion real
+    description: >
+      El tecnico debe registrar, por cada Ejecucion de un Detalle, lo
+      efectivamente realizado, los repuestos realmente utilizados, y si
+      la Ejecucion se completo o se interrumpio. Una Ejecucion
+      interrumpida no completa el Detalle -que vuelve a PENDIENTE-, pero
+      queda conservada integramente en el historial: nunca se sobrescribe
+      una Ejecucion anterior.
+    status: draft
+
+  - id: BR-REP-005
+    name: Inventario consecuencia de ejecucion
+    description: >
+      Los movimientos de inventario asociados a una Ejecucion (consumo de
+      lo utilizado, liberacion de reservas no utilizadas, desperdicio
+      cuando corresponda) deben originarse a partir de los repuestos y
+      cantidades registrados en ella, y deben quedar trazados hasta el
+      Detalle que la origino (Orden -> Detalle -> Insumo -> Movimiento).
+    status: draft
+
+  - id: BR-REP-006
+    name: Reserva de insumos al iniciar Ejecucion del Detalle
+    description: >
+      Al intentar iniciar la Ejecucion de un Detalle debe realizarse la
+      reserva real de sus insumos previstos (la factibilidad previa solo
+      habia consultado disponibilidad, sin reservar). Si la reserva es
+      exitosa, se generan las reservas trazadas al Detalle y la Ejecucion
+      se inicia; el Detalle pasa a EN_PROCESO. Si la reserva falla, la
+      Ejecucion NO se inicia, el Detalle permanece PENDIENTE con
+      condicion BLOQUEADO_POR_RECURSOS, y el estado de la Orden se
+      recalcula. Reemplaza a la version V1.2, que reservaba una unica vez
+      "al tomar la Orden".
+    status: draft
+
+  - id: BR-REP-007
+    name: Concurrencia de Ejecucion en la Orden
+    description: >
+      Una Orden admite como maximo UNA Ejecucion activa simultaneamente,
+      sin importar a que Detalle pertenezca: no pueden iniciarse dos
+      Ejecuciones al mismo tiempo sobre la misma Orden, porque una Orden
+      representa un unico equipo fisico. Distintos tecnicos pueden
+      participar historicamente de la misma Orden y del mismo Detalle, en
+      distintos momentos, sin sobrescribir el historial de Ejecuciones
+      anteriores. Reemplaza por completo al modo EXCLUSIVA/ABIERTA de
+      V1.2.
+    status: draft
+
+  - id: BR-REP-008
+    name: Control tecnico por Recepcion y retrabajo por Detalle
+    description: >
+      Una Orden puede pasar a control tecnico cuando todos sus Detalles
+      son terminales (COMPLETO o CANCELADO) y existe al menos uno
+      COMPLETO. Recepcion evalua la Orden completa pero aprueba o rechaza
+      Detalle por Detalle. Un Detalle rechazado debe identificarse
+      explicitamente, vuelve a PENDIENTE conservando el historial de sus
+      Ejecuciones anteriores y del propio rechazo (fecha, usuario,
+      observacion, resultado), y el estado de la Orden se recalcula
+      mediante el resolver de estado de Orden (BR-REP-012): no se asume
+      automaticamente que la Orden vuelve a EN_COLA.
+    status: draft
+
+  - id: BR-REP-009
+    name: Puntaje por Detalle
+    description: >
+      El puntaje se calcula por Detalle aprobado, segun la ponderacion
+      configurada de su Tipo de Reparacion, en el momento de su propia
+      aprobacion (no se espera a que el resto de los Detalles de la Orden
+      tambien esten aprobados). El puntaje total de la Orden es la suma
+      de los puntajes de sus Detalles. La distribucion/acreditacion entre
+      distintos tecnicos que participaron de un mismo Detalle sigue
+      pendiente de definicion funcional.
+    status: draft
+
+  - id: BR-REP-010
+    name: Finalizacion sin reparacion trazable
+    description: >
+      Toda Orden que finalice sin reparacion debe registrar como minimo
+      el motivo, las observaciones, el usuario y la fecha de la decision.
+      El resultado SIN_REPARACION es independiente del estado tecnico/
+      workflow de la Orden y puede coexistir con un importe cobrable
+      -por ejemplo, si existio un Detalle de Diagnostico COMPLETO y
+      cobrable-. Debe quedar distinguido de una Orden cancelada
+      (CANCELADA).
+    status: draft
+
+  - id: BR-REP-011
+    name: Compatibilidad de estacion de trabajo
+    description: >
+      (A) Para tomar una Orden: el tecnico debe tener sesion activa
+      asociada a una Estacion de Trabajo confirmada, configurada y
+      OPERATIVA; no debe existir ya una Ejecucion activa sobre esa Orden;
+      y debe existir al menos un Detalle trabajable cuyo Tipo de
+      Reparacion este habilitado para esa Estacion (no se exige
+      compatibilidad con todos los Detalles de la Orden). Ninguna de
+      estas condiciones admite override: si no se cumplen, la Orden no
+      puede tomarse desde esa Estacion y permanece disponible para otra;
+      no existe override generico a nivel Orden.
+      (B) Al seleccionar un Detalle especifico para iniciar su Ejecucion:
+      se revalida la compatibilidad entre la Estacion actual y el Tipo de
+      Reparacion de ESE Detalle. Si la Estacion esta operativa pero no
+      habilitada para ese Tipo, el sistema advierte la incompatibilidad y
+      permite que un usuario autorizado fuerce la continuidad,
+      registrando usuario, fecha/hora, estacion, Detalle, Tipo y motivo;
+      sin ese override, ese Detalle en particular no puede iniciarse
+      desde esa Estacion, pero la Orden puede continuar con otros
+      Detalles.
+    status: draft
+
+  - id: BR-REP-012
+    name: Estado agregado de la Orden como calculo derivado
+    description: >
+      El estado tecnico agregado de la Orden (SIN_DETALLES, EN_EJECUCION,
+      ABIERTA_TRABAJABLE, REQUIERE_REVISION, PENDIENTE_RECURSOS, COMPLETA,
+      TODO_CANCELADO) se calcula siempre a partir de las propiedades
+      derivadas de sus Detalles (es_terminal, es_trabajable,
+      esta_en_ejecucion, requiere_revision, bloqueado_por_recursos,
+      esta_completo, esta_cancelado), mediante una politica de reglas
+      centralizada y ordenada por prioridad (ver docs/discovery/README.md
+      - "PROC-REP V1.3 - Resolver de estado de Orden"). Ningun proceso ni
+      nodo fija manualmente ese agregado: los hitos de workflow
+      (REQUERIMIENTO, HABILITADA, EN_COLA, EN_REPARACION,
+      REPARACION_LISTA, ENTREGADA, CANCELADA) son eventos explicitos, no
+      una segunda fuente de verdad independiente del estado de los
+      Detalles -en particular, REQUERIMIENTO y la entrada a EN_REVISION
+      son fijados por los eventos de workflow PROC-REP-040 y PROC-REP-055
+      respectivamente, nunca decididos por este resolver (ver
+      BR-REP-013)-. La politica debe poder ampliarse con nuevas reglas
+      (condicion + prioridad + resultado + referencia a Business Rule)
+      sin reescribir los nodos del proceso. Si, con cantidad_detalles > 0,
+      ninguna regla de la politica aplica, el resultado NO debe
+      inventarse ni continuar silenciosamente: debe tratarse como
+      CONTEXTO_INCONSISTENTE / invariante violada (fail-safe; ver
+      docs/discovery/README.md - "Fail-safe del resolver"), a reportar
+      para diagnostico, no como un estado de negocio mas.
+    status: draft
+
+  - id: BR-REP-013
+    name: Orden sin Detalles (caso inicial)
+    description: >
+      Mientras una Orden tenga cero Detalles definidos (cantidad_detalles
+      = 0), el resolver tecnico de estado de Orden devuelve, de forma
+      deterministica, el agregado SIN_DETALLES -nunca evalua vaciamente
+      las reglas de "todos terminales" ni "todos cancelados", que serian
+      verdaderas por vacuidad sobre un conjunto vacio, y nunca intenta
+      decidir por si mismo entre REQUERIMIENTO o EN_REVISION-. Esa
+      decision (REQUERIMIENTO vs. EN_REVISION) no es responsabilidad del
+      resolver tecnico de Detalles: la fijan los eventos explicitos de
+      workflow PROC-REP-040 (crea la Orden en REQUERIMIENTO) y
+      PROC-REP-045/PROC-REP-055 (pasan la Orden a EN_REVISION si al
+      momento del ingreso no se conoce ningun Detalle). En la topologia
+      actual del proceso, el resolver nunca llega a invocarse mientras
+      cantidad_detalles = 0 -PROC-REP-090 y PROC-REP-211 solo son
+      alcanzables una vez que existe al menos un Detalle-, por lo que
+      SIN_DETALLES es, en la practica, una salida defensiva/de
+      consistencia mas que un caso que el flujo actual ejercite; se deja
+      definida igual, como regla explicita de maxima prioridad dentro de
+      la misma politica extensible de BR-REP-012, para que cualquier
+      invocacion futura del resolver (por ejemplo desde una UI o
+      herramienta que no respete esa precondicion) tenga un resultado
+      deterministico y nunca ambiguo.
+    status: draft
+
+  - id: BR-REP-014
+    name: Cancelacion de Detalle y de Orden
+    description: >
+      Un Detalle no terminal (PENDIENTE, sin Ejecucion activa) puede
+      pasar a CANCELADO, conservando su Tipo, precio snapshot y todo su
+      historial previo. Cancelar una Orden completa NO implica
+      necesariamente que su resultado final sea CANCELADA: la accion
+      cancela los Detalles NO TERMINALES (PENDIENTE -> CANCELADO,
+      preservando los ya COMPLETO) y a continuacion se recalcula el
+      estado agregado mediante el resolver (BR-REP-012), cuyo resultado
+      determina el desenlace: (A) si, tras la cascada, TODOS los Detalles
+      quedan CANCELADO, la Orden pasa a CANCELADA, sin pasar por control
+      tecnico ni por REPARACION_LISTA; (B) si existe al menos un Detalle
+      COMPLETO y todos los restantes quedaron CANCELADO, la Orden queda
+      tecnicamente COMPLETA y continua el flujo normal (Control Tecnico
+      -> REPARACION_LISTA -> cierre comercial -> entrega cuando
+      corresponda), porque ese Detalle representa trabajo efectivamente
+      realizado que debe poder controlarse, cobrarse y cerrarse. La
+      cancelacion (de un Detalle o de los Detalles no terminales de una
+      Orden) no puede ejecutarse mientras exista una Ejecucion activa:
+      primero debe cerrarse/interrumpirse. Invariante: un Detalle
+      CANCELADO no puede conservar reservas activas de inventario. Esto
+      no requiere un mecanismo nuevo: se garantiza reutilizando el
+      mecanismo de generacion de movimientos ya existente (PROC-REP-210,
+      BR-REP-005), que en cada finalizacion de Ejecucion -Completada o
+      Interrumpida-
+      consume lo efectivamente utilizado y libera toda reserva no
+      utilizada de ese Detalle. Como un Detalle solo puede cancelarse
+      estando PENDIENTE y sin Ejecucion activa (nunca EN_PROCESO), para
+      llegar a ese estado ya paso, si tuvo alguna Ejecucion, por
+      PROC-REP-210 -que ya dejo sus insumos en CONSUMIDO, LIBERADO o
+      DESPERDICIO, nunca en RESERVADO-; por lo tanto al momento de
+      cancelar no quedan reservas pendientes de reconciliar. Todos los
+      movimientos, incluyendo los de un Detalle luego cancelado,
+      conservan su trazabilidad historica al Detalle que los origino.
+      Nunca se reescribe historia tecnica real (Ejecuciones, insumos,
+      movimientos, precios, pagos, auditoria). Las consecuencias
+      comerciales de la cancelacion (por
+      ejemplo, reembolsos de pagos ya realizados si la Orden termina
+      CANCELADA) quedan explicitamente pendientes, fuera de V1.3. Quien
+      esta autorizado a cancelar un Detalle o una Orden tambien queda
+      pendiente de definicion por negocio (ver docs/discovery/README.md,
+      seccion Pendientes de V1.3): los nodos PROC-REP-300/305 omiten
+      deliberadamente el actor en vez de asumir uno.
+    status: draft
+
+  - id: BR-REP-015
+    name: Precio snapshot y Subtotal
+    description: >
+      Cada Tipo de Reparacion tiene un Precio configurable con historico.
+      Cada Detalle registra, al confirmarse, el precio vigente de su Tipo
+      de Reparacion como snapshot historico inmutable: cambios
+      posteriores en el precio del Tipo de Reparacion no afectan
+      Detalles ya confirmados. El Subtotal de la Orden es la suma de los
+      precios snapshot de los Detalles NO CANCELADOS; un Detalle
+      CANCELADO conserva su Tipo, precio historico y trazabilidad, pero
+      no participa del Subtotal. No existe costo configurable del Tipo de
+      Reparacion: el costo de una reparacion (mano de obra + costo real
+      de insumos) se resolvera en una etapa posterior, fuera de V1.3.
+    status: draft
+
+  - id: BR-REP-016
+    name: Ajustes Comerciales y Cortesia
+    description: >
+      El calculo comercial de la Orden sigue el esquema extensible
+      Subtotal + Ajustes Comerciales Previos = Base Comercial (y, fuera
+      de alcance de V1.3, Base Comercial + impuestos/recargos/otros
+      conceptos = Total Cobrable). Los Ajustes Comerciales son un
+      catalogo abierto de conceptos positivos o negativos; en V1.3 los
+      unicos tipos definidos son CORTESIA_DETALLE y CORTESIA_ORDEN. Una
+      cortesia no modifica ni elimina el precio original del Detalle
+      (que permanece como dato historico dentro del Subtotal): se resta
+      como Ajuste Comercial independiente. Toda cortesia requiere
+      autorizacion de un usuario ACT-ADMIN, con fecha/hora y motivo
+      obligatorio; ningun otro actor puede autorizarla en V1.3.
+      Condicion comercial distinta de cortesia: el origen de la Orden
+      determina si es COBRABLE (CLIENTE_EXTERNO, salvo cortesia),
+      NO_COBRABLE (RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION) o
+      NO_COBRABLE_AL_CLIENTE (RT_INTERNO); esta condicion de origen nunca
+      se trata como una cortesia.
+    status: draft
+
+  - id: BR-REP-017
+    name: Registrar Pago (transversal) y Completar Cobro (secuencial)
+    description: >
+      Son dos conceptos distintos, que no deben confundirse. (A)
+      Registrar Pago es una capacidad TRANSVERSAL de la Orden: una Orden
+      puede tener 0..N Pagos -seña, anticipo, parciales, con distintos
+      medios de pago- registrados en cualquier momento desde que la Orden
+      existe, no solo al final. Cada Pago registra importe, medio de
+      pago, fecha/hora, usuario y referencia/comprobante cuando
+      corresponda; todos quedan asociados a la misma Orden. (B) Completar
+      Cobro es una FASE SECUENCIAL del cierre: una vez aprobado el
+      control tecnico (REPARACION_LISTA), se determina el Total Cobrable
+      (Base Comercial de los Detalles finales, ver BR-REP-015/BR-REP-016)
+      y se calcula el Saldo = Total Cobrable - Total Pagado
+      (PROC-REP-265). Si Saldo > 0, la Orden queda pendiente de completar
+      cobro: pueden registrarse uno o mas Pagos adicionales -mediante el
+      mismo mecanismo transversal (A)- y el Saldo se recalcula despues de
+      cada uno (PROC-REP-266 -> PROC-REP-265, "Revalidar"). Una Orden de
+      origen CLIENTE_EXTERNO solo puede pasar a ENTREGADA cuando
+      Saldo = 0, o cuando corresponde cortesia total de Orden, o
+      condicion no-cobrable por origen; no existe override para entregar
+      con deuda en V1.3. No modelar los pagos como si ocurrieran
+      unicamente al final (A es transversal), ni la entrega sin el gate
+      final de Saldo (B es secuencial y obligatorio antes de
+      PROC-REP-270).
+    status: draft

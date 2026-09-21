@@ -14,6 +14,17 @@
  * The validation functions below take already-loaded data (not file paths)
  * so they can also be exercised directly - e.g. against deliberately
  * corrupted in-memory copies - without touching any file on disk.
+ *
+ * All four source files are parameterizable via optional positional CLI
+ * args (`tsx scripts/validate-references.ts [processFile] [rulesFile]
+ * [actorsFile] [featuresFile]`), so this one script also cross-validates
+ * a draft revision (e.g. PROC-REP V1.3, which has its own process +
+ * rules files and, deliberately, no Features yet) without duplicating
+ * this logic per version. Invoked with zero args (the existing `npm run
+ * validate:references`), behavior is unchanged: validates V1.2 with its
+ * approved Features. Invoked with explicit args and no 4th (features)
+ * arg, the Features-vs-process checks and coverage reports are skipped
+ * entirely rather than silently falling back to V1.2's Features file.
  */
 import { pathToFileURL } from "node:url";
 import {
@@ -26,10 +37,22 @@ import {
 } from "./lib/process-model";
 import type { FeatureModel } from "./lib/feature-model";
 
-const PROCESS_FILE = "business/processes/repair-management.yaml";
-const FEATURES_FILE = "business/features/repair-management-features.yaml";
-const RULES_FILE = "business/rules/business-rules.yaml";
-const ACTORS_FILE = "business/actors/actors.yaml";
+const DEFAULT_PROCESS_FILE = "business/processes/repair-management.yaml";
+const DEFAULT_FEATURES_FILE = "business/features/repair-management-features.yaml";
+const DEFAULT_RULES_FILE = "business/rules/business-rules.yaml";
+const DEFAULT_ACTORS_FILE = "business/actors/actors.yaml";
+
+const cliArgs = process.argv.slice(2);
+const isDefaultRun = cliArgs.length === 0;
+
+const PROCESS_FILE = cliArgs[0] ?? DEFAULT_PROCESS_FILE;
+const RULES_FILE = cliArgs[1] ?? DEFAULT_RULES_FILE;
+const ACTORS_FILE = cliArgs[2] ?? DEFAULT_ACTORS_FILE;
+// Zero-arg invocation: default to V1.2's Features (unchanged behavior).
+// Any explicit invocation: Features are validated only if a 4th arg was
+// actually given - an omitted 4th arg means "this revision has no
+// Features file yet" (e.g. V1.3 during this iteration), not "use V1.2's".
+const FEATURES_FILE: string | null = isDefaultRun ? DEFAULT_FEATURES_FILE : cliArgs[3] || null;
 
 // Node types excluded from "functional" coverage accounting (events and
 // start/end markers aren't operational work a Feature performs).
@@ -258,7 +281,7 @@ function printCoverage(title: string, coverage: CoverageResult): void {
 
 export function main(): void {
   const processModel = loadYaml<ProcessModel>(PROCESS_FILE);
-  const featuresModel = loadYaml<FeatureModel>(FEATURES_FILE);
+  const featuresModel = FEATURES_FILE ? loadYaml<FeatureModel>(FEATURES_FILE) : null;
   const rules = loadYaml<{ rules: BusinessRule[] }>(RULES_FILE).rules;
   const actors = loadYaml<{ actors: Actor[] }>(ACTORS_FILE).actors;
 
@@ -270,10 +293,17 @@ export function main(): void {
 
   validateCatalogIntegrity(rules, actors, report);
   validateProcessIntegrity(processModel, actorsById, rulesById, report);
-  validateFeaturesAgainstProcess(featuresModel, processModel, new Set(nodesById.keys()), rulesById, report);
-  validateFeatureRuleNodeConsistency(featuresModel, nodesById, report);
 
   console.log("=== Validacion de integridad referencial ===\n");
+
+  if (featuresModel) {
+    validateFeaturesAgainstProcess(featuresModel, processModel, new Set(nodesById.keys()), rulesById, report);
+    validateFeatureRuleNodeConsistency(featuresModel, nodesById, report);
+  } else {
+    console.log(
+      "Features: omitido (no se proporciono archivo de Features para esta revision del proceso).\n"
+    );
+  }
 
   if (report.errors.length > 0) {
     console.error("ERRORES:");
@@ -287,17 +317,20 @@ export function main(): void {
     console.warn("");
   }
 
-  printCoverage("Coverage - process nodes funcionales (excluye event/start/end):", computeNodeCoverage(processModel, featuresModel));
-  printCoverage("Coverage - Business Rules:", computeRuleCoverage(rules, featuresModel));
+  if (featuresModel) {
+    printCoverage("Coverage - process nodes funcionales (excluye event/start/end):", computeNodeCoverage(processModel, featuresModel));
+    printCoverage("Coverage - Business Rules:", computeRuleCoverage(rules, featuresModel));
+  }
 
   if (report.errors.length > 0) {
     console.error(`FAILED: ${report.errors.length} error(es) de integridad referencial.`);
     process.exit(1);
   }
 
-  console.log(
-    `OK: referencias entre ${PROCESS_FILE}, ${FEATURES_FILE}, ${RULES_FILE} y ${ACTORS_FILE} son validas.`
-  );
+  const validated = [PROCESS_FILE, RULES_FILE, ACTORS_FILE, featuresModel ? FEATURES_FILE : null]
+    .filter(Boolean)
+    .join(", ");
+  console.log(`OK: referencias entre ${validated} son validas.`);
 }
 
 // Only run when this file is executed directly (`tsx scripts/validate-references.ts`),

@@ -11,7 +11,13 @@
     "validate:process": "tsx scripts/validate-process.ts",
     "validate:features": "tsx scripts/validate-features.ts",
     "validate:references": "tsx scripts/validate-references.ts",
-    "validate": "npm run validate:process && npm run validate:features && npm run validate:references"
+    "validate": "npm run validate:process && npm run validate:features && npm run validate:references",
+    "validate:process:v1.3": "tsx scripts/validate-process.ts business/processes/repair-management-v1.3.yaml",
+    "validate:references:v1.3": "tsx scripts/validate-references.ts business/processes/repair-management-v1.3.yaml business/rules/business-rules-v1.3.yaml business/actors/actors.yaml",
+    "validate:v1.3": "npm run validate:process:v1.3 && npm run validate:references:v1.3",
+    "generate:mermaid:v1.3": "tsx scripts/generate-mermaid.ts business/processes/repair-management-v1.3.yaml",
+    "generate:viewer:v1.3": "tsx scripts/generate-process-viewer.ts business/processes/repair-management-v1.3.yaml business/rules/business-rules-v1.3.yaml business/actors/actors.yaml",
+    "generate:v1.3": "npm run validate:v1.3 && npm run generate:mermaid:v1.3 && npm run generate:viewer:v1.3"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

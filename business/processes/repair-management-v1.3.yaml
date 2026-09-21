@@ -1,0 +1,1141 @@
+# Gestion de Ordenes de Reparacion - V1.3 (draft).
+#
+# Convive explicitamente con business/processes/repair-management.yaml
+# (PROC-REP V1.2, approved), que permanece intacta como baseline historica
+# y NO se modifica ni se sobrescribe. V1.3 es un archivo independiente,
+# validable y generable por separado (ver package.json: scripts
+# *:v1.3), hasta que eventualmente reemplace a V1.2 como baseline aprobada.
+#
+# Cambio funcional central respecto de V1.2: la Orden de Reparacion deja de
+# asumir una unica reparacion. Pasa a tener 1..N Detalles de Reparacion
+# (unidad tecnica de trabajo), cada uno con su propio Tipo de Reparacion,
+# precio snapshot, Ejecuciones e Insumos:
+#
+#   OrdenReparacion (unidad de gestion)
+#     -> DetalleReparacion (unidad tecnica de trabajo, 1..N por Orden)
+#         -> Ejecucion (1..N por Detalle, como maximo una activa por Orden)
+#         -> Insumo utilizado -> MovimientoInventario
+#
+# El tecnico toma la Orden completa (igual que V1.2) pero luego trabaja
+# Detalle por Detalle. Reemplaza el modo EXCLUSIVA/ABIERTA de V1.2 (ver
+# BR-REP-007 V1.3) por una regla mas simple y realista: como maximo una
+# Ejecucion activa por Orden en todo momento (la Orden representa un unico
+# equipo fisico).
+#
+# El estado tecnico agregado de la Orden (SIN_DETALLES / EN_EJECUCION /
+# ABIERTA_TRABAJABLE / REQUIERE_REVISION / PENDIENTE_RECURSOS / COMPLETA /
+# TODO_CANCELADO) es siempre DERIVADO del conjunto de sus Detalles
+# mediante un resolver de
+# reglas centralizado y ordenado por prioridad (documentado en
+# docs/discovery/README.md, seccion "PROC-REP V1.3 - Resolver de estado de
+# Orden"), nunca una segunda fuente de verdad fijada manualmente por un
+# nodo. Los nodos de este YAML narran el flujo que un tecnico/Recepcion
+# recorre; las transiciones de estado agregado que resultan de ese
+# recorrido se calculan siempre con ese mismo resolver.
+#
+# Este archivo resulta de tres rondas de revision funcional critica
+# (factibilidad por Detalle, toma de Orden con compatibilidad parcial,
+# seleccion/ejecucion por Detalle, reserva real al iniciar Ejecucion,
+# control y retrabajo por Detalle, cancelacion de Detalle/Orden, modelo
+# comercial Subtotal/Ajustes/Saldo). Los 4 bloqueos identificados en la
+# segunda ronda (falla de reserva al iniciar Ejecucion, incompatibilidad
+# total de estacion sin override, cancelacion con Ejecucion activa,
+# alcance de la cascada de cancelacion sobre Detalles COMPLETO) quedaron
+# resueltos como definiciones funcionales y estan reflejados en los nodos
+# 186, 172, 300/305 y en BR-REP-014.
+#
+# Deliberadamente sigue sin definir en V1.3 (igual que en V1.2, mas los
+# temas nuevos que este cambio introdujo): flujo completo de
+# tercerizacion, scrap, devolucion a proveedor, modelo definitivo de
+# reproceso (Orden origen vs. Detalle origen de RMA_GARANTIA_REPARACION),
+# distribucion de puntaje entre multiples tecnicos, catalogo definitivo de
+# prioridades, reglas de CANCELADA (quien/cuando/motivo), estado terminal
+# definitivo de RT_INTERNO, presupuestacion, consecuencias comerciales de
+# la cancelacion (reembolsos), costo de reparacion (mano de obra + costo
+# real de insumos vs. precio), impuestos/recargos/descuentos futuros sobre
+# la Base Comercial, y si la cortesia puede ser parcial o siempre total.
+# Ver docs/discovery/README.md (seccion V1.3) para el detalle completo de
+# pendientes.
+#
+# Las 7 Features actuales (business/features/repair-management-features.yaml)
+# siguen derivadas de V1.2 y NO se modificaron en esta iteracion: se
+# revisaran en una iteracion posterior, una vez que V1.3 este validada.
+
+process:
+  id: PROC-REP
+  name: Gestion de Ordenes de Reparacion
+  version: "1.3"
+  status: draft
+
+nodes:
+
+  - id: EVT-REP-001
+    type: event
+    name: Surge necesidad de reparacion
+    description: >
+      Evento que inicia el proceso cuando un equipo requiere una reparacion.
+
+  - id: PROC-REP-010
+    type: decision
+    name: Cual es el origen de la Orden de Reparacion
+    description: >
+      La Orden de Reparacion admite cuatro origenes: CLIENTE_EXTERNO
+      (cliente externo trae un equipo propio), RT_INTERNO (equipo de
+      Rosario Tecno gestionado en la aplicacion de Gestion RT),
+      RT_GARANTIA_VENTA (ingreso derivado de una garantia por venta de
+      Rosario Tecno) y RMA_GARANTIA_REPARACION (el cliente vuelve porque
+      falla una reparacion RMA anterior). Sin cambios respecto de V1.2.
+
+  - id: PROC-REP-020
+    type: activity
+    name: Recibir referencia y contexto del equipo RT
+    actor: ACT-SYSTEM
+    description: >
+      Origen RT_INTERNO. El equipo pertenece a Rosario Tecno y su
+      informacion debe provenir de la aplicacion de Gestion RT. Ademas
+      del equipo deben poder identificarse conceptualmente el tipo de
+      ingreso del equipo en RT (por ejemplo Proveedor, Toma u otros tipos
+      existentes en Gestion RT) y si el equipo tuvo una reparacion
+      tercerizada previamente. No se crea todavia una rama de flujo por
+      tercerizacion: sigue pendiente de definicion funcional. Sin cambios
+      respecto de V1.2.
+    outputs:
+      - Equipo RT identificado
+      - Tipo de ingreso RT identificado
+      - Historial de tercerizacion identificado
+
+  - id: PROC-REP-025
+    type: activity
+    name: Recibir referencia de garantia de venta RT
+    actor: ACT-SYSTEM
+    description: >
+      Origen RT_GARANTIA_VENTA. La garantia comercial se gestiona y valida
+      en la aplicacion de Gestion RT; la aplicacion RMA no decide si la
+      garantia comercial corresponde. RMA recibe desde Gestion RT la
+      solicitud de reparacion y la referencia al documento que origino la
+      garantia. La resolucion de cambio directo sigue siendo
+      responsabilidad de Gestion RT; si la resolucion requiere reparacion,
+      ingresa al flujo RMA. Sin cambios respecto de V1.2.
+    outputs:
+      - Cliente identificado
+      - Equipo identificado
+      - Documento de venta origen identificado
+      - Referencia de garantia RT identificada
+
+  - id: PROC-REP-030
+    type: activity
+    name: Registrar cliente y equipo
+    actor: ACT-RECEP
+    description: >
+      Origen CLIENTE_EXTERNO. Se registran los datos necesarios del
+      cliente externo y del equipo recibido para reparacion. El cliente
+      externo puede clasificarse conceptualmente como Minorista o
+      Mayorista, sin crear una entidad de cliente separada: existe una
+      sola entidad conceptual Cliente. Sin cambios respecto de V1.2.
+    outputs:
+      - Cliente identificado
+      - Equipo identificado
+
+  - id: PROC-REP-035
+    type: activity
+    name: Identificar reparacion original en garantia
+    actor: ACT-RECEP
+    description: >
+      Origen RMA_GARANTIA_REPARACION. Representa a un cliente que vuelve
+      porque falla una reparacion realizada anteriormente por RMA. Queda
+      relacionada la nueva Orden de Reparacion con la Orden de Reparacion
+      que origino la garantia (relacion a nivel Orden; si en el futuro se
+      necesita precisar el Detalle especifico que fallo, es una extension
+      pendiente, no resuelta en V1.3). No se define todavia como se
+      registra tecnicamente un reproceso: el modelo definitivo queda
+      pendiente.
+    outputs:
+      - Cliente identificado
+      - Equipo identificado
+      - Orden de Reparacion origen identificada
+
+  - id: PROC-REP-040
+    type: activity
+    name: Crear Orden de Reparacion
+    actor: ACT-RECEP
+    description: >
+      Se crea la unidad transaccional central del proceso, cualquiera sea
+      su origen. Las cuatro ramas de origen convergen en este nodo. La
+      Orden nace en estado REQUERIMIENTO con cero Detalles de Reparacion
+      (cantidad_detalles = 0): todavia no implica ninguna reparacion en
+      particular. REQUERIMIENTO es un hito de workflow fijado por este
+      evento, no algo que decida el resolver tecnico de Detalles (ver
+      BR-REP-013): mientras cantidad_detalles = 0, el resolver nunca
+      llega a invocarse -PROC-REP-090 y PROC-REP-211 solo son alcanzables
+      despues de que exista al menos un Detalle (PROC-REP-070/075)-.
+    outputs:
+      - Orden de Reparacion
+      - Estado REQUERIMIENTO
+
+  - id: PROC-REP-045
+    type: decision
+    name: Se conocen los Detalles de reparacion requeridos
+    description: >
+      Distingue si, al momento del ingreso, ya se sabe que Detalle o
+      Detalles de reparacion necesita el equipo (por ejemplo "cambio de
+      bateria" y "cambio de pantalla"). Reemplaza conceptualmente a la
+      version singular de V1.2 ("se conoce la reparacion requerida").
+
+  - id: PROC-REP-050
+    type: decision
+    name: Requiere comprobante de recepcion
+    description: >
+      Las ordenes que requieren comprobante de recepcion son
+      CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION.
+      RT_INTERNO no lo requiere. Se evalua tanto si los Detalles ya se
+      conocen como si la Orden esta EN_REVISION: el comprobante es
+      independiente de si los Detalles ya fueron diagnosticados.
+
+  - id: PROC-REP-055
+    type: activity
+    name: Marcar Orden en revision
+    actor: ACT-SYSTEM
+    description: >
+      Todavia no se conoce ningun Detalle de reparacion requerido
+      (cantidad_detalles = 0, o el unico Detalle existente carece de Tipo
+      de Reparacion asignado). La Orden pasa a EN_REVISION. Igual que
+      REQUERIMIENTO (PROC-REP-040), EN_REVISION en este punto del flujo
+      es un hito de workflow fijado por este evento explicito -no algo
+      que el resolver tecnico "decida" entre REQUERIMIENTO/EN_REVISION-;
+      el resolver (BR-REP-012) solo entra en juego una vez que existe al
+      menos un Detalle. No usar REVISION como Tipo de Reparacion de
+      ningun Detalle.
+    outputs:
+      - Estado EN_REVISION
+
+  - id: PROC-REP-060
+    type: activity
+    name: Generar comprobante de recepcion
+    actor: ACT-SYSTEM
+    description: >
+      Se genera el documento que acredita que el cliente dejo el equipo
+      para ser reparado, para ordenes cuyo origen lo requiere
+      (CLIENTE_EXTERNO, RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION). Si
+      los Detalles ya se conocen, el comprobante los lista. Si la Orden
+      esta EN_REVISION, el comprobante muestra la Orden, el cliente y el
+      equipo, e indica conceptualmente "reparacion pendiente de
+      diagnostico", sin inventar ningun Detalle ni Tipo de Reparacion.
+    outputs:
+      - Comprobante de recepcion
+
+  - id: PROC-REP-065
+    type: activity
+    name: Realizar revision tecnica
+    actor: ACT-TECH
+    description: >
+      Para una Orden EN_REVISION, el tecnico revisa/diagnostica el equipo
+      y registra el resultado de la revision. Ese resultado es el insumo
+      para definir, a continuacion, los Detalles de reparacion requeridos
+      (PROC-REP-075).
+    outputs:
+      - Resultado de revision tecnica
+
+  - id: PROC-REP-068
+    type: decision
+    name: Se pudo definir la reparacion requerida
+    description: >
+      Distingue si, luego de la revision tecnica, se pudo determinar que
+      Detalle o Detalles de reparacion necesita el equipo.
+
+  - id: PROC-REP-069
+    type: activity
+    name: Registrar finalizacion sin reparacion
+    actor: ACT-RECEP
+    description: >
+      La revision tecnica no permitio determinar ningun Detalle de
+      reparacion. La Orden fue procesada correctamente pero concluye sin
+      que se haya realizado una reparacion: resultado SIN_REPARACION.
+      SIN_REPARACION es independiente del estado tecnico/workflow de la
+      Orden (ver BR-REP-010 V1.3): puede coexistir con un importe
+      cobrable si existio, por ejemplo, un Detalle de Diagnostico COMPLETO
+      y cobrable. SIN_REPARACION no equivale a CANCELADA (una Orden
+      cancelada fue interrumpida; una Orden SIN_REPARACION fue procesada
+      hasta su fin sin necesitar o poder realizarse una reparacion). El
+      motivo es obligatorio; ejemplos conceptuales: no se pudo determinar
+      la falla, equipo no reparable, reparacion no disponible, otro. No se
+      define todavia un catalogo rigido de motivos.
+    outputs:
+      - Resultado SIN_REPARACION
+      - Motivo (obligatorio)
+      - Observaciones de diagnostico/revision
+      - Usuario que registra la decision
+      - Fecha
+    rules:
+      - BR-REP-010
+
+  - id: PROC-REP-070
+    type: activity
+    name: Definir Detalles de reparacion requeridos
+    actor: ACT-RECEP
+    description: >
+      Se registran uno o mas Detalles de Reparacion (cantidad_detalles
+      pasa de 0 a >=1), cada uno con su Tipo de Reparacion y, en
+      consecuencia, su precio snapshot vigente (BR-REP-015). Reemplaza a
+      la version singular de V1.2 ("definir requerimiento de reparacion"):
+      una misma Orden puede tener, por ejemplo, un Detalle de cambio de
+      bateria y otro de cambio de pantalla.
+    inputs:
+      - Orden de Reparacion
+    outputs:
+      - Detalle(s) de Reparacion creados, cada uno con Tipo y precio snapshot
+    rules:
+      - BR-REP-001
+
+  - id: PROC-REP-075
+    type: activity
+    name: Definir Detalles de reparacion luego de revision
+    actor: ACT-RECEP
+    description: >
+      Recepcion utiliza el resultado de la revision tecnica (PROC-REP-065)
+      para definir los Detalles de Reparacion requeridos de una Orden que
+      estaba EN_REVISION (misma logica que PROC-REP-070).
+    inputs:
+      - Resultado de revision tecnica
+    outputs:
+      - Detalle(s) de Reparacion creados, cada uno con Tipo y precio snapshot
+    rules:
+      - BR-REP-001
+
+  - id: PROC-REP-080
+    type: activity
+    name: Validar factibilidad por Detalle
+    actor: ACT-SYSTEM
+    description: >
+      Se evalua, para cada Detalle de la Orden, la disponibilidad prevista
+      de insumos segun su Tipo de Reparacion (insumos previstos por Tipo
+      de Reparacion). En este paso solo se CONSULTA disponibilidad: no se
+      reserva todavia (la reserva real ocurre recien al iniciar la
+      Ejecucion de un Detalle, ver PROC-REP-185/186). Un Detalle sin
+      recursos disponibles queda PENDIENTE con condicion
+      BLOQUEADO_POR_RECURSOS; esto no afecta a los demas Detalles de la
+      misma Orden.
+    rules:
+      - BR-REP-001
+      - BR-REP-002
+
+  - id: PROC-REP-090
+    type: decision
+    name: Existe al menos un Detalle trabajable
+    description: >
+      Pregunta agregada a nivel Orden (ver resolver de estado de Orden,
+      docs/discovery/README.md): no exige que todos los Detalles sean
+      factibles, solo que exista al menos uno sin bloqueo
+      (es_trabajable = true). Reemplaza a la version V1.2 ("estan
+      disponibles los recursos necesarios"), que evaluaba la Orden como
+      un todo-o-nada.
+
+  - id: PROC-REP-100
+    type: activity
+    name: Registrar advertencia de faltante
+    actor: ACT-SYSTEM
+    description: >
+      El sistema informa, para el/los Detalle(s) sin ningun recurso
+      disponible, los insumos o condiciones que impiden que sean
+      trabajables. No se emite una advertencia generica de "la Orden": se
+      identifica el Detalle especifico afectado.
+
+  - id: PROC-REP-110
+    type: decision
+    name: Usuario autorizado fuerza el Detalle bloqueado
+    description: >
+      Distingue si un usuario autorizado decide forzar igualmente como
+      trabajable un Detalle que no supero la validacion de factibilidad.
+      El override se registra sobre ese Detalle especifico (BR-REP-003),
+      no sobre la Orden en abstracto.
+
+  - id: PROC-REP-120
+    type: activity
+    name: Detalle(s) pendientes por recursos
+    actor: ACT-SYSTEM
+    description: >
+      Mientras ningun Detalle de la Orden sea trabajable y exista al
+      menos uno bloqueado por recursos, el resolver de estado de Orden
+      determina el agregado PENDIENTE_RECURSOS (ver docs/discovery/
+      README.md). Esto no es una transicion manual de "toda la Orden
+      espera": es la consecuencia derivada de la situacion de sus
+      Detalles, y deja de aplicar en cuanto cualquier Detalle se vuelva
+      trabajable (por disponibilidad real o por override).
+
+  - id: PROC-REP-130
+    type: activity
+    name: Registrar override
+    actor: ACT-COORD
+    description: >
+      Un usuario autorizado decide continuar a pesar de que un Detalle no
+      supero la validacion de factibilidad, y debe registrar el motivo.
+      Mismo rol/actor y misma Business Rule que en V1.2; el dato que
+      registra ahora identifica el Detalle especifico.
+    outputs:
+      - Usuario responsable
+      - Fecha
+      - Detalle
+      - Motivo
+      - Validacion ignorada
+    rules:
+      - BR-REP-003
+
+  - id: PROC-REP-140
+    type: activity
+    name: Habilitar Orden de Reparacion
+    actor: ACT-SYSTEM
+    description: >
+      La Orden pasa a HABILITADA y queda en condiciones de ingresar al
+      circuito operativo. El gate ya no exige que todos los Detalles sean
+      factibles: alcanza con que exista al menos uno trabajable
+      (PROC-REP-090). Los demas Detalles bloqueados siguen existiendo y
+      podran volverse trabajables mas adelante sin bloquear el avance de
+      la Orden.
+
+  - id: PROC-REP-150
+    type: activity
+    name: Definir prioridad
+    actor: ACT-COORD
+    description: >
+      El coordinador establece inicialmente la prioridad de ejecucion
+      de la Orden. El catalogo definitivo de prioridades queda pendiente.
+      Sin cambios respecto de V1.2 (prioridad sigue siendo de la Orden,
+      no de cada Detalle).
+
+  - id: PROC-REP-170
+    type: activity
+    name: Ingresar orden a cola de trabajo
+    actor: ACT-SYSTEM
+    description: >
+      La Orden pasa a EN_COLA, disponible para que cualquier tecnico
+      pueda tomarla. El coordinador no asigna obligatoriamente el
+      tecnico. Este nodo tambien es el punto de referencia desde el que,
+      conceptualmente, puede cancelarse un Detalle (PROC-REP-300) o la
+      Orden completa (PROC-REP-305) mientras esta disponible/en curso;
+      ver la nota de PROC-REP-300 sobre esta simplificacion del diagrama.
+
+  - id: PROC-REP-172
+    type: activity
+    name: Validar estacion de trabajo
+    actor: ACT-SYSTEM
+    description: >
+      Se dispara cuando un tecnico intenta tomar una Orden EN_COLA. El
+      sistema valida, en este orden conceptual: (1) sesion activa; (2)
+      estacion asociada/confirmada; (3) estacion configurada; (4)
+      estacion OPERATIVA; (5) que no exista ya una Ejecucion activa sobre
+      esta Orden (maximo una por Orden, BR-REP-007); (6) que exista al
+      menos un Detalle trabajable cuyo Tipo de Reparacion este habilitado
+      para esta Estacion -no es necesario que todos los Detalles sean
+      compatibles-. Si (1)-(4) o (5) fallan, o si ningun Detalle
+      trabajable es compatible con la Estacion, la Orden NO puede tomarse
+      desde aqui: no existe override generico a nivel Orden en ninguno de
+      estos casos (BR-REP-011 V1.3, alcance A). La Orden permanece EN_COLA
+      para otra estacion o para un nuevo intento. La compatibilidad
+      especifica con el Detalle que efectivamente se trabaje se revalida
+      recien al seleccionarlo (PROC-REP-174).
+    outputs:
+      - Resultado de validacion de sesion/estacion/compatibilidad agregada
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-180
+    type: activity
+    name: Tomar Orden de Reparacion
+    actor: ACT-TECH
+    description: >
+      El tecnico inicia una sesion de trabajo sobre la Orden luego de
+      superar PROC-REP-172. A diferencia de V1.2, esto no implica
+      posesion exclusiva ni un modo EXCLUSIVA/ABIERTA: distintos tecnicos
+      pueden tomar la misma Orden en distintos momentos (nunca al mismo
+      tiempo, BR-REP-007). Debe quedar registrado conceptualmente la
+      Orden, el Tecnico, la Estacion y la fecha/hora, como parte del
+      historial de participacion sobre la Orden. A continuacion el
+      tecnico selecciona un Detalle especifico para trabajar
+      (PROC-REP-181): tomar la Orden no inicia por si sola ninguna
+      Ejecucion.
+
+  - id: PROC-REP-181
+    type: activity
+    name: Seleccionar Detalle a trabajar
+    actor: ACT-TECH
+    description: >
+      Con la Orden tomada, el tecnico elige un Detalle trabajable de la
+      Orden (puede haber mas de uno disponible; el tecnico elige cual
+      trabajar ahora). Nodo nuevo en V1.3: en V1.2 no existia porque una
+      Orden solo tenia una reparacion. Tambien se re-ingresa a este nodo
+      cuando un intento de trabajar un Detalle no prospera (estacion
+      incompatible sin override, o reserva de insumos fallida), para que
+      el tecnico pueda elegir otro Detalle trabajable si lo hay.
+
+  - id: PROC-REP-174
+    type: decision
+    name: Estacion habilitada para el Detalle seleccionado
+    description: >
+      Reubicado en V1.3: en V1.2 evaluaba la compatibilidad de la
+      Estacion contra "la" reparacion de la Orden, en el momento de
+      tomarla. En V1.3 evalua la compatibilidad de la Estacion actual
+      contra el Tipo de Reparacion del Detalle especifico que el tecnico
+      acaba de seleccionar en PROC-REP-181 -no contra toda la Orden-.
+
+  - id: PROC-REP-176
+    type: activity
+    name: Registrar advertencia de estacion incompatible (Detalle)
+    actor: ACT-SYSTEM
+    description: >
+      La Estacion esta OPERATIVA, pero no esta configurada entre las
+      estaciones habilitadas para el Tipo de Reparacion del Detalle
+      seleccionado. Reubicado en V1.3 (antes evaluaba la Orden completa).
+      Luego debe evaluarse si se desea forzar la continuidad
+      (PROC-REP-178).
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-178
+    type: decision
+    name: Usuario autorizado fuerza continuidad (Detalle)
+    description: >
+      Distingue si un usuario autorizado decide forzar el inicio de la
+      Ejecucion de este Detalle desde una Estacion operativa pero no
+      habilitada para su Tipo de Reparacion. Si no se fuerza, este
+      Detalle en particular no se inicia desde esta Estacion ahora: el
+      tecnico puede seleccionar otro Detalle trabajable (PROC-REP-181).
+      La Orden no vuelve a EN_COLA por este motivo: sigue tomada, solo
+      cambia que Detalle se intenta trabajar.
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-179
+    type: activity
+    name: Registrar override de estacion (Detalle)
+    actor: ACT-COORD
+    description: >
+      Un usuario autorizado decide continuar a pesar de que la Estacion
+      no esta configurada para el Tipo de Reparacion del Detalle
+      seleccionado. El override autoriza unicamente la continuidad de
+      trabajo sobre ese Detalle: no modifica automaticamente la
+      configuracion de la Estacion.
+    outputs:
+      - Usuario responsable
+      - Fecha/hora
+      - Estacion
+      - Detalle
+      - Tipo de reparacion no habilitado
+      - Motivo
+    rules:
+      - BR-REP-011
+
+  - id: PROC-REP-185
+    type: activity
+    name: Reservar insumos e iniciar Ejecucion del Detalle
+    actor: ACT-SYSTEM
+    description: >
+      Reubicado en V1.3: en V1.2 se reservaba una unica vez "al tomar la
+      Orden"; en V1.3 se intenta la RESERVA REAL de los insumos previstos
+      del Detalle seleccionado recien en este momento (no en la
+      factibilidad, que solo consulto disponibilidad). Si la reserva es
+      exitosa, se generan las reservas trazadas a este Detalle, se crea
+      la Ejecucion y el Detalle pasa a EN_PROCESO (PROC-REP-190). Si la
+      reserva falla -el insumo dejo de estar disponible entre la
+      factibilidad original y este momento-, no se inicia la Ejecucion
+      (PROC-REP-186).
+    rules:
+      - BR-REP-006
+
+  - id: PROC-REP-186
+    type: activity
+    name: Registrar reserva fallida (Detalle bloqueado por recursos)
+    actor: ACT-SYSTEM
+    description: >
+      Nodo nuevo en V1.3, cierra el gap identificado entre la factibilidad
+      (que solo consulta disponibilidad) y la reserva real. Cuando la
+      reserva de insumos falla al intentar iniciar la Ejecucion, la
+      Ejecucion NO se inicia, el Detalle permanece PENDIENTE con
+      condicion BLOQUEADO_POR_RECURSOS, y el estado de la Orden se
+      recalcula (PROC-REP-211) reutilizando el mismo mecanismo que la
+      factibilidad inicial: si existe otro Detalle trabajable la Orden
+      sigue operable; si no, puede resultar PENDIENTE_RECURSOS.
+    rules:
+      - BR-REP-006
+
+  - id: PROC-REP-190
+    type: activity
+    name: Ejecutar Detalle
+    actor: ACT-TECH
+    description: >
+      El tecnico trabaja sobre el Detalle cuya Ejecucion se acaba de
+      iniciar. Reemplaza a "Ejecutar reparacion" de V1.2: ahora es un
+      paso que se repite una vez por cada Detalle trabajado (ver el bucle
+      PROC-REP-181 -> ... -> PROC-REP-211 -> PROC-REP-181).
+
+  - id: PROC-REP-200
+    type: activity
+    name: Registrar ejecucion real del Detalle
+    actor: ACT-TECH
+    description: >
+      El tecnico confirma o modifica los trabajos efectivamente
+      realizados, repuestos utilizados, cantidades y observaciones de
+      esta Ejecucion. La Ejecucion puede finalizar de dos formas: (a)
+      Completado: el Detalle pasa a COMPLETO; (b) Interrumpido: el
+      tecnico se retira sin terminar, la Ejecucion queda registrada como
+      historia (tecnico, estacion, inicio/fin, trabajo realizado,
+      observaciones, insumos ya ocurridos) y el Detalle vuelve a
+      PENDIENTE, disponible para que el mismo u otro tecnico lo continue
+      mas adelante con una nueva Ejecucion. Nunca se sobrescribe una
+      Ejecucion anterior.
+    outputs:
+      - Trabajo realizado
+      - Repuestos y cantidades reales
+      - Observaciones
+      - Resultado de la Ejecucion (Completado / Interrumpido)
+    rules:
+      - BR-REP-004
+
+  - id: PROC-REP-210
+    type: activity
+    name: Generar movimientos de inventario
+    actor: ACT-SYSTEM
+    description: >
+      A partir de la Ejecucion registrada (haya finalizado Completada o
+      Interrumpida), los insumos reservados de ESE Detalle se consumen
+      segun lo efectivamente utilizado y se liberan las reservas no
+      utilizadas; se registran desperdicios cuando corresponda. Todo
+      movimiento (RESERVADO -> CONSUMIDO / LIBERADO / DESPERDICIO) queda
+      trazado hasta el Detalle que lo origino, y transitivamente hasta la
+      Orden (Orden -> Detalle -> Insumo -> Movimiento).
+    rules:
+      - BR-REP-005
+
+  - id: PROC-REP-211
+    type: decision
+    name: Evaluar situacion de la Orden
+    description: >
+      Nodo nuevo en V1.3: invoca el resolver centralizado de estado de
+      Orden (docs/discovery/README.md, BR-REP-012) para decidir que sigue
+      despues de finalizar una Ejecucion (PROC-REP-210), despues de un
+      rechazo de control (PROC-REP-235), despues de cancelar un Detalle
+      (PROC-REP-300) o despues de cancelar Detalles no terminales al
+      cancelar la Orden (PROC-REP-305). No implementa una regla nueva:
+      reutiliza la misma politica de prioridad ya usada en PROC-REP-090,
+      evitando duplicar la logica en cada punto donde hace falta
+      re-evaluar. Resultados posibles: existe Detalle trabajable (vuelve
+      a PROC-REP-181); todos terminales con al menos uno COMPLETO (avanza
+      a PROC-REP-220, sin importar si los demas Detalles quedaron
+      CANCELADO -incluso viniendo de PROC-REP-305, una cancelacion de
+      Orden con algun Detalle ya COMPLETO no impide continuar hacia
+      control-); todos CANCELADO sin ningun COMPLETO (la Orden pasa a
+      CANCELADA, EVT-REP-999); ninguno trabajable pero tampoco todos
+      terminales -bloqueado por revision o por recursos- (vuelve a
+      PROC-REP-170, disponible/en espera).
+    rules:
+      - BR-REP-012
+
+  - id: PROC-REP-220
+    type: activity
+    name: Realizar control tecnico
+    actor: ACT-RECEP
+    description: >
+      Recepcion realiza la validacion final del funcionamiento de la
+      reparacion. Se alcanza cuando todos los Detalles de la Orden son
+      terminales (COMPLETO o CANCELADO) y existe al menos uno COMPLETO
+      (PROC-REP-211). Recepcion controla la Orden completa pero aprueba o
+      rechaza Detalle por Detalle.
+    rules:
+      - BR-REP-008
+
+  - id: PROC-REP-230
+    type: decision
+    name: Todos los Detalles fueron aprobados
+    description: >
+      Si = ningun Detalle fue rechazado en este control. No = al menos un
+      Detalle fue rechazado (aunque otros hayan sido aprobados).
+      Reformulado respecto de V1.2 ("resultado tecnico correcto") para
+      reflejar que el control ahora es granular por Detalle aunque ocurra
+      en un unico paso a nivel Orden.
+
+  - id: PROC-REP-235
+    type: activity
+    name: Identificar Detalle(s) a retrabajar
+    actor: ACT-RECEP
+    description: >
+      Reemplaza a "Registrar control rechazado" de V1.2, que devolvia
+      toda la Orden a EN_COLA sin mirar el Detalle. En V1.3 se identifica
+      el/los Detalle(s) especificos rechazados, se registra fecha,
+      usuario, observacion y resultado del control, y esos Detalles
+      vuelven a PENDIENTE (se reabren), conservando el historial de sus
+      Ejecuciones anteriores y de este mismo rechazo. El estado de la
+      Orden no se fija aqui: se recalcula mediante el resolver
+      (PROC-REP-211), que puede devolver la Orden a EN_COLA si algun
+      Detalle reabierto es trabajable, o a un estado bloqueado si no.
+    outputs:
+      - Fecha
+      - Usuario
+      - Observacion
+      - Detalle(s) rechazado(s) y resultado de control
+    rules:
+      - BR-REP-008
+
+  - id: PROC-REP-245
+    type: activity
+    name: Calcular puntaje de la reparacion
+    actor: ACT-SYSTEM
+    description: >
+      Cada Detalle aprobado tiene una ponderacion configurable segun su
+      Tipo de Reparacion. El puntaje se calcula por Detalle en el momento
+      de su aprobacion (no se espera a que el resto de los Detalles de la
+      Orden tambien esten aprobados). El puntaje total de la Orden es la
+      suma de los puntajes de sus Detalles. Todavia no esta definida la
+      distribucion o acreditacion de ese puntaje entre los distintos
+      tecnicos que participaron de un mismo Detalle: no debe asumirse que
+      se asigna automaticamente a un unico tecnico.
+    outputs:
+      - Puntaje de la reparacion (por Detalle y total de Orden)
+    rules:
+      - BR-REP-009
+
+  - id: PROC-REP-240
+    type: activity
+    name: Marcar reparacion lista
+    actor: ACT-SYSTEM
+    description: >
+      La Orden pasa a REPARACION_LISTA. Requiere control tecnico aprobado
+      sobre todos los Detalles (posiblemente tras varios ciclos de
+      rechazo/retrabajo, PROC-REP-235): este estado no es deducible
+      unicamente mirando los Detalles, depende del evento de aprobacion
+      de Recepcion.
+
+  - id: PROC-REP-250
+    type: decision
+    name: Requiere entrega a cliente
+    description: >
+      Se alcanza tanto cuando la reparacion quedo lista (PROC-REP-240)
+      como cuando la Orden finalizo SIN_REPARACION (PROC-REP-069). Las
+      ordenes que requieren entrega/documentacion al cliente son
+      CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION.
+      RT_INTERNO continua hacia informar el resultado al sistema RT. Sin
+      cambios respecto de V1.2.
+
+  - id: PROC-REP-260
+    type: activity
+    name: Notificar cliente
+    actor: ACT-RECEP
+    description: >
+      El sistema asiste a Recepcion preparando el mensaje de WhatsApp
+      para avisar que la reparacion esta lista, o que la Orden concluyo
+      SIN_REPARACION segun corresponda; Recepcion confirma y envia. Por
+      ahora no se automatiza completamente el envio por WhatsApp; a
+      futuro podra integrarse con WhatsApp, chatbot o portal web. Sin
+      cambios respecto de V1.2.
+
+  - id: PROC-REP-280
+    type: activity
+    name: Generar comprobante final
+    actor: ACT-SYSTEM
+    description: >
+      Se genera el documento final que informa el trabajo efectivamente
+      realizado, desglosado por Detalle: Tipo de Reparacion, precio
+      snapshot, Detalles cancelados (excluidos del Subtotal pero
+      trazables), Ajustes Comerciales aplicados (por ejemplo cortesias),
+      Base Comercial, pagos registrados y saldo. Si la Orden tuvo
+      reparacion, el comprobante incluye ademas las condiciones y
+      vencimiento de la garantia de reparacion. Si el resultado de la
+      Orden es SIN_REPARACION, no se genera garantia de reparacion (pero
+      si puede haber un importe cobrable, ver PROC-REP-069).
+    outputs:
+      - Comprobante final con desglose de Detalles/Ajustes/pagos/saldo
+      - Garantia de reparacion (unicamente si hubo reparacion)
+
+  - id: PROC-REP-265
+    type: decision
+    name: Completar cobro - validar condicion de entrega (saldo)
+    description: >
+      Nodo nuevo en V1.3. Es la fase secuencial de "Completar Cobro"
+      (BR-REP-017-B): determina el Total Cobrable definitivo a partir de
+      los Detalles finales y calcula Saldo = Total Cobrable - Total
+      Pagado (Total Pagado surge de los Pagos ya registrados en cualquier
+      momento anterior mediante la capacidad transversal de Pago,
+      BR-REP-017-A). Antes de entregar el equipo a un cliente
+      (CLIENTE_EXTERNO), se valida que se cumpla al menos una de: Saldo
+      de la Orden = 0; cortesia total aplicada a la Orden; condicion no
+      cobrable por origen (RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION).
+      No existe override para entregar con deuda pendiente en V1.3.
+    rules:
+      - BR-REP-017
+
+  - id: PROC-REP-266
+    type: activity
+    name: Orden con saldo pendiente (entrega bloqueada)
+    actor: ACT-SYSTEM
+    description: >
+      La Orden no puede entregarse mientras exista saldo pendiente y no
+      se trate de un caso no-cobrable o de cortesia total. La entrega
+      queda bloqueada hasta que se registre uno o mas Pagos adicionales
+      -mediante la misma capacidad transversal de Pago usada durante toda
+      la vida de la Orden, no un mecanismo aparte- que salden la
+      diferencia (o se aplique una cortesia); despues de cada Pago se
+      revalida la condicion de entrega, recalculando el Saldo
+      (PROC-REP-265).
+    rules:
+      - BR-REP-017
+
+  - id: PROC-REP-270
+    type: activity
+    name: Entregar equipo
+    actor: ACT-ADMIN
+    description: >
+      Se entrega el equipo al cliente, una vez superada la validacion de
+      condicion de entrega (PROC-REP-265); la Orden pasa a ENTREGADA. Sin
+      cambios respecto de V1.2 salvo esa nueva precondicion.
+
+  - id: PROC-REP-290
+    type: activity
+    name: Informar resultado al sistema RT
+    actor: ACT-SYSTEM
+    description: >
+      Para equipos de Rosario Tecno, el resultado de la Orden (incluida
+      la reparacion realizada o, si corresponde, SIN_REPARACION) debera
+      poder informarse a futuro al sistema que gestiona stock y ventas.
+      RT_INTERNO es NO_COBRABLE_AL_CLIENTE: no pasa por la validacion de
+      saldo de PROC-REP-265. El estado terminal definitivo para
+      RT_INTERNO queda pendiente de definicion. Sin cambios respecto de
+      V1.2.
+
+  - id: PROC-REP-300
+    type: activity
+    name: Cancelar Detalle
+    description: >
+      Un Detalle no terminal (PENDIENTE, sin Ejecucion activa) puede
+      pasar a CANCELADO en cualquier momento en que la Orden este
+      disponible, conservando su Tipo, precio snapshot y todo su
+      historial previo. Si el Detalle estuviera EN_PROCESO, primero debe
+      interrumpirse su Ejecucion (PROC-REP-200, resultado "Interrumpido"),
+      que lo devuelve a PENDIENTE, antes de poder cancelarlo -esa
+      interrupcion ya paso por PROC-REP-210, que reconcilio sus insumos
+      (CONSUMIDO/LIBERADO/DESPERDICIO), por lo que el Detalle nunca llega
+      a CANCELADO con reservas activas (BR-REP-014)-. QUIEN esta
+      autorizado a cancelar un Detalle todavia no fue definido por
+      negocio: se omite deliberadamente el campo `actor` de este nodo (el
+      schema no lo exige) en vez de asumir uno sin aprobacion -ver
+      docs/discovery/README.md, seccion Pendientes de V1.3-. Simplificacion
+      de este diagrama: se representa como alcanzable desde PROC-REP-170
+      (el punto de espera mas representativo de la Orden), aunque
+      conceptualmente puede originarse en cualquier momento sin Ejecucion
+      activa sobre ese Detalle.
+    rules:
+      - BR-REP-014
+
+  - id: PROC-REP-305
+    type: activity
+    name: Cancelar Orden / trabajos pendientes
+    description: >
+      Cancela los Detalles NO TERMINALES de la Orden (PENDIENTE ->
+      CANCELADO); los Detalles ya COMPLETO permanecen COMPLETO, nunca se
+      reescribe trabajo efectivamente realizado. No puede ejecutarse
+      mientras exista una Ejecucion activa: primero debe cerrarse/
+      interrumpirse (PROC-REP-200), reconciliando en ese paso los insumos
+      del Detalle interrumpido (PROC-REP-210: CONSUMIDO/LIBERADO/
+      DESPERDICIO), de modo que ningun Detalle termine CANCELADO
+      conservando reservas activas (BR-REP-014). A diferencia de una
+      version anterior
+      de este borrador, esta accion NO fija la Orden en CANCELADA de
+      forma directa: a continuacion se invoca el resolver de estado de
+      Orden (PROC-REP-211), y es su resultado el que determina el
+      desenlace -CANCELADA si, tras la cascada, todos los Detalles quedan
+      CANCELADO; o continuacion normal del flujo (Control Tecnico ->
+      REPARACION_LISTA -> cierre comercial -> entrega) si queda al menos
+      un Detalle COMPLETO, porque ese trabajo efectivamente realizado
+      debe poder controlarse, cobrarse y cerrarse-. Se preservan
+      Ejecuciones, tecnicos, estaciones, tiempos, insumos, movimientos,
+      precios, pagos y auditoria. Las consecuencias comerciales (por
+      ejemplo, reembolso de pagos ya realizados si la Orden termina
+      CANCELADA) quedan explicitamente pendientes, fuera de V1.3. QUIEN
+      esta autorizado a ejecutar esta accion todavia no fue definido por
+      negocio: se omite deliberadamente el campo `actor` de este nodo (el
+      schema no lo exige) en vez de asumir uno sin aprobacion -ver
+      docs/discovery/README.md, seccion Pendientes de V1.3-.
+    rules:
+      - BR-REP-014
+
+  - id: EVT-REP-999
+    type: end
+    name: Fin del flujo de Orden de Reparacion
+    description: >
+      Punto de fin comun a la entrega (PROC-REP-270), la integracion con
+      Gestion RT (PROC-REP-290), y a la Orden CANCELADA que resulta del
+      resolver (PROC-REP-211) cuando, tras cancelar un Detalle
+      (PROC-REP-300) o cancelar los Detalles no terminales de la Orden
+      (PROC-REP-305), todos los Detalles quedan CANCELADO sin ningun
+      COMPLETO. Una cancelacion que deja al menos un Detalle COMPLETO no
+      llega aqui: continua el flujo normal hacia Control Tecnico
+      (PROC-REP-211 -> PROC-REP-220).
+
+
+edges:
+
+  - from: EVT-REP-001
+    to: PROC-REP-010
+
+  - from: PROC-REP-010
+    to: PROC-REP-030
+    condition: CLIENTE_EXTERNO
+
+  - from: PROC-REP-010
+    to: PROC-REP-020
+    condition: RT_INTERNO
+
+  - from: PROC-REP-010
+    to: PROC-REP-025
+    condition: RT_GARANTIA_VENTA
+
+  - from: PROC-REP-010
+    to: PROC-REP-035
+    condition: RMA_GARANTIA_REPARACION
+
+  - from: PROC-REP-020
+    to: PROC-REP-040
+
+  - from: PROC-REP-025
+    to: PROC-REP-040
+
+  - from: PROC-REP-030
+    to: PROC-REP-040
+
+  - from: PROC-REP-035
+    to: PROC-REP-040
+
+  - from: PROC-REP-040
+    to: PROC-REP-045
+
+  - from: PROC-REP-045
+    to: PROC-REP-070
+    condition: Si
+
+  - from: PROC-REP-045
+    to: PROC-REP-055
+    condition: No
+
+  - from: PROC-REP-070
+    to: PROC-REP-050
+
+  - from: PROC-REP-055
+    to: PROC-REP-050
+
+  - from: PROC-REP-050
+    to: PROC-REP-060
+    condition: Si
+
+  - from: PROC-REP-050
+    to: PROC-REP-080
+    condition: No - Detalles definidos
+
+  - from: PROC-REP-050
+    to: PROC-REP-065
+    condition: No - aun en revision
+
+  - from: PROC-REP-060
+    to: PROC-REP-080
+    condition: Detalles definidos
+
+  - from: PROC-REP-060
+    to: PROC-REP-065
+    condition: Aun en revision
+
+  - from: PROC-REP-065
+    to: PROC-REP-068
+
+  - from: PROC-REP-068
+    to: PROC-REP-075
+    condition: Si
+
+  - from: PROC-REP-068
+    to: PROC-REP-069
+    condition: No
+
+  - from: PROC-REP-069
+    to: PROC-REP-250
+
+  - from: PROC-REP-075
+    to: PROC-REP-080
+
+  - from: PROC-REP-080
+    to: PROC-REP-090
+
+  - from: PROC-REP-090
+    to: PROC-REP-140
+    condition: Existe Detalle trabajable
+
+  - from: PROC-REP-090
+    to: PROC-REP-100
+    condition: Ninguno trabajable
+
+  - from: PROC-REP-100
+    to: PROC-REP-110
+
+  - from: PROC-REP-110
+    to: PROC-REP-120
+    condition: No
+
+  - from: PROC-REP-110
+    to: PROC-REP-130
+    condition: Si
+
+  - from: PROC-REP-120
+    to: PROC-REP-080
+    condition: Revalidar
+
+  - from: PROC-REP-130
+    to: PROC-REP-140
+
+  - from: PROC-REP-140
+    to: PROC-REP-150
+
+  - from: PROC-REP-150
+    to: PROC-REP-170
+
+  - from: PROC-REP-170
+    to: PROC-REP-172
+
+  - from: PROC-REP-172
+    to: PROC-REP-180
+    condition: Valida y compatible
+
+  - from: PROC-REP-172
+    to: PROC-REP-170
+    condition: Sesion o estacion invalida
+
+  - from: PROC-REP-172
+    to: PROC-REP-170
+    condition: Sin Detalle compatible
+
+  - from: PROC-REP-180
+    to: PROC-REP-181
+
+  - from: PROC-REP-181
+    to: PROC-REP-174
+
+  - from: PROC-REP-174
+    to: PROC-REP-185
+    condition: Si
+
+  - from: PROC-REP-174
+    to: PROC-REP-176
+    condition: No
+
+  - from: PROC-REP-176
+    to: PROC-REP-178
+
+  - from: PROC-REP-178
+    to: PROC-REP-179
+    condition: Si
+
+  - from: PROC-REP-178
+    to: PROC-REP-181
+    condition: No
+
+  - from: PROC-REP-179
+    to: PROC-REP-185
+
+  - from: PROC-REP-185
+    to: PROC-REP-190
+    condition: Reserva exitosa
+
+  - from: PROC-REP-185
+    to: PROC-REP-186
+    condition: Reserva fallida
+
+  - from: PROC-REP-186
+    to: PROC-REP-211
+
+  - from: PROC-REP-190
+    to: PROC-REP-200
+
+  - from: PROC-REP-200
+    to: PROC-REP-210
+    condition: Completado
+
+  - from: PROC-REP-200
+    to: PROC-REP-210
+    condition: Interrumpido
+
+  - from: PROC-REP-210
+    to: PROC-REP-211
+
+  - from: PROC-REP-211
+    to: PROC-REP-181
+    condition: Existe Detalle trabajable
+
+  - from: PROC-REP-211
+    to: PROC-REP-220
+    condition: Todos terminales, existe completo
+
+  - from: PROC-REP-211
+    to: EVT-REP-999
+    condition: Todos cancelados
+
+  - from: PROC-REP-211
+    to: PROC-REP-170
+    condition: Bloqueado, sin trabajable
+
+  - from: PROC-REP-220
+    to: PROC-REP-230
+
+  - from: PROC-REP-230
+    to: PROC-REP-235
+    condition: No
+
+  - from: PROC-REP-230
+    to: PROC-REP-245
+    condition: Si
+
+  - from: PROC-REP-235
+    to: PROC-REP-211
+
+  - from: PROC-REP-245
+    to: PROC-REP-240
+
+  - from: PROC-REP-240
+    to: PROC-REP-250
+
+  - from: PROC-REP-250
+    to: PROC-REP-260
+    condition: Si
+
+  - from: PROC-REP-250
+    to: PROC-REP-290
+    condition: No
+
+  - from: PROC-REP-260
+    to: PROC-REP-280
+
+  - from: PROC-REP-280
+    to: PROC-REP-265
+
+  - from: PROC-REP-265
+    to: PROC-REP-270
+    condition: Si
+
+  - from: PROC-REP-265
+    to: PROC-REP-266
+    condition: No
+
+  - from: PROC-REP-266
+    to: PROC-REP-265
+    condition: Revalidar
+
+  - from: PROC-REP-270
+    to: EVT-REP-999
+
+  - from: PROC-REP-290
+    to: EVT-REP-999
+
+  - from: PROC-REP-170
+    to: PROC-REP-300
+    condition: Cancelar Detalle
+
+  - from: PROC-REP-300
+    to: PROC-REP-211
+
+  - from: PROC-REP-170
+    to: PROC-REP-305
+    condition: Cancelar Orden
+
+  - from: PROC-REP-305
+    to: PROC-REP-211

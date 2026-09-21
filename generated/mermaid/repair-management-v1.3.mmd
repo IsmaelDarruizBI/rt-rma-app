@@ -1,0 +1,135 @@
+%% AUTO-GENERATED FILE.
+%% DO NOT EDIT MANUALLY.
+%% SOURCE: business/processes/repair-management-v1.3.yaml
+
+flowchart TD
+    EVT-REP-001{{"Surge necesidad de reparacion"}}
+    PROC-REP-010{"Cual es el origen de la Orden de Reparacion"}
+    PROC-REP-020["Recibir referencia y contexto del equipo RT"]
+    PROC-REP-025["Recibir referencia de garantia de venta RT"]
+    PROC-REP-030["Registrar cliente y equipo"]
+    PROC-REP-035["Identificar reparacion original en garantia"]
+    PROC-REP-040["Crear Orden de Reparacion"]
+    PROC-REP-045{"Se conocen los Detalles de reparacion requeridos"}
+    PROC-REP-050{"Requiere comprobante de recepcion"}
+    PROC-REP-055["Marcar Orden en revision"]
+    PROC-REP-060["Generar comprobante de recepcion"]
+    PROC-REP-065["Realizar revision tecnica"]
+    PROC-REP-068{"Se pudo definir la reparacion requerida"}
+    PROC-REP-069["Registrar finalizacion sin reparacion"]
+    PROC-REP-070["Definir Detalles de reparacion requeridos"]
+    PROC-REP-075["Definir Detalles de reparacion luego de revision"]
+    PROC-REP-080["Validar factibilidad por Detalle"]
+    PROC-REP-090{"Existe al menos un Detalle trabajable"}
+    PROC-REP-100["Registrar advertencia de faltante"]
+    PROC-REP-110{"Usuario autorizado fuerza el Detalle bloqueado"}
+    PROC-REP-120["Detalle(s) pendientes por recursos"]
+    PROC-REP-130["Registrar override"]
+    PROC-REP-140["Habilitar Orden de Reparacion"]
+    PROC-REP-150["Definir prioridad"]
+    PROC-REP-170["Ingresar orden a cola de trabajo"]
+    PROC-REP-172["Validar estacion de trabajo"]
+    PROC-REP-180["Tomar Orden de Reparacion"]
+    PROC-REP-181["Seleccionar Detalle a trabajar"]
+    PROC-REP-174{"Estacion habilitada para el Detalle seleccionado"}
+    PROC-REP-176["Registrar advertencia de estacion incompatible (Detalle)"]
+    PROC-REP-178{"Usuario autorizado fuerza continuidad (Detalle)"}
+    PROC-REP-179["Registrar override de estacion (Detalle)"]
+    PROC-REP-185["Reservar insumos e iniciar Ejecucion del Detalle"]
+    PROC-REP-186["Registrar reserva fallida (Detalle bloqueado por recursos)"]
+    PROC-REP-190["Ejecutar Detalle"]
+    PROC-REP-200["Registrar ejecucion real del Detalle"]
+    PROC-REP-210["Generar movimientos de inventario"]
+    PROC-REP-211{"Evaluar situacion de la Orden"}
+    PROC-REP-220["Realizar control tecnico"]
+    PROC-REP-230{"Todos los Detalles fueron aprobados"}
+    PROC-REP-235["Identificar Detalle(s) a retrabajar"]
+    PROC-REP-245["Calcular puntaje de la reparacion"]
+    PROC-REP-240["Marcar reparacion lista"]
+    PROC-REP-250{"Requiere entrega a cliente"}
+    PROC-REP-260["Notificar cliente"]
+    PROC-REP-280["Generar comprobante final"]
+    PROC-REP-265{"Completar cobro - validar condicion de entrega (saldo)"}
+    PROC-REP-266["Orden con saldo pendiente (entrega bloqueada)"]
+    PROC-REP-270["Entregar equipo"]
+    PROC-REP-290["Informar resultado al sistema RT"]
+    PROC-REP-300["Cancelar Detalle"]
+    PROC-REP-305["Cancelar Orden / trabajos pendientes"]
+    EVT-REP-999((("Fin del flujo de Orden de Reparacion")))
+
+    EVT-REP-001 --> PROC-REP-010
+    PROC-REP-010 -->|CLIENTE_EXTERNO| PROC-REP-030
+    PROC-REP-010 -->|RT_INTERNO| PROC-REP-020
+    PROC-REP-010 -->|RT_GARANTIA_VENTA| PROC-REP-025
+    PROC-REP-010 -->|RMA_GARANTIA_REPARACION| PROC-REP-035
+    PROC-REP-020 --> PROC-REP-040
+    PROC-REP-025 --> PROC-REP-040
+    PROC-REP-030 --> PROC-REP-040
+    PROC-REP-035 --> PROC-REP-040
+    PROC-REP-040 --> PROC-REP-045
+    PROC-REP-045 -->|Si| PROC-REP-070
+    PROC-REP-045 -->|No| PROC-REP-055
+    PROC-REP-070 --> PROC-REP-050
+    PROC-REP-055 --> PROC-REP-050
+    PROC-REP-050 -->|Si| PROC-REP-060
+    PROC-REP-050 -->|No - Detalles definidos| PROC-REP-080
+    PROC-REP-050 -->|No - aun en revision| PROC-REP-065
+    PROC-REP-060 -->|Detalles definidos| PROC-REP-080
+    PROC-REP-060 -->|Aun en revision| PROC-REP-065
+    PROC-REP-065 --> PROC-REP-068
+    PROC-REP-068 -->|Si| PROC-REP-075
+    PROC-REP-068 -->|No| PROC-REP-069
+    PROC-REP-069 --> PROC-REP-250
+    PROC-REP-075 --> PROC-REP-080
+    PROC-REP-080 --> PROC-REP-090
+    PROC-REP-090 -->|Existe Detalle trabajable| PROC-REP-140
+    PROC-REP-090 -->|Ninguno trabajable| PROC-REP-100
+    PROC-REP-100 --> PROC-REP-110
+    PROC-REP-110 -->|No| PROC-REP-120
+    PROC-REP-110 -->|Si| PROC-REP-130
+    PROC-REP-120 -->|Revalidar| PROC-REP-080
+    PROC-REP-130 --> PROC-REP-140
+    PROC-REP-140 --> PROC-REP-150
+    PROC-REP-150 --> PROC-REP-170
+    PROC-REP-170 --> PROC-REP-172
+    PROC-REP-172 -->|Valida y compatible| PROC-REP-180
+    PROC-REP-172 -->|Sesion o estacion invalida| PROC-REP-170
+    PROC-REP-172 -->|Sin Detalle compatible| PROC-REP-170
+    PROC-REP-180 --> PROC-REP-181
+    PROC-REP-181 --> PROC-REP-174
+    PROC-REP-174 -->|Si| PROC-REP-185
+    PROC-REP-174 -->|No| PROC-REP-176
+    PROC-REP-176 --> PROC-REP-178
+    PROC-REP-178 -->|Si| PROC-REP-179
+    PROC-REP-178 -->|No| PROC-REP-181
+    PROC-REP-179 --> PROC-REP-185
+    PROC-REP-185 -->|Reserva exitosa| PROC-REP-190
+    PROC-REP-185 -->|Reserva fallida| PROC-REP-186
+    PROC-REP-186 --> PROC-REP-211
+    PROC-REP-190 --> PROC-REP-200
+    PROC-REP-200 -->|Completado| PROC-REP-210
+    PROC-REP-200 -->|Interrumpido| PROC-REP-210
+    PROC-REP-210 --> PROC-REP-211
+    PROC-REP-211 -->|Existe Detalle trabajable| PROC-REP-181
+    PROC-REP-211 -->|Todos terminales, existe completo| PROC-REP-220
+    PROC-REP-211 -->|Todos cancelados| EVT-REP-999
+    PROC-REP-211 -->|Bloqueado, sin trabajable| PROC-REP-170
+    PROC-REP-220 --> PROC-REP-230
+    PROC-REP-230 -->|No| PROC-REP-235
+    PROC-REP-230 -->|Si| PROC-REP-245
+    PROC-REP-235 --> PROC-REP-211
+    PROC-REP-245 --> PROC-REP-240
+    PROC-REP-240 --> PROC-REP-250
+    PROC-REP-250 -->|Si| PROC-REP-260
+    PROC-REP-250 -->|No| PROC-REP-290
+    PROC-REP-260 --> PROC-REP-280
+    PROC-REP-280 --> PROC-REP-265
+    PROC-REP-265 -->|Si| PROC-REP-270
+    PROC-REP-265 -->|No| PROC-REP-266
+    PROC-REP-266 -->|Revalidar| PROC-REP-265
+    PROC-REP-270 --> EVT-REP-999
+    PROC-REP-290 --> EVT-REP-999
+    PROC-REP-170 -->|Cancelar Detalle| PROC-REP-300
+    PROC-REP-300 --> PROC-REP-211
+    PROC-REP-170 -->|Cancelar Orden| PROC-REP-305
+    PROC-REP-305 --> PROC-REP-211

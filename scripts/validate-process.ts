@@ -3,13 +3,20 @@
  *
  * This is structural validation only (shape of the YAML). It does not
  * check cross-file references (actors, rules, or edge from/to targets).
+ *
+ * The process file to validate is parameterizable via an optional CLI arg
+ * (`tsx scripts/validate-process.ts [processFile]`), so this one script
+ * validates any process revision - e.g. PROC-REP V1.2 (default, no arg,
+ * for backward compatibility) or the V1.3 draft - without duplicating
+ * this logic per version.
  */
 import { readFileSync } from "node:fs";
 import Ajv from "ajv";
 import { parse } from "yaml";
 
 const SCHEMA_FILE = "business/schemas/process.schema.json";
-const PROCESS_FILE = "business/processes/repair-management.yaml";
+const DEFAULT_PROCESS_FILE = "business/processes/repair-management.yaml";
+const PROCESS_FILE = process.argv[2] ?? DEFAULT_PROCESS_FILE;
 
 function main(): void {
   const schema = JSON.parse(readFileSync(SCHEMA_FILE, "utf8"));

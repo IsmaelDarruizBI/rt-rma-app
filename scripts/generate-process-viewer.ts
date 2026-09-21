@@ -15,9 +15,22 @@
  * Mermaid is embedded inline (from node_modules/mermaid) so the generated
  * HTML also works offline, e.g. on a notebook in a meeting room with no
  * reliable network.
+ *
+ * All four source files are parameterizable via optional positional CLI
+ * args (`tsx scripts/generate-process-viewer.ts [processFile] [rulesFile]
+ * [actorsFile] [featuresFile]`), the same convention as
+ * validate-references.ts, so this one script also generates the viewer
+ * for a draft revision (e.g. PROC-REP V1.3, which has its own process +
+ * rules files and, deliberately, no Features yet). The output filename is
+ * derived from the process file's stem: the default (no args, V1.2)
+ * keeps producing exactly `generated/viewer/repair-management.html` as
+ * before; an explicit V1.3 process file produces a sibling
+ * `repair-management-v1.3.html`. When no Features file is resolved, the
+ * Feature selector/highlighting UI is omitted from the generated page
+ * entirely rather than rendering an empty/broken control.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
   buildClickDirectives,
   buildFlowchartBody,
@@ -29,12 +42,23 @@ import {
 } from "./lib/process-model";
 import type { FeatureDefinition, FeatureModel, FeatureScope } from "./lib/feature-model";
 
-const PROCESS_FILE = join("business", "processes", "repair-management.yaml");
-const ACTORS_FILE = join("business", "actors", "actors.yaml");
-const RULES_FILE = join("business", "rules", "business-rules.yaml");
-const FEATURES_FILE = join("business", "features", "repair-management-features.yaml");
+const DEFAULT_PROCESS_FILE = join("business", "processes", "repair-management.yaml");
+const DEFAULT_ACTORS_FILE = join("business", "actors", "actors.yaml");
+const DEFAULT_RULES_FILE = join("business", "rules", "business-rules.yaml");
+const DEFAULT_FEATURES_FILE = join("business", "features", "repair-management-features.yaml");
 const MERMAID_LIB_FILE = join("node_modules", "mermaid", "dist", "mermaid.min.js");
-const OUTPUT_FILE = join("generated", "viewer", "repair-management.html");
+
+const cliArgs = process.argv.slice(2);
+const isDefaultRun = cliArgs.length === 0;
+
+const PROCESS_FILE = cliArgs[0] ?? DEFAULT_PROCESS_FILE;
+const RULES_FILE = cliArgs[1] ?? DEFAULT_RULES_FILE;
+const ACTORS_FILE = cliArgs[2] ?? DEFAULT_ACTORS_FILE;
+// See validate-references.ts for the same convention: zero-arg run keeps
+// V1.2's Features; an explicit run without a 4th arg means "no Features
+// for this revision yet", not "fall back to V1.2's".
+const FEATURES_FILE: string | null = isDefaultRun ? DEFAULT_FEATURES_FILE : cliArgs[3] || null;
+const OUTPUT_FILE = join("generated", "viewer", `${basename(PROCESS_FILE, ".yaml")}.html`);
 
 const CLICK_CALLBACK = "selectNode";
 
@@ -889,7 +913,7 @@ const CLIENT_SCRIPT = `
   function activateFeature(featureId) {
     ACTIVE_FEATURE_ID = featureId || null;
     var select = document.getElementById("feature-select");
-    if (select.value !== (ACTIVE_FEATURE_ID || "")) select.value = ACTIVE_FEATURE_ID || "";
+    if (select && select.value !== (ACTIVE_FEATURE_ID || "")) select.value = ACTIVE_FEATURE_ID || "";
 
     if (ACTIVE_FEATURE_ID) {
       renderFeatureDetail(ACTIVE_FEATURE_ID);
@@ -907,7 +931,11 @@ const CLIENT_SCRIPT = `
   }
 
   function wireFeatureSelect() {
-    document.getElementById("feature-select").addEventListener("change", function (event) {
+    // Omitted entirely for a process revision with no Features yet (e.g.
+    // a draft under review, see featureSelectorMarkup in buildHtml()).
+    var select = document.getElementById("feature-select");
+    if (!select) return;
+    select.addEventListener("change", function (event) {
       activateFeature(event.target.value || null);
     });
   }
@@ -1165,6 +1193,9 @@ function buildHtml(
 
   // Options only - never assume how many Features exist or which ids they
   // have; regenerating after a FEAT-REP-008 is added just adds an <option>.
+  // The whole selector is omitted below when this revision has no
+  // Features yet (e.g. a draft process version), instead of rendering an
+  // empty/pointless dropdown.
   const featureOptions = resolvedFeatures
     .map(
       (feature) =>
@@ -1172,14 +1203,26 @@ function buildHtml(
     )
     .join("\n        ");
 
+  const featureSelectorMarkup =
+    resolvedFeatures.length > 0
+      ? `<span class="toolbar-divider" aria-hidden="true"></span>
+        <label class="feature-select-label" for="feature-select">Vista:</label>
+        <select id="feature-select" title="Filtrar el diagrama por Feature">
+          <option value="">Todas las Features</option>
+        ${featureOptions}
+        </select>`
+      : "";
+
+  const sourceLines = [PROCESS_FILE, ACTORS_FILE, RULES_FILE, FEATURES_FILE]
+    .filter((file): file is string => Boolean(file))
+    .map((file) => `  - ${file.replace(/\\/g, "/")}`)
+    .join("\n");
+
   return `<!--
   AUTO-GENERATED FILE.
   DO NOT EDIT MANUALLY.
   SOURCE:
-  - ${PROCESS_FILE.replace(/\\/g, "/")}
-  - ${ACTORS_FILE.replace(/\\/g, "/")}
-  - ${RULES_FILE.replace(/\\/g, "/")}
-  - ${FEATURES_FILE.replace(/\\/g, "/")}
+${sourceLines}
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -1217,12 +1260,7 @@ function buildHtml(
         <span class="toolbar-divider" aria-hidden="true"></span>
         <button id="mode-full" type="button" class="mode-btn active" aria-pressed="true">Contexto completo</button>
         <button id="mode-focus" type="button" class="mode-btn" aria-pressed="false" disabled title="Seleccione un nodo para habilitar el modo foco">Modo foco</button>
-        <span class="toolbar-divider" aria-hidden="true"></span>
-        <label class="feature-select-label" for="feature-select">Vista:</label>
-        <select id="feature-select" title="Filtrar el diagrama por Feature">
-          <option value="">Todas las Features</option>
-        ${featureOptions}
-        </select>
+        ${featureSelectorMarkup}
       </div>
       <div id="diagram-inner">Cargando diagrama...</div>
       <details id="legend" class="legend-panel">
@@ -1250,7 +1288,7 @@ function main(): void {
   const model = loadYaml<ProcessModel>(PROCESS_FILE);
   const actors = loadYaml<{ actors: Actor[] }>(ACTORS_FILE).actors;
   const rules = loadYaml<{ rules: BusinessRule[] }>(RULES_FILE).rules;
-  const features = loadYaml<FeatureModel>(FEATURES_FILE).features;
+  const features = FEATURES_FILE ? loadYaml<FeatureModel>(FEATURES_FILE).features : [];
 
   const actorsById = new Map(actors.map((actor) => [actor.id, actor]));
   const rulesById = new Map(rules.map((rule) => [rule.id, rule]));
