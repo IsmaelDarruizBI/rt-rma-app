@@ -1,7 +1,8 @@
 # Features funcionales de PROC-REP V1.3 (Gestion de Ordenes de Reparacion).
 # Etapa: Feature Definition. Convive con
-# business/features/repair-management-features.yaml (Features de PROC-REP
-# V1.2, aprobada), que permanece intacta: este archivo es la
+# business/features/repair-management-features.yaml (Features basadas en
+# PROC-REP V1.2 -approved-; esas Features en si permanecen en status:
+# draft, sin cambios), que permanece intacta: este archivo es la
 # descomposicion funcional independiente de la V1.3 draft
 # (business/processes/repair-management-v1.3.yaml,
 # business/rules/business-rules-v1.3.yaml). Todas las Features aqui estan
@@ -685,10 +686,11 @@ features:
     inputs:
       - Detalle no terminal (PENDIENTE, sin Ejecucion activa)
       - Orden con Detalles no terminales pendientes de cancelar
-      - Movimientos de inventario del Detalle ya reconciliados
-        (CONSUMIDO/LIBERADO/DESPERDICIO), producidos por FEAT-REP-005/
-        PROC-REP-210 antes de que el Detalle pueda ser candidato a
-        cancelacion
+      - Estado de reservas del Detalle verificado, sin reservas activas
+        (si el Detalle tuvo Ejecuciones previas, sus movimientos ya
+        fueron reconciliados -CONSUMIDO/LIBERADO/DESPERDICIO- por
+        FEAT-REP-005/PROC-REP-210; si nunca tuvo Ejecucion ni reserva, no
+        hay nada que reconciliar)
 
     outputs:
       - Detalle cancelado, conservando Tipo, precio snapshot e historial
@@ -719,11 +721,14 @@ features:
           (requiere cierre/interrupcion previa)
         - Preservar los Detalles COMPLETO al cancelar el resto de la
           Orden
-        - Exigir, como precondicion, que el Detalle no conserve reservas
-          activas de inventario antes de dejarlo CANCELADO (verificacion
-          de precondicion, no ejecucion de la reconciliacion)
-        - Preservar los movimientos de inventario ya reconciliados por
-          FEAT-REP-005/PROC-REP-210, sin reescribirlos
+        - Verificar, como precondicion y sin ejecutar la reconciliacion,
+          que el Detalle no conserve reservas activas de inventario antes
+          de dejarlo CANCELADO -si tuvo Ejecuciones previas, sus
+          movimientos ya fueron reconciliados por FEAT-REP-005/
+          PROC-REP-210; si nunca tuvo Ejecucion ni reserva, no hay nada
+          que reconciliar-
+        - Preservar los movimientos de inventario ya reconciliados,
+          cuando el Detalle tuvo Ejecuciones previas, sin reescribirlos
         - Preservar el historial completo (Ejecuciones, insumos,
           movimientos, precios, pagos, auditoria)
         - Recalcular la situacion de la Orden mediante el resolver
