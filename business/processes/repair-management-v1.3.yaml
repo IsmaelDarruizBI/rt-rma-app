@@ -20,7 +20,10 @@
 # Detalle por Detalle. Reemplaza el modo EXCLUSIVA/ABIERTA de V1.2 (ver
 # BR-REP-007 V1.3) por una regla mas simple y realista: como maximo una
 # Ejecucion activa por Orden en todo momento (la Orden representa un unico
-# equipo fisico).
+# equipo fisico). La toma/participacion de la Orden en si es un concepto
+# aparte, tambien unico por Orden en simultaneo (BR-REP-018 V1.3): se
+# libera explicitamente por decision del tecnico o automaticamente cuando
+# ya no queda ningun Detalle trabajable.
 #
 # El estado tecnico agregado de la Orden (SIN_DETALLES / EN_EJECUCION /
 # ABIERTA_TRABAJABLE / REQUIERE_REVISION / PENDIENTE_RECURSOS / COMPLETA /
@@ -43,6 +46,25 @@
 # alcance de la cascada de cancelacion sobre Detalles COMPLETO) quedaron
 # resueltos como definiciones funcionales y estan reflejados en los nodos
 # 186, 172, 300/305 y en BR-REP-014.
+#
+# Commit correctivo posterior sobre este draft (4 correcciones aprobadas,
+# sin alterar V1.2 ni Features): (1) PENDIENTE_RECURSOS y REQUIERE_REVISION
+# dejan de volver a EN_COLA (PROC-REP-170) directamente: PROC-REP-211 ahora
+# las distingue y las dirige a sus propios circuitos de espera/revalidacion
+# (PROC-REP-120 revalida directo via PROC-REP-080; PROC-REP-125 revalida
+# via los nuevos PROC-REP-126/127, porque PROC-REP-080 no puede resolver
+# por si solo la condicion REQUIERE_DEFINICION de un Detalle), sin
+# mezclarse entre si ni con el estado de workflow EN_REVISION; (2)
+# SIN_REPARACION se redefine sin "Diagnostico cobrable" (concepto que no
+# existe en V1.3):
+# implica Subtotal = 0 (PROC-REP-069, PROC-REP-280, BR-REP-010); (3) se
+# formaliza la toma/participacion activa de la Orden como concepto propio,
+# distinto de la Ejecucion activa: como maximo una toma activa por Orden,
+# con decision explicita de continuar o liberar (PROC-REP-180, nuevos
+# PROC-REP-212/213, nueva BR-REP-018); (4) el comprobante final
+# (PROC-REP-280) se genera despues de completar el cobro (PROC-REP-265), no
+# antes, para reflejar siempre el saldo definitivo al momento de la
+# entrega.
 #
 # Deliberadamente sigue sin definir en V1.3 (igual que en V1.2, mas los
 # temas nuevos que este cambio introdujo): flujo completo de
@@ -249,16 +271,22 @@ nodes:
     description: >
       La revision tecnica no permitio determinar ningun Detalle de
       reparacion. La Orden fue procesada correctamente pero concluye sin
-      que se haya realizado una reparacion: resultado SIN_REPARACION.
-      SIN_REPARACION es independiente del estado tecnico/workflow de la
-      Orden (ver BR-REP-010 V1.3): puede coexistir con un importe
-      cobrable si existio, por ejemplo, un Detalle de Diagnostico COMPLETO
-      y cobrable. SIN_REPARACION no equivale a CANCELADA (una Orden
-      cancelada fue interrumpida; una Orden SIN_REPARACION fue procesada
-      hasta su fin sin necesitar o poder realizarse una reparacion). El
-      motivo es obligatorio; ejemplos conceptuales: no se pudo determinar
-      la falla, equipo no reparable, reparacion no disponible, otro. No se
-      define todavia un catalogo rigido de motivos.
+      que se haya definido ni realizado ninguna reparacion: resultado
+      SIN_REPARACION. En V1.3 no existe Diagnostico cobrable: la revision
+      tecnica (PROC-REP-065) puede realizarse para determinar que
+      reparacion necesita el equipo, pero no es por si misma un Detalle de
+      Reparacion, no genera precio ni Subtotal, y no se crea un Tipo de
+      Reparacion "Diagnostico" en V1.3. Por lo tanto SIN_REPARACION implica
+      Subtotal = 0: no existe reparacion realizada ni importe cobrable
+      asociado (BR-REP-010 V1.3). Si en el futuro Rosario Tecno decide
+      cobrar el diagnostico, sera una nueva regla/capacidad a diseñar,
+      fuera de alcance de V1.3. SIN_REPARACION no equivale a CANCELADA (una
+      Orden cancelada fue interrumpida; una Orden SIN_REPARACION fue
+      procesada hasta su fin sin necesitar o poder realizarse una
+      reparacion). El motivo es obligatorio; ejemplos conceptuales: no se
+      pudo determinar la falla, equipo no reparable, reparacion no
+      disponible, otro. No se define todavia un catalogo rigido de
+      motivos.
     outputs:
       - Resultado SIN_REPARACION
       - Motivo (obligatorio)
@@ -359,7 +387,88 @@ nodes:
       README.md). Esto no es una transicion manual de "toda la Orden
       espera": es la consecuencia derivada de la situacion de sus
       Detalles, y deja de aplicar en cuanto cualquier Detalle se vuelva
-      trabajable (por disponibilidad real o por override).
+      trabajable (por disponibilidad real o por override). Se alcanza
+      tanto desde la validacion inicial de factibilidad
+      (PROC-REP-090/100/110) como, en V1.3, desde una reevaluacion
+      posterior (PROC-REP-211) tras una Ejecucion, un rechazo de control o
+      una cancelacion: en ningun caso una Orden PENDIENTE_RECURSOS vuelve
+      directamente a EN_COLA (PROC-REP-170); permanece esperando hasta que
+      un evento de revalidacion (por ejemplo, cambio de disponibilidad de
+      insumos) dispare nuevamente PROC-REP-080. No debe confundirse con
+      REQUIERE_REVISION (PROC-REP-125): son dos agregados distintos.
+
+  - id: PROC-REP-125
+    type: activity
+    name: Detalle(s) pendientes de revision tecnica
+    actor: ACT-SYSTEM
+    description: >
+      Nodo nuevo en V1.3, analogo a PROC-REP-120 pero para la dimension
+      distinta de bloqueo: mientras ningun Detalle de la Orden sea
+      trabajable y exista al menos uno que requiere revision
+      (requiere_revision = true), el resolver de estado de Orden determina
+      el agregado tecnico REQUIERE_REVISION (BR-REP-012). REQUIERE_REVISION
+      es deliberadamente distinto del estado de workflow EN_REVISION (ver
+      docs/discovery/README.md - "Resolver de estado de Orden"): no se
+      mezclan entre si. Una Orden REQUIERE_REVISION tampoco vuelve
+      directamente a EN_COLA (PROC-REP-170): permanece en este circuito de
+      revision tecnica posterior hasta que se complete la definicion
+      pendiente de ese Detalle en particular. No reutiliza el circuito
+      inicial de revision de la Orden completa (PROC-REP-050, 055, 060,
+      065, 068, 069): ese circuito narra el caso "la Orden todavia no
+      tiene ningun Detalle" y, entre otras cosas, puede regenerar el
+      comprobante de recepcion o concluir la Orden entera en
+      SIN_REPARACION -efectos que no corresponden aqui, donde ya existen
+      uno o mas Detalles definidos y lo pendiente es solo sobre alguno en
+      particular-. Se alcanza desde PROC-REP-211 cuando el resolver
+      devuelve REQUIERE_REVISION. A diferencia de PROC-REP-120 (donde la
+      revalidacion es directamente PROC-REP-080, porque el bloqueo es de
+      disponibilidad de insumos), aqui PROC-REP-080 no puede resolver la
+      causa: un Detalle con condicion REQUIERE_DEFINICION primero necesita
+      una accion tecnica que le quite esa condicion (PROC-REP-126,
+      PROC-REP-127) antes de que tenga sentido validar su factibilidad. La
+      espera representa un evento posterior -que se realice la revision
+      tecnica pendiente de ese Detalle-, nunca un loop inmediato
+      automatico.
+    rules:
+      - BR-REP-012
+
+  - id: PROC-REP-126
+    type: activity
+    name: Realizar revision tecnica de Detalle pendiente
+    actor: ACT-TECH
+    description: >
+      Nodo nuevo en V1.3, analogo a PROC-REP-065 pero acotado a un unico
+      Detalle EXISTENTE marcado REQUIERE_DEFINICION -no a la Orden
+      completa sin Detalles-. El tecnico revisa/diagnostica
+      especificamente ese Detalle pendiente y registra el resultado de la
+      revision, que queda trazado en el historial de ese mismo Detalle:
+      no se crea un Detalle nuevo. No regenera el comprobante de
+      recepcion ni reevalua el origen de la Orden -eso pertenece
+      unicamente al circuito inicial (PROC-REP-050 a 069), que no se
+      reutiliza aqui-.
+    outputs:
+      - Resultado de revision tecnica del Detalle
+
+  - id: PROC-REP-127
+    type: activity
+    name: Definir/actualizar reparacion del Detalle
+    actor: ACT-RECEP
+    description: >
+      Nodo nuevo en V1.3, analogo a PROC-REP-070/075 pero acotado a
+      actualizar un Detalle YA EXISTENTE -no crea uno nuevo-: a partir del
+      resultado de PROC-REP-126, se define o actualiza el Tipo de
+      Reparacion del Detalle pendiente y su precio snapshot vigente
+      (BR-REP-015), y se quita la condicion REQUIERE_DEFINICION de ese
+      Detalle cuando corresponda -pasa a SIN_BLOQUEO, salvo que ademas
+      resulte BLOQUEADO_POR_RECURSOS, lo que recien se determina en
+      PROC-REP-080-. El Detalle conserva su identidad e historial
+      completo (incluida la revision de PROC-REP-126).
+    inputs:
+      - Resultado de revision tecnica del Detalle
+    outputs:
+      - Detalle actualizado con Tipo de Reparacion y precio snapshot
+    rules:
+      - BR-REP-001
 
   - id: PROC-REP-130
     type: activity
@@ -442,16 +551,27 @@ nodes:
     name: Tomar Orden de Reparacion
     actor: ACT-TECH
     description: >
-      El tecnico inicia una sesion de trabajo sobre la Orden luego de
-      superar PROC-REP-172. A diferencia de V1.2, esto no implica
-      posesion exclusiva ni un modo EXCLUSIVA/ABIERTA: distintos tecnicos
-      pueden tomar la misma Orden en distintos momentos (nunca al mismo
-      tiempo, BR-REP-007). Debe quedar registrado conceptualmente la
-      Orden, el Tecnico, la Estacion y la fecha/hora, como parte del
-      historial de participacion sobre la Orden. A continuacion el
-      tecnico selecciona un Detalle especifico para trabajar
-      (PROC-REP-181): tomar la Orden no inicia por si sola ninguna
-      Ejecucion.
+      El tecnico toma la Orden completa -no solo un Detalle- al superar
+      PROC-REP-172: se abre una toma/participacion activa (Orden +
+      Tecnico + Estacion + fecha/hora de inicio), como maximo UNA por
+      Orden en simultaneo (BR-REP-018 V1.3, distinto pero complementario
+      de BR-REP-007 que limita a una Ejecucion activa). A diferencia de
+      V1.2, esto no implica posesion exclusiva de por vida ni un modo
+      EXCLUSIVA/ABIERTA: distintos tecnicos pueden tomar la misma Orden en
+      distintos momentos (nunca al mismo tiempo). Mientras la toma este
+      activa, el tecnico puede seleccionar y trabajar varios Detalles de
+      la misma Orden sin volver a tomarla (PROC-REP-181 -> ... ->
+      PROC-REP-211 -> PROC-REP-212 "Si"). La toma se cierra explicitamente
+      cuando el tecnico decide liberar la Orden (PROC-REP-212 "No" ->
+      PROC-REP-213), o automaticamente cuando el resolver determina que ya
+      no queda ningun Detalle trabajable (Orden pasa a COMPLETA,
+      PENDIENTE_RECURSOS, REQUIERE_REVISION o TODO_CANCELADO). El
+      historial completo de participaciones se conserva siempre. A
+      continuacion el tecnico selecciona un Detalle especifico para
+      trabajar (PROC-REP-181): tomar la Orden no inicia por si sola
+      ninguna Ejecucion.
+    rules:
+      - BR-REP-018
 
   - id: PROC-REP-181
     type: activity
@@ -616,17 +736,57 @@ nodes:
       cancelar la Orden (PROC-REP-305). No implementa una regla nueva:
       reutiliza la misma politica de prioridad ya usada en PROC-REP-090,
       evitando duplicar la logica en cada punto donde hace falta
-      re-evaluar. Resultados posibles: existe Detalle trabajable (vuelve
-      a PROC-REP-181); todos terminales con al menos uno COMPLETO (avanza
-      a PROC-REP-220, sin importar si los demas Detalles quedaron
-      CANCELADO -incluso viniendo de PROC-REP-305, una cancelacion de
-      Orden con algun Detalle ya COMPLETO no impide continuar hacia
-      control-); todos CANCELADO sin ningun COMPLETO (la Orden pasa a
-      CANCELADA, EVT-REP-999); ninguno trabajable pero tampoco todos
-      terminales -bloqueado por revision o por recursos- (vuelve a
-      PROC-REP-170, disponible/en espera).
+      re-evaluar. Resultados posibles: (a) existe Detalle trabajable Y la
+      Orden tiene una toma/participacion activa del tecnico actual ->
+      pregunta si continua o libera la Orden (PROC-REP-212, BR-REP-018);
+      (b) existe Detalle trabajable pero NO hay toma activa -> vuelve
+      directamente a PROC-REP-170, disponible para que cualquier tecnico
+      la tome; (c) todos terminales con al menos uno COMPLETO -> avanza a
+      PROC-REP-220, sin importar si los demas Detalles quedaron CANCELADO
+      (incluso viniendo de PROC-REP-305, una cancelacion de Orden con
+      algun Detalle ya COMPLETO no impide continuar hacia control); (d)
+      todos CANCELADO sin ningun COMPLETO -> la Orden pasa a CANCELADA,
+      EVT-REP-999; (e) ninguno trabajable por bloqueo de recursos ->
+      PENDIENTE_RECURSOS, PROC-REP-120; (f) ninguno trabajable por
+      requerir revision -> REQUIERE_REVISION, PROC-REP-125.
+      PENDIENTE_RECURSOS y REQUIERE_REVISION nunca vuelven a EN_COLA
+      directamente: son dos agregados distintos y no se mezclan entre si
+      ni con el estado de workflow EN_REVISION. En los casos (c), (d), (e)
+      y (f), si existia una toma/participacion activa, el sistema la
+      cierra automaticamente (BR-REP-018): no se pregunta "continuar con
+      otro Detalle" porque no queda ninguno trabajable.
     rules:
       - BR-REP-012
+
+  - id: PROC-REP-212
+    type: decision
+    name: Tecnico desea continuar trabajando esta Orden
+    description: >
+      Nodo nuevo en V1.3. Solo se alcanza cuando PROC-REP-211 determina
+      que existe al menos un Detalle trabajable Y la Orden todavia tiene
+      una toma/participacion activa del tecnico actual (PROC-REP-180,
+      BR-REP-018). No se libera automaticamente una Orden trabajable solo
+      porque termino un Detalle: la decision de continuar con otro
+      Detalle o liberar la Orden es una accion explicita del tecnico.
+    rules:
+      - BR-REP-018
+
+  - id: PROC-REP-213
+    type: activity
+    name: Liberar Orden de Reparacion
+    actor: ACT-TECH
+    description: >
+      Nodo nuevo en V1.3. El tecnico decide no continuar trabajando la
+      Orden (PROC-REP-212 = No): se cierra la participacion/toma activa
+      registrada en PROC-REP-180, registrando fecha/hora de fin
+      (BR-REP-018). La Orden vuelve a EN_COLA (PROC-REP-170), disponible
+      para que el mismo u otro tecnico la tome nuevamente pasando otra vez
+      por PROC-REP-172/PROC-REP-180. Nunca se sobrescribe el historial de
+      participaciones anteriores.
+    outputs:
+      - Fecha/hora de fin de participacion
+    rules:
+      - BR-REP-018
 
   - id: PROC-REP-220
     type: activity
@@ -730,15 +890,23 @@ nodes:
     name: Generar comprobante final
     actor: ACT-SYSTEM
     description: >
-      Se genera el documento final que informa el trabajo efectivamente
-      realizado, desglosado por Detalle: Tipo de Reparacion, precio
-      snapshot, Detalles cancelados (excluidos del Subtotal pero
-      trazables), Ajustes Comerciales aplicados (por ejemplo cortesias),
-      Base Comercial, pagos registrados y saldo. Si la Orden tuvo
-      reparacion, el comprobante incluye ademas las condiciones y
-      vencimiento de la garantia de reparacion. Si el resultado de la
-      Orden es SIN_REPARACION, no se genera garantia de reparacion (pero
-      si puede haber un importe cobrable, ver PROC-REP-069).
+      Reubicado en V1.3: una version anterior de este borrador lo generaba
+      antes de completar el cobro (PROC-REP-265), lo que podia dejarlo
+      desactualizado si despues se registraba un pago final. Ahora se
+      genera recien despues de que PROC-REP-265 confirma que la condicion
+      de entrega esta cumplida (Saldo = 0, cortesia total, o condicion no
+      cobrable por origen), de modo que el saldo mostrado sea siempre el
+      definitivo al momento de la entrega. Documento final que informa el
+      trabajo efectivamente realizado, desglosado por Detalle: Tipo de
+      Reparacion, precio snapshot, Detalles cancelados (excluidos del
+      Subtotal pero trazables), Ajustes Comerciales aplicados (por ejemplo
+      cortesias), Base Comercial, Total Cobrable, todos los Pagos
+      registrados y Saldo final. Si la Orden tuvo reparacion, el
+      comprobante incluye ademas las condiciones y vencimiento de la
+      garantia de reparacion. Si el resultado de la Orden es
+      SIN_REPARACION, no se genera garantia de reparacion y el comprobante
+      refleja Subtotal = 0: no existe importe cobrable asociado
+      (PROC-REP-069, BR-REP-010).
     outputs:
       - Comprobante final con desglose de Detalles/Ajustes/pagos/saldo
       - Garantia de reparacion (unicamente si hubo reparacion)
@@ -752,11 +920,17 @@ nodes:
       los Detalles finales y calcula Saldo = Total Cobrable - Total
       Pagado (Total Pagado surge de los Pagos ya registrados en cualquier
       momento anterior mediante la capacidad transversal de Pago,
-      BR-REP-017-A). Antes de entregar el equipo a un cliente
-      (CLIENTE_EXTERNO), se valida que se cumpla al menos una de: Saldo
+      BR-REP-017-A). Se evalua antes de generar el comprobante final
+      (PROC-REP-280) y de entregar el equipo a un cliente
+      (CLIENTE_EXTERNO): se valida que se cumpla al menos una de: Saldo
       de la Orden = 0; cortesia total aplicada a la Orden; condicion no
       cobrable por origen (RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION).
       No existe override para entregar con deuda pendiente en V1.3.
+      Reubicado respecto de una version anterior de este borrador, que
+      generaba el comprobante final antes de este gate: eso podia dejarlo
+      desactualizado si despues se registraba un pago final; ahora el
+      comprobante (PROC-REP-280) se genera recien cuando esta validacion
+      aprueba, reflejando siempre el saldo definitivo.
     rules:
       - BR-REP-017
 
@@ -781,9 +955,10 @@ nodes:
     name: Entregar equipo
     actor: ACT-ADMIN
     description: >
-      Se entrega el equipo al cliente, una vez superada la validacion de
-      condicion de entrega (PROC-REP-265); la Orden pasa a ENTREGADA. Sin
-      cambios respecto de V1.2 salvo esa nueva precondicion.
+      Se entrega el equipo al cliente junto con el comprobante final
+      (PROC-REP-280), una vez superada la validacion de condicion de
+      entrega (PROC-REP-265); la Orden pasa a ENTREGADA. Sin cambios
+      respecto de V1.2 salvo esa nueva precondicion.
 
   - id: PROC-REP-290
     type: activity
@@ -981,6 +1156,16 @@ edges:
     to: PROC-REP-080
     condition: Revalidar
 
+  - from: PROC-REP-125
+    to: PROC-REP-126
+    condition: Revision tecnica
+
+  - from: PROC-REP-126
+    to: PROC-REP-127
+
+  - from: PROC-REP-127
+    to: PROC-REP-080
+
   - from: PROC-REP-130
     to: PROC-REP-140
 
@@ -1059,8 +1244,12 @@ edges:
     to: PROC-REP-211
 
   - from: PROC-REP-211
-    to: PROC-REP-181
-    condition: Existe Detalle trabajable
+    to: PROC-REP-212
+    condition: Existe Detalle trabajable, toma activa
+
+  - from: PROC-REP-211
+    to: PROC-REP-170
+    condition: Existe Detalle trabajable, sin toma activa
 
   - from: PROC-REP-211
     to: PROC-REP-220
@@ -1071,8 +1260,23 @@ edges:
     condition: Todos cancelados
 
   - from: PROC-REP-211
+    to: PROC-REP-120
+    condition: PENDIENTE_RECURSOS
+
+  - from: PROC-REP-211
+    to: PROC-REP-125
+    condition: REQUIERE_REVISION
+
+  - from: PROC-REP-212
+    to: PROC-REP-181
+    condition: Si
+
+  - from: PROC-REP-212
+    to: PROC-REP-213
+    condition: No
+
+  - from: PROC-REP-213
     to: PROC-REP-170
-    condition: Bloqueado, sin trabajable
 
   - from: PROC-REP-220
     to: PROC-REP-230
@@ -1103,14 +1307,14 @@ edges:
     condition: No
 
   - from: PROC-REP-260
-    to: PROC-REP-280
-
-  - from: PROC-REP-280
     to: PROC-REP-265
 
   - from: PROC-REP-265
-    to: PROC-REP-270
+    to: PROC-REP-280
     condition: Si
+
+  - from: PROC-REP-280
+    to: PROC-REP-270
 
   - from: PROC-REP-265
     to: PROC-REP-266

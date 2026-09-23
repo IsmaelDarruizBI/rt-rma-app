@@ -227,6 +227,49 @@ una regla mas simple: como maximo una Ejecucion activa por Orden en todo
 momento, porque la Orden representa un unico equipo fisico (BR-REP-007
 V1.3).
 
+## Toma y liberacion de Orden (participacion activa)
+
+Una Orden corresponde a un unico equipo fisico. Cuando un tecnico toma
+una Orden (PROC-REP-180), toma la Orden COMPLETA, no solamente un
+Detalle: existe como concepto funcional una toma/participacion activa
+(Orden + tecnico + estacion + fecha/hora de inicio). Como maximo puede
+existir UNA toma activa por Orden en simultaneo (BR-REP-018 V1.3) -esto
+es distinto pero complementario de BR-REP-007 (maximo una Ejecucion
+activa por Orden)-.
+
+```text
+Tecnico toma OR
+  -> queda registrada una participacion activa (Orden + tecnico + estacion + inicio)
+  -> selecciona Detalle (PROC-REP-181)
+  -> inicia Ejecucion, trabaja, completa/interrumpe
+  -> resolver recalcula (PROC-REP-211)
+```
+
+Si el resolver determina que sigue existiendo al menos un Detalle
+trabajable y la Orden continua tomada por el tecnico actual, se pregunta
+explicitamente (PROC-REP-212): **¿el tecnico desea continuar trabajando
+esta Orden?**
+
+- **Si** -> mantiene la toma activa y vuelve a seleccionar Detalle
+  (PROC-REP-181).
+- **No** -> PROC-REP-213 "Liberar Orden de Reparacion": cierra la
+  participacion activa (fecha/hora de fin), la Orden vuelve a EN_COLA
+  (PROC-REP-170), y otro tecnico -o el mismo- puede tomarla nuevamente
+  pasando otra vez por PROC-REP-172/PROC-REP-180.
+
+No se libera automaticamente una Orden trabajable solo porque termino un
+Detalle: la decision de continuar o liberar es siempre una accion
+explicita del tecnico. Distinto es el caso en que ya no queda ningun
+Detalle trabajable porque la Orden quedo COMPLETA, PENDIENTE_RECURSOS,
+REQUIERE_REVISION o TODO_CANCELADO: alli no se ofrece "continuar con otro
+Detalle", y la participacion activa se cierra automaticamente (no hay
+nada mas que preguntar).
+
+El historial completo de participaciones (quien tomo la Orden, cuando,
+desde que estacion, cuando la libero) se conserva siempre; nunca se
+sobrescribe. Este historial es la base sobre la que, a futuro, podra
+construirse reporting por tecnico (ver "Pendientes especificos de V1.3").
+
 ## Resolver de estado de Orden
 
 El estado tecnico agregado de la Orden nunca se fija manualmente: se
@@ -268,6 +311,51 @@ logica: PROC-REP-090 (gate inicial de habilitacion), PROC-REP-211
 Detalle o de cancelar los Detalles no terminales de la Orden) y,
 implicitamente, PROC-REP-172 (compatibilidad agregada de Estacion, que
 reutiliza `es_trabajable`).
+
+### Correccion: PENDIENTE_RECURSOS y REQUIERE_REVISION nunca vuelven a EN_COLA
+
+Una version anterior de este borrador hacia que PROC-REP-211, ante
+cualquier resultado "ninguno trabajable pero tampoco todos terminales",
+volviera a PROC-REP-170 (EN_COLA). Esto era incorrecto: una Orden
+PENDIENTE_RECURSOS o REQUIERE_REVISION no tiene ningun Detalle trabajable,
+por lo que no debe quedar disponible/tomable en la cola. Se corrigio
+separando ambos resultados en sus propios circuitos de espera:
+
+- **PENDIENTE_RECURSOS** -> PROC-REP-120 ("Detalle(s) pendientes por
+  recursos"). Permanece esperando hasta que ocurra un evento de
+  revalidacion (por ejemplo, cambio de disponibilidad de insumos), que
+  dispara nuevamente PROC-REP-080 ("Validar factibilidad por Detalle").
+  No es un loop inmediato automatico: es un re-ingreso disparado por un
+  evento posterior.
+- **REQUIERE_REVISION** -> PROC-REP-125 ("Detalle(s) pendientes de
+  revision tecnica"), nodo nuevo, analogo a PROC-REP-120 pero para la
+  dimension de revision en vez de recursos. A diferencia de
+  PENDIENTE_RECURSOS, aqui PROC-REP-080 no puede resolver la causa: valida
+  factibilidad/recursos, pero un Detalle con condicion REQUIERE_DEFINICION
+  necesita primero una accion tecnica que le quite esa condicion. Por eso
+  la espera continua hacia dos nodos nuevos, tambien acotados a ESE
+  Detalle en particular (no a la Orden completa):
+  - **PROC-REP-126** "Realizar revision tecnica de Detalle pendiente" -
+    analogo a PROC-REP-065, pero sobre un Detalle ya existente.
+  - **PROC-REP-127** "Definir/actualizar reparacion del Detalle" - analogo
+    a PROC-REP-070/075, actualiza el Tipo de Reparacion y precio snapshot
+    del Detalle existente y le quita la condicion REQUIERE_DEFINICION
+    cuando corresponde.
+
+  Recien despues de PROC-REP-127 se revalida factibilidad con
+  PROC-REP-080 (el Detalle ya definido). Deliberadamente NO se reutiliza
+  el circuito inicial de revision de la Orden completa (PROC-REP-050,
+  055, 060, 065, 068, 069): ese circuito asume que la Orden todavia no
+  tiene ningun Detalle, y reutilizarlo aqui podria regenerar
+  incorrectamente el comprobante de recepcion o convertir la revision de
+  un unico Detalle en SIN_REPARACION de toda la Orden -efectos que no
+  corresponden cuando ya existen uno o mas Detalles definidos y lo
+  pendiente es solo sobre alguno en particular-. El Detalle conserva su
+  identidad y su historial completo (incluida la revision de
+  PROC-REP-126): no se crea un Detalle nuevo.
+
+Ambos agregados siguen sin mezclarse entre si ni con el estado de
+workflow EN_REVISION (ver mas abajo).
 
 Hitos de **workflow** (explicitos, avanzan por eventos): REQUERIMIENTO,
 EN_REVISION (fijado por PROC-REP-045/PROC-REP-055, nunca por el
@@ -355,6 +443,32 @@ Son dos conceptos distintos que no deben confundirse (BR-REP-017):
 No modelar todos los pagos como si ocurrieran unicamente al final de la
 Orden, y no modelar la entrega sin este gate final de Saldo.
 
+### Comprobante final despues del cobro
+
+Corregido en este borrador: el comprobante final (PROC-REP-280) se
+genera **despues** de que PROC-REP-265 aprueba la condicion de entrega,
+no antes. Una version anterior lo generaba antes de completar el cobro,
+lo que podia dejarlo desactualizado si despues se registraba un pago
+final. Secuencia vigente, para CLIENTE_EXTERNO / entrega al cliente:
+
+```text
+REPARACION_LISTA (o SIN_REPARACION)
+  -> PROC-REP-260 Notificar cliente
+  -> PROC-REP-265 Completar cobro / validar saldo
+       -> No cumplida -> PROC-REP-266 registrar Pago(s) -> revalida PROC-REP-265
+       -> Si cumplida  -> PROC-REP-280 Generar comprobante final
+                        -> PROC-REP-270 Entregar equipo
+```
+
+El comprobante final debe poder reflejar: Detalles finales, Subtotal,
+Ajustes Comerciales, Total Cobrable, todos los Pagos registrados, y el
+Saldo final -que para una Orden cobrable entregable debe ser el
+definitivo al momento de la entrega (0, salvo cortesia total o condicion
+no-cobrable)-. Registrar Pago sigue siendo una capacidad transversal:
+pueden existir señas/anticipos antes de este punto igual que siempre; lo
+unico que se mueve es el cierre/comprobante definitivo, que ahora ocurre
+despues del gate de cobro y no antes.
+
 Calculo comercial (extensible, sin cerrar la puerta a capas futuras):
 
 ```text
@@ -369,6 +483,35 @@ SALDO = TOTAL COBRABLE - TOTAL PAGADO
 Un Detalle CANCELADO conserva su Tipo, precio historico y trazabilidad,
 pero no participa del Subtotal (distinto de una cortesia, que si integra
 el Subtotal y luego se resta como Ajuste Comercial).
+
+## SIN_REPARACION en V1.3: sin Diagnostico cobrable
+
+Corregido en este borrador: en V1.3 **no existe Diagnostico cobrable**.
+La revision tecnica (PROC-REP-065) puede realizarse para determinar que
+reparacion necesita el equipo, pero:
+
+- no es por si misma un Detalle de Reparacion cobrable;
+- no genera precio;
+- no genera Subtotal;
+- no existe un Tipo de Reparacion "Diagnostico" en V1.3.
+
+Por lo tanto, SIN_REPARACION significa: la Orden fue
+recibida/revisada/procesada, pero finalmente no se definio ni se realizo
+una reparacion. Consecuencia directa: SIN_REPARACION implica Subtotal = 0
+-no existe reparacion realizada ni importe cobrable asociado (ver
+PROC-REP-069, BR-REP-010)-. Una version anterior de este borrador permitia
+que SIN_REPARACION coexistiera con un importe cobrable proveniente de un
+supuesto "Detalle de Diagnostico COMPLETO y cobrable"; esa referencia se
+elimino de PROC-REP-069, BR-REP-010 y PROC-REP-280.
+
+SIN_REPARACION sigue siendo distinto de CANCELADA:
+
+- **SIN_REPARACION**: el proceso llego legitimamente a la conclusion de
+  que no habra reparacion.
+- **CANCELADA**: el trabajo o el proceso fue cancelado.
+
+Si en el futuro Rosario Tecno decide cobrar el diagnostico, sera una
+nueva regla/capacidad a diseñar, fuera de alcance de V1.3.
 
 ## Cancelacion
 
@@ -490,3 +633,18 @@ deliberadamente fuera de alcance de esta revision:
 - Garantia de reparacion post-entrega a nivel Detalle (hoy solo se
   relaciona a nivel Orden).
 - Multi-moneda en precios y pagos.
+- Que ocurre si la revision tecnica de un Detalle puntual
+  (PROC-REP-126/127) tampoco logra definir una reparacion para ese
+  Detalle en particular: a diferencia del circuito inicial
+  (PROC-REP-068/069), aqui no existe todavia un camino equivalente a
+  SIN_REPARACION acotado a un unico Detalle (por ejemplo, dejarlo
+  indefinido, o cancelarlo puntualmente via PROC-REP-300). Que asigna y
+  retira la condicion REQUIERE_DEFINICION en si ya esta definido
+  (PROC-REP-125/126/127); lo pendiente es exclusivamente este caso de
+  borde.
+- Reporting por tecnico (a futuro, sin agregar nodos al Business
+  Process): OR actualmente tomadas, OR trabajadas, OR liberadas, Detalles
+  completados, trabajos pendientes. El historial de toma/liberacion
+  (PROC-REP-180/212/213, BR-REP-018) ya deja la base de datos conceptual
+  necesaria; el reporting en si y las Features de UI correspondientes
+  quedan fuera de alcance de esta revision.
