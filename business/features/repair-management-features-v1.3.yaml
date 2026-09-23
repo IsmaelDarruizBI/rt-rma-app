@@ -1,0 +1,751 @@
+# Features funcionales de PROC-REP V1.3 (Gestion de Ordenes de Reparacion).
+# Etapa: Feature Definition. Convive con
+# business/features/repair-management-features.yaml (Features de PROC-REP
+# V1.2, aprobada), que permanece intacta: este archivo es la
+# descomposicion funcional independiente de la V1.3 draft
+# (business/processes/repair-management-v1.3.yaml,
+# business/rules/business-rules-v1.3.yaml). Todas las Features aqui estan
+# en estado draft, sin User Stories ni Spec Kit todavia.
+#
+# Principio de descomposicion: una Feature es una CAPACIDAD FUNCIONAL
+# desarrollable y trazable, no un nodo ni una Business Rule individual.
+# La relacion Feature <-> process_nodes y Feature <-> business_rules es
+# N:M: un mismo nodo o regla puede pertenecer a mas de una Feature cuando
+# es transversal (por ejemplo PROC-REP-211, PROC-REP-280, PROC-REP-070/075/127).
+# El resolver tecnico de estado de Orden (BR-REP-012) NO es una Feature
+# independiente: es una politica transversal del dominio que distintas
+# Features invocan. La cancelacion, en cambio, SI es una Feature propia
+# (FEAT-REP-009): es una capacidad funcional transversal con
+# comportamiento y reglas propias, no una etapa secuencial mas.
+#
+# Numeracion: FEAT-REP-007 (Comercial/Pagos) precede conceptualmente a
+# FEAT-REP-008 (Finalizacion/Entrega), porque el gate de Saldo
+# (PROC-REP-265/266) ocurre antes del comprobante final y la entrega.
+# FEAT-REP-009 (Cancelacion) queda al final de la numeracion porque es
+# transversal -puede iniciarse en cualquier momento en que la Orden este
+# disponible/en curso-, no una etapa posterior a FEAT-REP-008.
+
+process:
+  id: PROC-REP
+  version: "1.3"
+
+features:
+
+  - id: FEAT-REP-001
+    name: Ingreso y creacion de Orden de Reparacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Permitir que una necesidad de reparacion ingrese formalmente al
+      sistema RMA, identificando su origen, obteniendo o registrando la
+      informacion necesaria del cliente y del equipo, y creando la Orden
+      de Reparacion que dara inicio al circuito operativo. Conserva
+      conceptualmente el alcance de la Feature homonima de V1.2, adaptado
+      al modelo Orden/Detalle de V1.3.
+
+    inputs:
+      - Necesidad de reparacion
+
+    outputs:
+      - Orden de Reparacion creada
+      - Origen de la Orden identificado
+      - Cliente identificado cuando corresponda
+      - Equipo identificado y relacionado con la Orden
+      - Estado inicial REQUERIMIENTO
+      - Orden creada con cantidad_detalles = 0 (todavia sin Detalles)
+      - Referencias de origen relacionadas cuando corresponda
+      - Comprobante de recepcion cuando corresponda
+
+    process_nodes:
+      - PROC-REP-010
+      - PROC-REP-020
+      - PROC-REP-025
+      - PROC-REP-030
+      - PROC-REP-035
+      - PROC-REP-040
+      - PROC-REP-050
+      - PROC-REP-060
+
+    business_rules:
+      - BR-REP-013
+
+    scope:
+      includes:
+        - Identificar el origen de la Orden de Reparacion
+        - Obtener contexto de equipos internos de Rosario Tecno
+        - Recibir referencias de garantias de venta
+        - Registrar o identificar cliente y equipo
+        - Relacionar una garantia de reparacion con la Orden original
+        - Crear la Orden de Reparacion con cantidad_detalles = 0
+        - Asignar el estado inicial REQUERIMIENTO
+        - Generar comprobante de recepcion cuando corresponda
+
+      excludes:
+        - Diagnosticar o definir los Detalles de Reparacion
+        - Validar factibilidad o disponibilidad de recursos
+        - Ejecutar Detalles de Reparacion
+        - Gestionar comercialmente la Orden (precio, pagos, saldo)
+        - Cancelar Detalles o la Orden
+
+    open_questions:
+      - >
+        BR-REP-013 (agregado SIN_DETALLES) es una regla defensiva/
+        transversal del resolver tecnico, referenciada aqui porque
+        describe la Orden mientras todavia no tiene Detalles; no implica
+        que esta Feature sea responsable de implementar el resolver (ver
+        FEAT-REP-002/005/006/009 y docs/discovery/README.md).
+
+  - id: FEAT-REP-002
+    name: Diagnostico y gestion de Detalles de Reparacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Determinar que Detalles de Reparacion necesita una Orden -uno o
+      mas, ya conocidos desde el ingreso o definidos luego de una
+      revision tecnica- y mantenerlos actualizados durante toda su vida
+      util. A diferencia de V1.2, ya no se define "una reparacion" sino
+      1..N Detalles; y ademas de la revision inicial de Orden (sin
+      ningun Detalle todavia), esta Feature tambien cubre la revision
+      tecnica posterior de un Detalle EXISTENTE marcado
+      REQUIERE_DEFINICION, sin crear un Detalle nuevo.
+
+    inputs:
+      - Orden de Reparacion creada
+      - Equipo identificado
+      - Informacion disponible sobre la necesidad de reparacion
+      - Detalle existente con condicion REQUIERE_DEFINICION
+
+    outputs:
+      - Uno o mas Detalles de Reparacion creados, cada uno con Tipo de
+        Reparacion y precio snapshot
+      - Orden preparada para validacion de factibilidad por Detalle
+      - Resultado SIN_REPARACION cuando no puede definirse ningun Detalle
+      - Informacion de revision tecnica registrada, a nivel Orden o a
+        nivel Detalle segun corresponda
+      - Detalle existente actualizado (Tipo de Reparacion, precio
+        snapshot) cuando se completa su definicion pendiente
+
+    process_nodes:
+      - PROC-REP-045
+      - PROC-REP-055
+      - PROC-REP-065
+      - PROC-REP-068
+      - PROC-REP-069
+      - PROC-REP-070
+      - PROC-REP-075
+      - PROC-REP-125
+      - PROC-REP-126
+      - PROC-REP-127
+
+    business_rules:
+      - BR-REP-001
+      - BR-REP-010
+      - BR-REP-012
+      - BR-REP-015
+
+    scope:
+      includes:
+        - Determinar si los Detalles de Reparacion ya son conocidos
+        - Crear uno o mas Detalles de Reparacion, cada uno con su Tipo
+        - Registrar el precio snapshot correspondiente al crear un Detalle
+        - Pasar la Orden a EN_REVISION cuando ningun Detalle es conocido
+        - Realizar y registrar la revision tecnica inicial de la Orden
+        - Registrar resultado SIN_REPARACION cuando corresponda
+        - Registrar motivo, observaciones, usuario y fecha de una
+          finalizacion sin reparacion
+        - Detectar Detalles existentes con condicion REQUIERE_DEFINICION
+        - Realizar revision tecnica especifica de ese Detalle pendiente
+        - Actualizar el Tipo de Reparacion y precio snapshot de ese mismo
+          Detalle, sin crear uno nuevo
+        - Quitar la condicion REQUIERE_DEFINICION del Detalle cuando
+          corresponda
+        - Preservar el historial completo del Detalle, incluidas sus
+          revisiones
+
+      excludes:
+        - Validar disponibilidad de recursos o insumos (FEAT-REP-003)
+        - Habilitar la Orden o un Detalle (FEAT-REP-003)
+        - Ejecutar Detalles de Reparacion (FEAT-REP-005)
+        - Gestionar comercialmente la Orden mas alla del precio snapshot (Subtotal, Ajustes, Pagos son de FEAT-REP-007)
+        - Cancelar Detalles o la Orden (FEAT-REP-009)
+        - Modelar un Tipo de Reparacion "Diagnostico" cobrable (no existe en V1.3)
+
+    open_questions:
+      - >
+        SIN_REPARACION no implica diagnostico cobrable en V1.3: la
+        revision tecnica no es por si misma un Detalle de Reparacion
+        cobrable, no genera precio ni Subtotal. Por lo tanto
+        SIN_REPARACION implica Subtotal = 0, y sigue siendo distinto de
+        CANCELADA. Si en el futuro Rosario Tecno decide cobrar el
+        diagnostico, sera una nueva regla/capacidad fuera de esta
+        Feature.
+      - >
+        Que evento tecnico exacto puede dejar un Detalle sin poder
+        definirse tras su revision puntual (PROC-REP-126/127) -analogo a
+        SIN_REPARACION pero acotado a un unico Detalle- todavia no esta
+        resuelto (ver docs/discovery/README.md, Pendientes de V1.3).
+
+  - id: FEAT-REP-003
+    name: Validacion de factibilidad y habilitacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Determinar si los Detalles de una Orden cuentan con los recursos
+      previstos para ser trabajados, administrando faltantes, espera,
+      revalidacion y overrides autorizados. Cambia explicitamente la
+      semantica V1.2 de "factibilidad de la Orden" a FACTIBILIDAD POR
+      DETALLE: no se exige que todos los Detalles sean factibles, alcanza
+      con que exista al menos uno trabajable para habilitar la Orden.
+
+    inputs:
+      - Orden de Reparacion con uno o mas Detalles definidos
+
+    outputs:
+      - Orden HABILITADA para ingresar al circuito operativo, con al
+        menos un Detalle trabajable
+      - Detalle(s) marcados BLOQUEADO_POR_RECURSOS cuando corresponda
+      - Orden PENDIENTE_RECURSOS cuando ningun Detalle es trabajable por
+        falta de recursos
+      - Faltantes identificados por Detalle
+      - Override de factibilidad registrado sobre un Detalle especifico
+        cuando corresponda
+
+    process_nodes:
+      - PROC-REP-080
+      - PROC-REP-090
+      - PROC-REP-100
+      - PROC-REP-110
+      - PROC-REP-120
+      - PROC-REP-130
+      - PROC-REP-140
+
+    business_rules:
+      - BR-REP-001
+      - BR-REP-002
+      - BR-REP-003
+
+    scope:
+      includes:
+        - Consultar disponibilidad prevista de insumos por Detalle, sin
+          reservar todavia
+        - Marcar un Detalle BLOQUEADO_POR_RECURSOS cuando corresponda
+        - Identificar faltantes por Detalle
+        - Mantener la Orden PENDIENTE_RECURSOS mientras ningun Detalle
+          sea trabajable por recursos
+        - Revalidar factibilidad ante un evento de cambio de
+          disponibilidad
+        - Permitir un override autorizado sobre un Detalle especifico
+        - Registrar usuario, fecha, Detalle, motivo y validacion ignorada
+          del override
+        - Habilitar la Orden cuando exista al menos un Detalle trabajable
+
+      excludes:
+        - Reservar insumos de forma real (FEAT-REP-005)
+        - Tomar la Orden (FEAT-REP-004)
+        - Seleccionar un Detalle especifico para trabajar (FEAT-REP-005)
+        - Ejecutar Detalles de Reparacion (FEAT-REP-005)
+        - Exigir que todos los Detalles de la Orden sean factibles
+
+    open_questions:
+      - >
+        Evaluar durante testing/UAT si negocio necesita tipos adicionales
+        de override o excepciones de factibilidad por Detalle. Cualquier
+        ampliacion debe validarse funcionalmente antes de modificar la
+        baseline V1.3.
+
+  - id: FEAT-REP-004
+    name: Gestion de prioridad, cola, toma y liberacion tecnica
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Administrar el ingreso de una Orden habilitada al trabajo
+      operativo -prioridad, cola, sesion/Estacion- y la toma/liberacion
+      de la Orden COMPLETA por parte de un tecnico como participacion
+      activa propia, distinta de la Ejecucion de un Detalle en
+      particular. Reemplaza a la Feature V1.2 basada parcialmente en los
+      modos EXCLUSIVA/ABIERTA: esos modos no existen en V1.3.
+
+    inputs:
+      - Orden de Reparacion HABILITADA
+
+    outputs:
+      - Prioridad de la Orden definida
+      - Orden disponible en EN_COLA
+      - Sesion y Estacion de Trabajo validadas
+      - Compatibilidad agregada entre Estacion y Detalles trabajables
+        validada
+      - Orden tomada por un tecnico (Orden completa, no un Detalle)
+      - Participacion/toma activa registrada (Orden + tecnico + estacion + fecha/hora de inicio)
+      - Decision explicita del tecnico de continuar o liberar la Orden
+      - Participacion activa cerrada (explicita o automaticamente) con
+        fecha/hora de fin
+      - Orden de vuelta en EN_COLA cuando se libera y sigue trabajable
+      - Historial de participaciones conservado
+
+    process_nodes:
+      - PROC-REP-150
+      - PROC-REP-170
+      - PROC-REP-172
+      - PROC-REP-180
+      - PROC-REP-212
+      - PROC-REP-213
+
+    business_rules:
+      - BR-REP-011
+      - BR-REP-018
+
+    scope:
+      includes:
+        - Definir prioridad de ejecucion
+        - Ingresar la Orden a EN_COLA
+        - Validar sesion activa del tecnico
+        - Validar Estacion de Trabajo asociada, configurada y OPERATIVA
+        - Validar que exista al menos un Detalle trabajable compatible
+          con la Estacion (validacion agregada, no por Detalle especifico)
+        - Tomar la Orden COMPLETA (no un Detalle)
+        - Abrir la participacion/toma activa (maximo una por Orden)
+        - Permitir continuar trabajando distintos Detalles sin volver a
+          tomar la Orden
+        - Preguntar explicitamente si el tecnico desea continuar o
+          liberar la Orden cuando corresponda
+        - Liberar la Orden explicitamente y cerrar la participacion
+        - Conservar el historial completo de participaciones
+
+      excludes:
+        - Validar compatibilidad especifica Estacion <-> Tipo de
+          Reparacion del Detalle SELECCIONADO (FEAT-REP-005)
+        - Seleccionar el Detalle a trabajar (FEAT-REP-005)
+        - Reservar insumos o ejecutar Detalles (FEAT-REP-005)
+        - Cualquier nocion de modo EXCLUSIVA/ABIERTA (no existe en V1.3)
+
+    open_questions:
+      - >
+        Definir durante etapas posteriores la administracion funcional
+        de prioridad, incluyendo el catalogo definitivo de prioridades
+        (pendiente heredado de V1.2, sin cambios en V1.3).
+      - >
+        Reporting por tecnico (OR tomadas, trabajadas, liberadas,
+        Detalles completados, trabajos pendientes) queda fuera de
+        alcance de esta Feature: el historial de participaciones que
+        aqui se registra es la base conceptual para ese reporting futuro,
+        sin agregar nodos nuevos al Business Process (ver
+        docs/discovery/README.md, Pendientes de V1.3).
+
+  - id: FEAT-REP-005
+    name: Ejecucion de Detalles y gestion de insumos
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Permitir que, con la Orden tomada, el tecnico seleccione y ejecute
+      Detalles de Reparacion trabajables, validando la compatibilidad
+      especifica de Estacion con el Detalle elegido, reservando insumos
+      de forma real al iniciar cada Ejecucion, registrando lo
+      efectivamente realizado y manteniendo consistentes los movimientos
+      de inventario. Es una de las Features con mayor cambio respecto de
+      V1.2: pasa de "ejecutar la reparacion de la Orden" a un ciclo
+      repetible de seleccion/ejecucion por Detalle.
+
+    inputs:
+      - Orden con participacion/toma activa
+      - Detalle(s) trabajable(s) de la Orden
+
+    outputs:
+      - Detalle seleccionado para trabajar
+      - Compatibilidad Estacion <-> Tipo de Reparacion del Detalle
+        validada, con override auditado cuando corresponda
+      - Insumos reservados realmente al iniciar la Ejecucion, o falla de
+        reserva registrada
+      - Ejecucion creada y Detalle en EN_PROCESO
+      - Ejecucion real registrada (trabajo realizado, repuestos,
+        observaciones)
+      - Resultado de Ejecucion Completada o Interrumpida
+      - Multiples Ejecuciones historicas conservadas por Detalle
+      - Insumos consumidos, liberados o registrados como desperdicio
+      - Situacion tecnica de la Orden recalculada mediante el resolver
+
+    process_nodes:
+      - PROC-REP-181
+      - PROC-REP-174
+      - PROC-REP-176
+      - PROC-REP-178
+      - PROC-REP-179
+      - PROC-REP-185
+      - PROC-REP-186
+      - PROC-REP-190
+      - PROC-REP-200
+      - PROC-REP-210
+      - PROC-REP-211
+
+    business_rules:
+      - BR-REP-004
+      - BR-REP-005
+      - BR-REP-006
+      - BR-REP-007
+      - BR-REP-011
+      - BR-REP-012
+
+    scope:
+      includes:
+        - Seleccionar un Detalle trabajable de la Orden tomada
+        - Validar compatibilidad especifica Estacion <-> Tipo de
+          Reparacion del Detalle seleccionado
+        - Advertir incompatibilidad y permitir override puntual y
+          auditado sobre ese Detalle
+        - Intentar la reserva real de insumos al iniciar la Ejecucion
+        - Manejar la falla de reserva sin iniciar la Ejecucion
+        - Crear la Ejecucion y pasar el Detalle a EN_PROCESO
+        - Garantizar como maximo una Ejecucion activa por Orden
+        - Ejecutar el Detalle y registrar el trabajo real
+        - Permitir que una Ejecucion finalice Completada o Interrumpida
+        - Conservar multiples Ejecuciones historicas por Detalle
+        - Registrar insumos reales (consumir, liberar, desperdicio)
+        - Recalcular la situacion tecnica de la Orden mediante el
+          resolver (PROC-REP-211) e informar si corresponde continuar
+          con otro Detalle
+
+      excludes:
+        - Comprar o reponer inventario
+        - Valorar o costear insumos (FIFO, promedio, lote)
+        - Realizar control tecnico final (FEAT-REP-006)
+        - Gestionar comercialmente la Orden (FEAT-REP-007)
+        - Tomar o liberar la Orden completa (FEAT-REP-004)
+
+    open_questions:
+      - >
+        BR-REP-007 (maximo una Ejecucion activa por Orden) y BR-REP-011
+        y BR-REP-012 son transversales y estan compartidas con otras
+        Features (FEAT-REP-004 para BR-REP-011; FEAT-REP-002/006/009
+        para BR-REP-012) segun los nodos que efectivamente las
+        referencian.
+
+  - id: FEAT-REP-006
+    name: Control tecnico, retrabajo y evaluacion
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Validar tecnicamente el resultado de los Detalles de una Orden una
+      vez que todos son terminales y existe al menos uno COMPLETO,
+      aprobando o rechazando Detalle por Detalle, reabriendo unicamente
+      los rechazados y calculando el puntaje de los aprobados. Actualiza
+      la Feature homonima de V1.2: el rechazo ya no se hardcodea a
+      EN_COLA, sino que reabre el Detalle y deja que el resolver
+      determine la situacion de la Orden.
+
+    inputs:
+      - Orden con todos los Detalles terminales y al menos uno COMPLETO
+
+    outputs:
+      - Control tecnico registrado por Detalle
+      - Detalle(s) rechazado(s) reabiertos, conservando su historial de
+        Ejecuciones y del propio rechazo
+      - Situacion tecnica de la Orden recalculada mediante el resolver
+      - Puntaje por Detalle aprobado calculado
+      - Orden en estado REPARACION_LISTA luego del control aprobado
+
+    process_nodes:
+      - PROC-REP-220
+      - PROC-REP-230
+      - PROC-REP-235
+      - PROC-REP-245
+      - PROC-REP-240
+      - PROC-REP-211
+
+    business_rules:
+      - BR-REP-008
+      - BR-REP-009
+      - BR-REP-012
+
+    scope:
+      includes:
+        - Realizar el control tecnico sobre la Orden
+        - Aprobar o rechazar el resultado Detalle por Detalle
+        - Reabrir unicamente los Detalles rechazados (vuelven a
+          PENDIENTE), preservando Ejecuciones y controles anteriores
+        - Recalcular la situacion de la Orden mediante el resolver
+          (PROC-REP-211) en vez de asumir que vuelve a EN_COLA
+        - Calcular el puntaje de cada Detalle aprobado
+        - Marcar la Orden REPARACION_LISTA cuando corresponde
+
+      excludes:
+        - Ejecutar o corregir Detalles de Reparacion (FEAT-REP-005)
+        - Distribuir definitivamente el puntaje entre multiples tecnicos
+        - Notificar al cliente o generar comprobante final (FEAT-REP-008)
+        - Entregar el equipo (FEAT-REP-008)
+        - Cancelar Detalles o la Orden (FEAT-REP-009)
+
+    open_questions:
+      - >
+        Definir posteriormente como se distribuye o acredita el puntaje
+        entre multiples tecnicos/Ejecuciones que participaron de un mismo
+        Detalle (pendiente heredado de V1.2, ahora ademas interactua con
+        multiples Ejecuciones por Detalle).
+      - >
+        PROC-REP-211 y BR-REP-012 son compartidos con FEAT-REP-005 y
+        FEAT-REP-009: no se busco ownership exclusivo, porque el
+        desenlace del retrabajo depende del mismo resolver centralizado
+        que usan Ejecucion y Cancelacion.
+
+  - id: FEAT-REP-007
+    name: Gestion comercial y pagos de la Orden
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Feature nueva en V1.3. Administrar el aspecto comercial de la
+      Orden como capacidad transversal que comienza antes del cierre
+      final: precio snapshot por Detalle, Subtotal, Ajustes Comerciales
+      (cortesias), registro de Pagos en cualquier momento, y el gate de
+      Saldo que debe completarse -Completar Cobro- despues de
+      REPARACION_LISTA y antes de la entrega.
+
+    inputs:
+      - Detalle(s) de Reparacion con Tipo y precio snapshot
+      - Orden en estado REPARACION_LISTA (para Completar Cobro)
+
+    outputs:
+      - Subtotal de la Orden (suma de precios snapshot de Detalles NO
+        CANCELADOS)
+      - Ajuste Comercial de cortesia (CORTESIA_DETALLE o CORTESIA_ORDEN)
+        registrado, con autorizacion ACT-ADMIN, fecha/hora y motivo
+      - Base Comercial calculada (Subtotal + Ajustes Comerciales Previos)
+      - Pago(s) registrados en cualquier momento (seña, anticipo,
+        parciales, multiples medios)
+      - Total Pagado y Total Cobrable calculados
+      - Saldo calculado (Total Cobrable - Total Pagado)
+      - Condicion de entrega validada (Saldo = 0, cortesia total, o
+        condicion no cobrable por origen) antes de la entrega
+
+    process_nodes:
+      - PROC-REP-265
+      - PROC-REP-266
+      - PROC-REP-070
+      - PROC-REP-075
+      - PROC-REP-127
+      - PROC-REP-280
+
+    business_rules:
+      - BR-REP-015
+      - BR-REP-016
+      - BR-REP-017
+
+    scope:
+      includes:
+        - Registrar el precio configurable/historico del Tipo de
+          Reparacion como snapshot al confirmar un Detalle
+        - Calcular el Subtotal excluyendo estructuralmente los Detalles
+          CANCELADO
+        - Registrar Ajustes Comerciales (CORTESIA_DETALLE y
+          CORTESIA_ORDEN), con autorizacion ACT-ADMIN
+        - Registrar Pagos como capacidad transversal (seña, anticipo,
+          parciales, multiples medios), en cualquier momento desde que la
+          Orden existe
+        - Determinar el Total Cobrable y el Total Pagado
+        - Calcular el Saldo y completar el cobro despues de
+          REPARACION_LISTA (fase secuencial, PROC-REP-265/266)
+        - Bloquear la entrega mientras exista Saldo pendiente, sin
+          override de deuda en V1.3
+        - Materializar el resultado comercial final en el comprobante
+          (PROC-REP-280), compartido con FEAT-REP-008
+
+      excludes:
+        - Impuestos, recargos u otros conceptos comerciales futuros entre
+          Base Comercial y Total Cobrable
+        - Costo real de reparacion (mano de obra + insumos) y su
+          metodologia de valoracion (FIFO, promedio, lote especifico)
+        - Reembolsos u otras consecuencias comerciales de una cancelacion
+        - Entrega fisica del equipo (FEAT-REP-008)
+        - Registrar Pago como si ocurriera unicamente al final de la Orden (es transversal, no secuencial)
+
+    open_questions:
+      - >
+        Si la cortesia puede ser parcial o siempre equivale al 100% del
+        precio del Detalle/Orden.
+      - Multi-moneda en precios y pagos.
+      - >
+        Impuestos, recargos, descuentos y otros conceptos comerciales
+        futuros entre Base Comercial y Total Cobrable.
+      - >
+        Consecuencias comerciales de cancelaciones (reembolso de pagos ya
+        realizados sobre Detalles luego cancelados): referenciar como
+        dependencia de FEAT-REP-009 cuando se defina.
+
+  - id: FEAT-REP-008
+    name: Finalizacion, entrega e integracion del resultado
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Evolucion de FEAT-REP-007 de V1.2. Una vez que existe un resultado
+      tecnicamente finalizable y la condicion comercial esta resuelta
+      -precondicion que recibe de FEAT-REP-007, no que esta Feature
+      calcula-, determinar si corresponde entrega a cliente, notificar,
+      generar el comprobante final, entregar el equipo o informar el
+      resultado a Gestion RT segun el origen de la Orden.
+
+    inputs:
+      - Orden con REPARACION_LISTA o resultado SIN_REPARACION
+      - Condicion de entrega validada / Saldo resuelto cuando corresponda
+        (precondicion comercial, FEAT-REP-007)
+      - Origen de la Orden de Reparacion
+
+    outputs:
+      - Cliente notificado cuando corresponda
+      - Comprobante final generado cuando corresponda
+      - Garantia de reparacion generada unicamente cuando hubo reparacion
+      - Equipo entregado al cliente cuando corresponda
+      - Orden en estado ENTREGADA para los flujos de cliente
+      - Resultado informado al sistema de Gestion RT para equipos
+        RT_INTERNO
+      - Flujo de Orden finalizado segun su origen
+
+    process_nodes:
+      - PROC-REP-250
+      - PROC-REP-260
+      - PROC-REP-280
+      - PROC-REP-270
+      - PROC-REP-290
+
+    business_rules: []
+
+    scope:
+      includes:
+        - Determinar si corresponde entrega a cliente
+        - Preparar y confirmar notificacion al cliente
+        - Generar el comprobante final (compartido con FEAT-REP-007, que
+          materializa alli el resultado comercial)
+        - Incluir garantia de reparacion cuando corresponda
+        - Evitar generar garantia cuando el resultado sea SIN_REPARACION
+        - Entregar el equipo, una vez superada la validacion de
+          condicion de entrega
+        - Registrar estado ENTREGADA para los flujos correspondientes
+        - Informar el resultado a Gestion RT para equipos internos
+
+      excludes:
+        - Diagnosticar o ejecutar Detalles de Reparacion
+        - Realizar control tecnico
+        - Registrar o cerrar Pagos, calcular Saldo (FEAT-REP-007)
+        - Definir el estado terminal definitivo de RT_INTERNO
+        - Resolver tecnicamente la integracion futura con Gestion RT
+
+    open_questions:
+      - >
+        Definir el estado terminal definitivo para Ordenes de origen
+        RT_INTERNO.
+
+  - id: FEAT-REP-009
+    name: Cancelacion de Detalles y Orden
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    purpose: >
+      Feature nueva y TRANSVERSAL en V1.3: no representa una etapa
+      posterior a FEAT-REP-008, sino una capacidad que puede iniciarse en
+      cualquier momento en que la Orden este disponible/en curso. Permite
+      cancelar un Detalle no terminal o los Detalles pendientes de una
+      Orden completa, EXIGIENDO como precondicion que el Detalle no
+      conserve reservas activas de inventario -precondicion ya
+      garantizada por la topologia del proceso, porque la reconciliacion
+      real RESERVADO -> CONSUMIDO/LIBERADO/DESPERDICIO es responsabilidad
+      exclusiva de FEAT-REP-005 y PROC-REP-210, nunca de esta Feature- y
+      dejando que el resolver determine el desenlace de la Orden.
+
+    inputs:
+      - Detalle no terminal (PENDIENTE, sin Ejecucion activa)
+      - Orden con Detalles no terminales pendientes de cancelar
+      - Movimientos de inventario del Detalle ya reconciliados
+        (CONSUMIDO/LIBERADO/DESPERDICIO), producidos por FEAT-REP-005/
+        PROC-REP-210 antes de que el Detalle pueda ser candidato a
+        cancelacion
+
+    outputs:
+      - Detalle cancelado, conservando Tipo, precio snapshot e historial
+      - Detalles no terminales de la Orden cancelados; los ya COMPLETO se
+        preservan
+      - Verificacion de que el Detalle CANCELADO no conserva reservas
+        activas de inventario (precondicion comprobada, no ejecutada por
+        esta Feature)
+      - Situacion de la Orden recalculada mediante el resolver
+      - Orden CANCELADA cuando todos los Detalles quedan CANCELADO
+      - Orden tecnicamente COMPLETA, continuando el cierre normal, cuando
+        existe al menos un Detalle COMPLETO
+
+    process_nodes:
+      - PROC-REP-300
+      - PROC-REP-305
+      - PROC-REP-211
+
+    business_rules:
+      - BR-REP-014
+      - BR-REP-012
+
+    scope:
+      includes:
+        - Cancelar un Detalle no terminal
+        - Cancelar los Detalles no terminales pendientes de una Orden
+        - Impedir la cancelacion mientras exista una Ejecucion activa
+          (requiere cierre/interrupcion previa)
+        - Preservar los Detalles COMPLETO al cancelar el resto de la
+          Orden
+        - Exigir, como precondicion, que el Detalle no conserve reservas
+          activas de inventario antes de dejarlo CANCELADO (verificacion
+          de precondicion, no ejecucion de la reconciliacion)
+        - Preservar los movimientos de inventario ya reconciliados por
+          FEAT-REP-005/PROC-REP-210, sin reescribirlos
+        - Preservar el historial completo (Ejecuciones, insumos,
+          movimientos, precios, pagos, auditoria)
+        - Recalcular la situacion de la Orden mediante el resolver
+          (PROC-REP-211)
+
+      excludes:
+        - Ejecutar movimientos de inventario, RESERVADO -> CONSUMIDO/
+          LIBERADO/DESPERDICIO (responsabilidad exclusiva de FEAT-REP-005
+          y PROC-REP-210, nunca de esta Feature)
+        - Ejecutar o retrabajar Detalles (FEAT-REP-005/006)
+        - Consecuencias comerciales/reembolsos de la cancelacion
+          (FEAT-REP-007, pendiente)
+        - Definir el actor autorizado a cancelar
+        - Definir el catalogo de motivos de cancelacion
+
+    open_questions:
+      - >
+        Quien esta autorizado a cancelar un Detalle o una Orden (que
+        actor, con que permiso): no se asume ninguno; PROC-REP-300 y
+        PROC-REP-305 omiten deliberadamente el campo actor.
+      - Catalogo definitivo de motivos de cancelacion/interrupcion.
+      - >
+        Consecuencias comerciales/reembolsos de la cancelacion, fuera de
+        alcance de V1.3.
+      - Reglas futuras adicionales de cancelacion.

@@ -601,6 +601,51 @@ Este mecanismo queda documentado para el posterior diseño tecnico; no se
 implementa en este borrador (no hay base de datos ni codigo en esta
 etapa).
 
+## Features V1.3
+
+PROC-REP V1.3 tiene ahora su propia descomposicion funcional en 9
+Features draft (`business/features/repair-management-features-v1.3.yaml`),
+independiente de las 7 Features de V1.2
+(`business/features/repair-management-features.yaml`), que permanecen
+intactas como baseline historica y no se modificaron. Ninguna User Story
+ni Spec Kit fueron creados en esta iteracion.
+
+Igual que en V1.2, la relacion Feature <-> process_nodes y Feature <->
+business_rules es N:M: un mismo nodo o regla puede pertenecer a mas de
+una Feature cuando es transversal. El resolver tecnico de estado de
+Orden (BR-REP-012) no es una Feature independiente -es una politica
+transversal que varias Features invocan-, mientras que la cancelacion si
+es una Feature propia (FEAT-REP-009) por tener comportamiento y reglas
+propias.
+
+| Feature | Nombre | Nodos propios/compartidos destacados |
+|---|---|---|
+| FEAT-REP-001 | Ingreso y creacion de Orden de Reparacion | 010, 020, 025, 030, 035, 040, 050, 060 |
+| FEAT-REP-002 | Diagnostico y gestion de Detalles de Reparacion | 045, 055, 065, 068, 069, 070*, 075*, 125, 126, 127* |
+| FEAT-REP-003 | Validacion de factibilidad y habilitacion | 080, 090, 100, 110, 120, 130, 140 |
+| FEAT-REP-004 | Gestion de prioridad, cola, toma y liberacion tecnica | 150, 170, 172, 180, 212, 213 |
+| FEAT-REP-005 | Ejecucion de Detalles y gestion de insumos | 181, 174, 176, 178, 179, 185, 186, 190, 200, 210, 211* |
+| FEAT-REP-006 | Control tecnico, retrabajo y evaluacion | 220, 230, 235, 245, 240, 211* |
+| FEAT-REP-007 | Gestion comercial y pagos de la Orden | 265, 266, 070*, 075*, 127*, 280* |
+| FEAT-REP-008 | Finalizacion, entrega e integracion del resultado | 250, 260, 280*, 270, 290 |
+| FEAT-REP-009 | Cancelacion de Detalles y Orden | 300, 305, 211* |
+
+`*` = nodo compartido con otra Feature (N:M). Nodos compartidos: PROC-REP-070/075/127
+(entre FEAT-REP-002 y FEAT-REP-007, porque alli se registra el precio
+snapshot), PROC-REP-211 (entre FEAT-REP-005, FEAT-REP-006 y FEAT-REP-009,
+porque las tres reevaluan la situacion de la Orden mediante el mismo
+resolver), y PROC-REP-280 (entre FEAT-REP-007 y FEAT-REP-008, porque el
+comprobante final materializa el resultado comercial aunque su
+generacion/entrega sea responsabilidad principal de Finalizacion).
+Cobertura: los 56 process_nodes funcionales de PROC-REP V1.3 (excluyendo
+EVT-REP-001/EVT-REP-999) quedan cubiertos por al menos una Feature.
+
+Notas de numeracion: FEAT-REP-007 (Comercial y Pagos) precede
+conceptualmente a FEAT-REP-008 (Finalizacion y Entrega), porque el gate
+de Saldo ocurre antes del comprobante final y la entrega. FEAT-REP-009
+(Cancelacion) queda al final de la numeracion porque es transversal -no
+una etapa secuencial posterior a FEAT-REP-008-.
+
 ## Pendientes especificos de V1.3
 
 Ademas de todos los pendientes de V1.2 listados arriba (que siguen

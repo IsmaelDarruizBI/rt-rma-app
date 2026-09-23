@@ -79,9 +79,12 @@
 # Ver docs/discovery/README.md (seccion V1.3) para el detalle completo de
 # pendientes.
 #
-# Las 7 Features actuales (business/features/repair-management-features.yaml)
-# siguen derivadas de V1.2 y NO se modificaron en esta iteracion: se
-# revisaran en una iteracion posterior, una vez que V1.3 este validada.
+# Las 7 Features de V1.2 (business/features/repair-management-features.yaml)
+# permanecen intactas como baseline historica. V1.3 ahora tiene su propia
+# descomposicion funcional, independiente y validable por separado:
+# business/features/repair-management-features-v1.3.yaml (9 Features,
+# draft). Esta actualizacion es solo de Features/documentacion: no cambia
+# ningun nodo, edge ni Business Rule de este archivo.
 
 process:
   id: PROC-REP

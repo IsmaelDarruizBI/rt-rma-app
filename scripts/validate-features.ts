@@ -10,6 +10,13 @@
  *
  * It additionally checks, locally within this file, that no Feature id is
  * declared twice.
+ *
+ * The Features file to validate is parameterizable via an optional CLI arg
+ * (`tsx scripts/validate-features.ts [featuresFile]`), the same convention
+ * as validate-process.ts, so this one script validates any Features
+ * revision - e.g. PROC-REP V1.2 (default, no arg, for backward
+ * compatibility) or the V1.3 draft - without duplicating this logic per
+ * version.
  */
 import { readFileSync } from "node:fs";
 import Ajv from "ajv";
@@ -17,7 +24,8 @@ import { parse } from "yaml";
 import type { FeatureDefinition, FeatureModel } from "./lib/feature-model";
 
 const SCHEMA_FILE = "business/schemas/feature.schema.json";
-const FEATURES_FILE = "business/features/repair-management-features.yaml";
+const DEFAULT_FEATURES_FILE = "business/features/repair-management-features.yaml";
+const FEATURES_FILE = process.argv[2] ?? DEFAULT_FEATURES_FILE;
 
 function findDuplicateIds(features: FeatureDefinition[]): string[] {
   const seen = new Set<string>();
