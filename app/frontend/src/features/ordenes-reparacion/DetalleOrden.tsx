@@ -1,0 +1,242 @@
+/**
+ * Pantalla de una Orden: cabecera, resumen comercial, Detalles,
+ * progreso del Happy Path, acción disponible e historial.
+ */
+
+import {
+  Etiqueta,
+  Panel,
+  colores,
+  fechaCorta,
+  importe,
+} from "../../components/ui";
+import type { Orden } from "../../types/api";
+
+const COLOR_ESTADO: Record<string, string> = {
+  REQUERIMIENTO: colores.suave,
+  HABILITADA: colores.acento,
+  EN_COLA: colores.acento,
+  EN_REPARACION: colores.alerta,
+  REPARACION_LISTA: colores.ok,
+  ENTREGADA: colores.ok,
+};
+
+export function CabeceraOrden({ orden }: { orden: Orden }) {
+  return (
+    <Panel>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: "0 0 0.3rem", fontSize: "1.3rem" }}>
+            {orden.id}
+          </h2>
+          <p style={{ margin: 0, color: colores.suave }}>
+            {orden.cliente.nombre} · {orden.cliente.telefono}
+          </p>
+          <p style={{ margin: "0.2rem 0 0", color: colores.suave }}>
+            {orden.equipo.marca} {orden.equipo.modelo} —{" "}
+            {orden.equipo.falla_reportada}
+          </p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <Etiqueta
+            color={COLOR_ESTADO[orden.estado_workflow] ?? colores.suave}
+          >
+            {orden.estado_workflow}
+          </Etiqueta>
+          <p
+            style={{
+              margin: "0.4rem 0 0",
+              fontSize: "0.8rem",
+              color: colores.suave,
+              fontFamily: "ui-monospace, monospace",
+            }}
+          >
+            {orden.current_process}
+          </p>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+export function ResumenComercialOrden({ orden }: { orden: Orden }) {
+  const { resumen } = orden;
+  const filas: [string, string][] = [
+    ["Total", importe(resumen.total)],
+    ["Pagado", importe(resumen.pagado)],
+    ["Saldo", importe(resumen.saldo)],
+    ["Estado de pago", resumen.estado_pago],
+    ["Puntaje", String(resumen.puntaje_total)],
+  ];
+
+  return (
+    <Panel titulo="Resumen comercial">
+      <dl style={{ margin: 0, display: "grid", gap: "0.35rem" }}>
+        {filas.map(([etiqueta, valor]) => (
+          <div
+            key={etiqueta}
+            style={{ display: "flex", justifyContent: "space-between" }}
+          >
+            <dt style={{ color: colores.suave }}>{etiqueta}</dt>
+            <dd style={{ margin: 0, fontWeight: 600 }}>{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </Panel>
+  );
+}
+
+export function DetallesOrden({ orden }: { orden: Orden }) {
+  if (orden.reparaciones_detail.length === 0) {
+    return (
+      <Panel titulo="Detalles de reparación">
+        <p style={{ margin: 0, color: colores.suave, fontSize: "0.9rem" }}>
+          Todavía no se definió ninguna reparación.
+        </p>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel titulo="Detalles de reparación">
+      <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+        {orden.reparaciones_detail.map((detalle) => (
+          <li
+            key={detalle.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "0.5rem",
+              padding: "0.4rem 0",
+              borderBottom: `1px solid ${colores.borde}`,
+            }}
+          >
+            <div>
+              <strong>{detalle.id}</strong>{" "}
+              <span style={{ color: colores.suave }}>
+                {detalle.tipo_reparacion_id}
+              </span>
+              <div style={{ fontSize: "0.8rem", color: colores.suave }}>
+                Garantía {detalle.garantia_dias} días · Puntaje{" "}
+                {detalle.puntaje}
+              </div>
+              {detalle.insumos_previstos.length > 0 && (
+                <div style={{ fontSize: "0.8rem", color: colores.suave }}>
+                  Insumos previstos:{" "}
+                  {detalle.insumos_previstos
+                    .map(
+                      (previsto) =>
+                        `${previsto.nombre} × ${previsto.cantidad_prevista}`,
+                    )
+                    .join(", ")}
+                </div>
+              )}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div>{importe(detalle.precio)}</div>
+              <div style={{ fontSize: "0.8rem" }}>
+                <Etiqueta>{detalle.estado}</Etiqueta>{" "}
+                <Etiqueta
+                  color={
+                    detalle.control_estado === "APROBADO"
+                      ? colores.ok
+                      : colores.suave
+                  }
+                >
+                  control {detalle.control_estado}
+                </Etiqueta>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+export function ProgresoHappyPath({ orden }: { orden: Orden }) {
+  return (
+    <Panel titulo="Progreso HP-REP-001">
+      <ol
+        style={{
+          margin: 0,
+          padding: 0,
+          listStyle: "none",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.3rem",
+        }}
+      >
+        {orden.progreso.map((paso) => (
+          <li
+            key={paso.process_id}
+            title={`${paso.process_id} — ${paso.etiqueta}`}
+            style={{
+              padding: "0.2rem 0.45rem",
+              borderRadius: 4,
+              fontSize: "0.7rem",
+              fontFamily: "ui-monospace, monospace",
+              background: paso.alcanzado ? colores.ok : colores.fondo,
+              color: paso.alcanzado ? "#fff" : colores.suave,
+              border: `1px solid ${
+                paso.alcanzado ? colores.ok : colores.borde
+              }`,
+            }}
+          >
+            {paso.process_id.replace("PROC-REP-", "")}
+          </li>
+        ))}
+      </ol>
+    </Panel>
+  );
+}
+
+export function HistorialOrden({ orden }: { orden: Orden }) {
+  return (
+    <Panel titulo="Historial">
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: "0.82rem",
+        }}
+      >
+        <thead>
+          <tr style={{ textAlign: "left", color: colores.suave }}>
+            <th style={{ padding: "0.2rem 0" }}>Fecha</th>
+            <th>Nodo</th>
+            <th>Acción</th>
+            <th>Usuario</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orden.historial.map((paso, indice) => (
+            <tr
+              key={`${paso.process_id}-${indice}`}
+              style={{ borderTop: `1px solid ${colores.borde}` }}
+            >
+              <td style={{ padding: "0.3rem 0", whiteSpace: "nowrap" }}>
+                {fechaCorta(paso.fecha)}
+              </td>
+              <td style={{ fontFamily: "ui-monospace, monospace" }}>
+                {paso.process_id}
+              </td>
+              <td>{paso.accion}</td>
+              <td style={{ color: colores.suave }}>
+                {paso.usuario_id ?? "sistema"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Panel>
+  );
+}

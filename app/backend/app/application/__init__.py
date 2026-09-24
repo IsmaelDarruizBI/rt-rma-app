@@ -1,0 +1,87 @@
+"""Capa de aplicacion: orquesta los services para atender una intencion.
+
+Es la capa fina entre la API y el dominio. Cada funcion de aqui hace
+siempre lo mismo:
+
+    cargar de los repositories -> resolver catalogos y usuarios ->
+    invocar los services en el orden del proceso -> persistir
+
+y nada mas. No decide reglas de negocio -eso vive en ``app.services``-
+ni conoce HTTP -eso vive en ``app.api``-.
+
+CRITERIO DE AGRUPACION
+----------------------
+Un comando de aplicacion = una intencion de usuario, no un nodo del
+proceso. Un comando arranca en el nodo que ejecuta un actor humano y
+encadena todos los nodos ACT-SYSTEM y las decisiones que le siguen,
+hasta el siguiente nodo con actor humano, que es donde corta. Nunca
+atraviesa una segunda accion humana, y no existe ningun ejecutor
+generico de workflow: la secuencia de cada comando esta escrita a mano
+porque es una decision funcional, no una configuracion.
+"""
+
+from .cierre import (
+    aprobar_control,
+    entregar,
+    notificar,
+    registrar_pago_de_orden,
+)
+from .cola import encolar_orden
+from .concurrencia import LOCK_INVENTARIO, seccion_critica_inventario
+from .consultas import (
+    InsumoPrevisto,
+    insumos_previstos_por_detalle,
+    listar_estaciones,
+    listar_ordenes,
+    listar_tipos_reparacion,
+    listar_usuarios,
+    obtener_orden,
+)
+from .contexto import ApplicationContext, construir_contexto
+from .happy_path import (
+    AccionDisponible,
+    PasoHappyPath,
+    acciones_disponibles,
+    progreso,
+)
+from .identificadores import siguiente_detalle_id, siguiente_orden_id
+from .ingreso import crear_orden, definir_reparacion
+from .taller import (
+    completar_ejecucion,
+    iniciar_detalle,
+    tomar_orden_en_estacion,
+)
+
+__all__ = [
+    # Contexto e infraestructura
+    "ApplicationContext",
+    "construir_contexto",
+    "LOCK_INVENTARIO",
+    "seccion_critica_inventario",
+    "siguiente_detalle_id",
+    "siguiente_orden_id",
+    # Lecturas
+    "listar_estaciones",
+    "InsumoPrevisto",
+    "insumos_previstos_por_detalle",
+    "listar_ordenes",
+    "listar_tipos_reparacion",
+    "listar_usuarios",
+    "obtener_orden",
+    # Avance sobre HP-REP-001
+    "AccionDisponible",
+    "PasoHappyPath",
+    "acciones_disponibles",
+    "progreso",
+    # Comandos
+    "crear_orden",
+    "definir_reparacion",
+    "encolar_orden",
+    "tomar_orden_en_estacion",
+    "iniciar_detalle",
+    "completar_ejecucion",
+    "aprobar_control",
+    "notificar",
+    "registrar_pago_de_orden",
+    "entregar",
+]

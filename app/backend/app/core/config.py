@@ -1,12 +1,18 @@
 """Configuracion tecnica transversal del backend MVP.
 
 Parametrizable por variables de entorno con prefijo ``RMA_`` (por
-ejemplo ``RMA_CORS_ALLOW_ORIGINS``). No contiene reglas de negocio.
+ejemplo ``RMA_CORS_ALLOW_ORIGINS`` o ``RMA_DATA_DIR``). No contiene
+reglas de negocio.
 """
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# ``app/backend/data``: el directorio versionado con los catalogos DEMO
+# y las Ordenes de desarrollo local.
+DATA_DIR_POR_DEFECTO = Path(__file__).resolve().parents[2] / "data"
 
 
 class Settings(BaseSettings):
@@ -27,6 +33,21 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://127.0.0.1:5173",
     ]
+
+    # Raiz del almacenamiento JSON. Debajo cuelgan ``ordenes/`` y
+    # ``catalogs/``. Los tests siempre apuntan a un ``tmp_path``, nunca
+    # a este default, para no tocar los JSON DEMO versionados.
+    data_dir: Path = DATA_DIR_POR_DEFECTO
+
+    @property
+    def ordenes_dir(self) -> Path:
+        """Directorio de las Ordenes persistidas."""
+        return self.data_dir / "ordenes"
+
+    @property
+    def catalogos_dir(self) -> Path:
+        """Directorio de los catalogos persistidos."""
+        return self.data_dir / "catalogs"
 
 
 @lru_cache

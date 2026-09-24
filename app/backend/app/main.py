@@ -1,13 +1,19 @@
 """Punto de entrada de la aplicacion FastAPI del MVP.
 
-Se limita a construir la app, configurar CORS para el frontend Vite y
-registrar los routers disponibles.
+Se limita a construir la app, configurar CORS para el frontend Vite,
+montar el contexto de aplicacion y registrar los routers.
+
+El ``ApplicationContext`` se arma una sola vez, desde ``Settings``, y
+queda en ``app.state``. Un test que quiera otro directorio de datos
+solo tiene que llamar a ``create_app(Settings(data_dir=tmp_path))``.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import catalogos, health, ordenes
+from app.api.errores import registrar_manejadores_de_error
+from app.application import construir_contexto
 from app.core.config import Settings, get_settings
 
 
@@ -28,7 +34,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    application.state.settings = settings
+    application.state.contexto = construir_contexto(settings)
+
+    registrar_manejadores_de_error(application)
+
     application.include_router(health.router)
+    application.include_router(catalogos.router)
+    application.include_router(ordenes.router)
 
     return application
 
