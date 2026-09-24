@@ -1,0 +1,280 @@
+# Scenarios de PROC-REP V1.3 (Gestion de Ordenes de Reparacion).
+# Etapa: Scenario Definition. Un Scenario es una CAPA sobre el Business
+# Process: no crea un Mermaid alternativo ni duplica nodes/edges de
+# business/processes/repair-management-v1.3.yaml. Cada paso PROCESS_EDGE
+# referencia una transicion real (from/to/condition) que debe existir
+# exactamente en process.edges (validado por scripts/validate-scenarios.ts,
+# no por el schema). Cada paso FUNCTIONAL_ACTION representa una capacidad
+# funcional transversal sin nodo propio (por ejemplo Registrar Pago,
+# FEAT-REP-007/BR-REP-017): nunca agrega una linea nueva al diagrama.
+#
+# Jerarquia conceptual:
+#   Business Process
+#     |- Business Rules
+#     |- Features
+#     `- Scenarios
+#          `- HP-REP-001
+#
+# Por ahora solo existe type: HAPPY_PATH y scope: E2E. El modelo
+# (scenario.schema.json, scripts/lib/scenario-model.ts) ya admite
+# VARIANT/EXCEPTION/EDGE_CASE y scope FEATURE/RULE en el enum, pero su
+# comportamiento (por ejemplo Variants como overrides de facts sobre este
+# baseline) no esta implementado ni validado todavia. No hay Coverage
+# Analyzer, generador automatico de escenarios, ni User Stories en esta
+# iteracion.
+#
+# No existe un Scenario equivalente para V1.2: esta capa nace junto con
+# V1.3.
+
+process:
+  id: PROC-REP
+  version: "1.3"
+
+scenarios:
+
+  - id: HP-REP-001
+    name: Reparacion estandar de cliente externo
+    type: HAPPY_PATH
+    scope: E2E
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    description: >
+      Camino de referencia para una Orden de origen CLIENTE_EXTERNO con un
+      unico Detalle conocido desde el ingreso, sin desvios operativos ni
+      tecnicos: recursos disponibles, estacion compatible, reserva
+      exitosa, ejecucion completada, control aprobado y pago final
+      realizado al retirar antes de la entrega. Representa el
+      comportamiento normal del proceso, no necesariamente el camino con
+      menos nodos: en particular, es normal que el cliente tenga Saldo
+      pendiente hasta el momento de retirar el equipo.
+
+    facts:
+      - key: origin
+        label: Origen
+        value: CLIENTE_EXTERNO
+      - key: detail_count
+        label: Cantidad de Detalles
+        value: 1
+      - key: details_known_at_intake
+        label: Reparacion conocida desde el ingreso
+        value: true
+      - key: receipt_required
+        label: Comprobante de recepcion requerido
+        value: true
+      - key: resources_available
+        label: Recursos disponibles
+        value: true
+      - key: station_valid
+        label: Sesion y Estacion validas
+        value: true
+      - key: station_compatible
+        label: Estacion compatible con el Detalle
+        value: true
+      - key: reservation_success
+        label: Reserva de insumos
+        value: true
+      - key: execution_result
+        label: Resultado de la Ejecucion
+        value: COMPLETADO
+      - key: technical_control
+        label: Control tecnico
+        value: APROBADO
+      - key: payment_timing
+        label: Momento del pago
+        value: AL_RETIRAR
+      - key: balance_before_final_payment
+        label: Saldo antes del pago final
+        value: PENDIENTE
+      - key: final_payment_registered
+        label: Pago final registrado
+        value: true
+      - key: final_balance
+        label: Saldo final
+        value: 0
+
+    steps:
+      - kind: PROCESS_EDGE
+        from: EVT-REP-001
+        to: PROC-REP-010
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-010
+        to: PROC-REP-030
+        condition: CLIENTE_EXTERNO
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-030
+        to: PROC-REP-040
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-040
+        to: PROC-REP-045
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-045
+        to: PROC-REP-070
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-070
+        to: PROC-REP-050
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-050
+        to: PROC-REP-060
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-060
+        to: PROC-REP-080
+        condition: Detalles definidos
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-080
+        to: PROC-REP-090
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-090
+        to: PROC-REP-140
+        condition: Existe Detalle trabajable
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-140
+        to: PROC-REP-150
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-150
+        to: PROC-REP-170
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-170
+        to: PROC-REP-172
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-172
+        to: PROC-REP-180
+        condition: Valida y compatible
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-180
+        to: PROC-REP-181
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-181
+        to: PROC-REP-174
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-174
+        to: PROC-REP-185
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-185
+        to: PROC-REP-190
+        condition: Reserva exitosa
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-190
+        to: PROC-REP-200
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-200
+        to: PROC-REP-210
+        condition: Completado
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-210
+        to: PROC-REP-211
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-211
+        to: PROC-REP-220
+        condition: Todos terminales, existe completo
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-220
+        to: PROC-REP-230
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-230
+        to: PROC-REP-245
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-245
+        to: PROC-REP-240
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-240
+        to: PROC-REP-250
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-250
+        to: PROC-REP-260
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-260
+        to: PROC-REP-265
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-266
+        condition: No
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Registrar pago final
+        description: >
+          Registrar el pago necesario para cancelar el Saldo pendiente
+          mediante la capacidad transversal de Pagos definida en
+          BR-REP-017. El cliente cancela el saldo pendiente antes de la
+          entrega.
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-266
+        to: PROC-REP-265
+        condition: Revalidar
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-280
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-280
+        to: PROC-REP-270
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-270
+        to: EVT-REP-999
+
+    expected:
+      - key: technical_aggregate
+        label: Agregado tecnico de la Orden
+        value: COMPLETA
+      - key: workflow_state
+        label: Estado de workflow
+        value: ENTREGADA
+      - key: active_execution
+        label: Ejecucion activa
+        value: false
+      - key: active_order_take
+        label: Toma/participacion activa
+        value: false
+      - key: active_reservations
+        label: Reservas activas de inventario
+        value: false
+      - key: final_balance
+        label: Saldo final
+        value: 0
+      - key: final_receipt_generated
+        label: Comprobante final generado
+        value: true
+      - key: repair_warranty_generated
+        label: Garantia de reparacion generada
+        value: true

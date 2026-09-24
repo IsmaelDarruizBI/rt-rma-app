@@ -16,9 +16,9 @@
  * HTML also works offline, e.g. on a notebook in a meeting room with no
  * reliable network.
  *
- * All four source files are parameterizable via optional positional CLI
+ * All five source files are parameterizable via optional positional CLI
  * args (`tsx scripts/generate-process-viewer.ts [processFile] [rulesFile]
- * [actorsFile] [featuresFile]`), the same convention as
+ * [actorsFile] [featuresFile] [scenariosFile]`), the same convention as
  * validate-references.ts, so this one script also generates the viewer
  * for a draft revision (e.g. PROC-REP V1.3, which has its own process +
  * rules files and, deliberately, no Features yet). The output filename is
@@ -27,7 +27,27 @@
  * before; an explicit V1.3 process file produces a sibling
  * `repair-management-v1.3.html`. When no Features file is resolved, the
  * Feature selector/highlighting UI is omitted from the generated page
- * entirely rather than rendering an empty/broken control.
+ * entirely rather than rendering an empty/broken control - the same
+ * treatment applies to Scenarios via the 5th arg (there is no V1.2
+ * Scenarios file yet, so V1.2 never renders that selector either).
+ *
+ * Scenarios (business/scenarios/*.yaml) are rendered as a SECOND,
+ * mutually-exclusive highlighting layer over the exact same diagram: a
+ * Scenario's PROCESS_EDGE steps reference real process.edges (never a
+ * second Mermaid graph), and FUNCTIONAL_ACTION steps (transversal
+ * capabilities with no node of their own, e.g. Registrar Pago) are shown
+ * only in the detail panel's step list, never as a diagram line. Because
+ * two edges can share the same from/to with a different condition (e.g.
+ * PROC-REP-200 -> PROC-REP-210 on "Completado" vs. "Interrumpido"),
+ * highlighting a Scenario's edges cannot reuse the Feature layer's
+ * "both endpoints are members" heuristic: it must match the EXACT edge
+ * (from + condition + to). Mermaid gives every rendered edge <path> an
+ * `id="L-<from>-<to>-<n>"`, where `n` is the 0-based occurrence rank of
+ * that (from,to) pair among model.edges, in array order (empirically
+ * verified against mermaid 10.9.8 with a jsdom render). `withMermaidIndex()`
+ * below precomputes that same rank server-side so the client can build
+ * the exact id for a given step and select that one path, never its
+ * parallel sibling.
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
@@ -37,10 +57,13 @@ import {
   loadYaml,
   type Actor,
   type BusinessRule,
+  type ProcessEdge,
   type ProcessModel,
   type ProcessNode,
 } from "./lib/process-model";
 import type { FeatureDefinition, FeatureModel, FeatureScope } from "./lib/feature-model";
+import { deriveScenarioFeatures } from "./lib/feature-scenario-mapping";
+import type { Scenario, ScenarioModel } from "./lib/scenario-model";
 
 const DEFAULT_PROCESS_FILE = join("business", "processes", "repair-management.yaml");
 const DEFAULT_ACTORS_FILE = join("business", "actors", "actors.yaml");
@@ -55,9 +78,10 @@ const PROCESS_FILE = cliArgs[0] ?? DEFAULT_PROCESS_FILE;
 const RULES_FILE = cliArgs[1] ?? DEFAULT_RULES_FILE;
 const ACTORS_FILE = cliArgs[2] ?? DEFAULT_ACTORS_FILE;
 // See validate-references.ts for the same convention: zero-arg run keeps
-// V1.2's Features; an explicit run without a 4th arg means "no Features
-// for this revision yet", not "fall back to V1.2's".
+// V1.2's Features; an explicit run without a 4th/5th arg means "no
+// Features/Scenarios for this revision yet", not "fall back to V1.2's".
 const FEATURES_FILE: string | null = isDefaultRun ? DEFAULT_FEATURES_FILE : cliArgs[3] || null;
+const SCENARIOS_FILE: string | null = isDefaultRun ? null : cliArgs[4] || null;
 const OUTPUT_FILE = join("generated", "viewer", `${basename(PROCESS_FILE, ".yaml")}.html`);
 
 const CLICK_CALLBACK = "selectNode";
@@ -146,6 +170,33 @@ function resolveFeature(feature: FeatureDefinition, rulesById: Map<string, Busin
     scope: feature.scope,
     open_questions: feature.open_questions,
   };
+}
+
+interface ResolvedEdge extends ProcessEdge {
+  /** 0-based occurrence rank of this (from,to) pair among model.edges, in array order - see the module doc comment on why the Scenario layer needs this to pick one parallel edge over another. */
+  mermaidIndex: number;
+}
+
+interface ResolvedScenario extends Scenario {
+  /** Precomputed via deriveScenarioFeatures() (scripts/lib/feature-scenario-mapping.ts) - the client never re-derives this. */
+  active_features: string[];
+  /** Diagnostic only (section 6/9): raw intersection, never rendered in the panel, kept here only in case it's useful from the browser console or a future test. */
+  touched_features: string[];
+}
+
+function resolveScenario(scenario: Scenario, featuresModel: FeatureModel): ResolvedScenario {
+  const { touchedFeatureIds, activeFeatureIds } = deriveScenarioFeatures(featuresModel, scenario);
+  return { ...scenario, active_features: activeFeatureIds, touched_features: touchedFeatureIds };
+}
+
+function withMermaidIndex(edges: ProcessEdge[]): ResolvedEdge[] {
+  const counts = new Map<string, number>();
+  return edges.map((edge) => {
+    const pairKey = `${edge.from}::${edge.to}`;
+    const mermaidIndex = counts.get(pairKey) ?? 0;
+    counts.set(pairKey, mermaidIndex + 1);
+    return { ...edge, mermaidIndex };
+  });
 }
 
 /** Prevents a literal "</script" inside generated content from closing the enclosing <script> tag. */
@@ -413,6 +464,18 @@ const STYLES = `
     cursor: pointer;
   }
   #toolbar #feature-select:focus { border-color: var(--accent); outline: none; }
+  #toolbar #scenario-select {
+    font: inherit;
+    font-size: 12px;
+    max-width: 260px;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  #toolbar #scenario-select:focus { border-color: var(--accent); outline: none; }
 
   #detail-pane {
     flex: 0 0 380px;
@@ -529,6 +592,34 @@ const STYLES = `
   .open-questions-box li { margin-bottom: 4px; }
   .open-questions-box li:last-child { margin-bottom: 0; }
 
+  /* Scenario facts/expected: a stable key-value list (section 14), reused
+     identically for facts and expected since both are the same
+     key/label/value shape. */
+  .fact-list { display: flex; flex-direction: column; gap: 2px; }
+  .fact-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+  .fact-row:last-child { border-bottom: none; }
+  .fact-label { color: var(--text-muted); }
+  .fact-value { color: var(--text); font-weight: 600; text-align: right; }
+
+  /* FUNCTIONAL_ACTION step card: visually distinct from a PROCESS_EDGE
+     nav-card (dashed border, no hover/click affordance) since it never
+     corresponds to a diagram node - it is purely informational. */
+  .nav-card.functional-action {
+    cursor: default;
+    border-style: dashed;
+    border-color: var(--accent-soft-border);
+    background: var(--accent-soft);
+  }
+  .nav-card.functional-action .nav-id { color: var(--accent); font-weight: 700; }
+  .nav-card.functional-action .nav-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
   #diagram-pane::-webkit-scrollbar, #detail-pane::-webkit-scrollbar { width: 10px; height: 10px; }
   #diagram-pane::-webkit-scrollbar-thumb, #detail-pane::-webkit-scrollbar-thumb {
     background: #d3d5db; border-radius: 999px; border: 2px solid transparent; background-clip: content-box;
@@ -546,6 +637,11 @@ const STYLES = `
 const CLIENT_SCRIPT = `
   var CURRENT_SELECTED_ID = null;
   var ACTIVE_FEATURE_ID = null;
+  // Named generically ("scenario", not "happyPath") so a future EXCEPTION/
+  // VARIANT/EDGE_CASE scenario can reuse this same state and rendering
+  // path without a rewrite - only the "Happy Path" label in the UI is
+  // specific to today, because HAPPY_PATH is the only type that exists.
+  var ACTIVE_SCENARIO_ID = null;
 
   var TYPE_LABELS = { event: "Evento", activity: "Actividad", decision: "Decision", start: "Inicio", end: "Fin" };
   var TYPE_SHAPES = { event: "shape-hexagon", activity: "shape-rect", decision: "shape-diamond", start: "shape-circle", end: "shape-circle" };
@@ -666,6 +762,151 @@ const CLIENT_SCRIPT = `
     }).join("");
     return '<div class="field"><div class="field-label">Features relacionadas</div>' +
       '<div class="nav-list">' + cards + "</div></div>";
+  }
+
+  // --- Scenarios (Happy Path layer) ---------------------------------------
+  // A Scenario never duplicates the Business Process: PROCESS_EDGE steps
+  // reference real edges (matched here the same way, from+condition+to),
+  // and FUNCTIONAL_ACTION steps are shown only in this panel, never as a
+  // diagram line.
+
+  function isProcessEdgeStep(step) { return step.kind === "PROCESS_EDGE"; }
+  function isFunctionalActionStep(step) { return step.kind === "FUNCTIONAL_ACTION"; }
+
+  function formatFactValue(value) {
+    if (typeof value === "boolean") return value ? "Si" : "No";
+    return String(value);
+  }
+
+  function renderFacts(label, facts) {
+    if (!facts || !facts.length) return "";
+    var rows = facts.map(function (fact) {
+      return '<div class="fact-row"><span class="fact-label">' + escapeHtml(fact.label) + "</span>" +
+        '<span class="fact-value">' + escapeHtml(formatFactValue(fact.value)) + "</span></div>";
+    }).join("");
+    return '<div class="field"><div class="field-label">' + label + '</div><div class="fact-list">' + rows + "</div></div>";
+  }
+
+  /** Every node touched by a Scenario's PROCESS_EDGE steps (from and to), as a lookup set. */
+  function getScenarioTouchedNodes(scenario) {
+    var set = {};
+    scenario.steps.forEach(function (step) {
+      if (isProcessEdgeStep(step)) {
+        set[step.from] = true;
+        set[step.to] = true;
+      }
+    });
+    return set;
+  }
+
+  /**
+   * Renders scenario.active_features - the Features genuinely
+   * functionally involved, precomputed server-side by
+   * deriveScenarioFeatures() (scripts/lib/feature-scenario-mapping.ts) so
+   * this ALWAYS/CONTEXTUAL-aware logic lives in exactly one place, not
+   * reimplemented in client JS. scenario.touched_features (the raw, less
+   * precise intersection) travels with the same embedded data for
+   * diagnostics but is deliberately never shown here (section 9).
+   */
+  function renderScenarioFeatures(featureIds) {
+    if (!featureIds || !featureIds.length) {
+      return '<div class="field"><div class="field-label">Features involucradas</div>' +
+        '<p class="hint">Ninguna Feature funcionalmente activa para este Scenario.</p></div>';
+    }
+    var cards = featureIds.map(function (featureId) {
+      var feature = FEATURES_BY_ID[featureId];
+      var name = feature ? feature.name : featureId;
+      return '<button type="button" class="nav-card" data-nav-feature="' + escapeHtml(featureId) + '">' +
+        '<div class="nav-name">' + escapeHtml(name) + "</div>" +
+        '<div class="nav-id">' + escapeHtml(featureId) + "</div>" +
+        "</button>";
+    }).join("");
+    return '<div class="field"><div class="field-label">Features involucradas</div>' +
+      '<div class="nav-list">' + cards + "</div></div>";
+  }
+
+  /** Finds the exact process edge a PROCESS_EDGE step refers to (from + condition + to), never just from/to. */
+  function findMatchingEdge(step) {
+    for (var i = 0; i < EDGES.length; i++) {
+      var edge = EDGES[i];
+      if (edge.from === step.from && edge.to === step.to && (edge.condition || "") === (step.condition || "")) {
+        return edge;
+      }
+    }
+    return null;
+  }
+
+  /** Mirrors the id Mermaid assigns the rendered <path> - see the module doc comment in generate-process-viewer.ts. */
+  function edgeElementId(edge) {
+    return "L-" + edge.from + "-" + edge.to + "-" + edge.mermaidIndex;
+  }
+
+  function getScenarioMatchedEdgeIds(scenario) {
+    var ids = {};
+    scenario.steps.forEach(function (step) {
+      if (!isProcessEdgeStep(step)) return;
+      var edge = findMatchingEdge(step);
+      if (edge) ids[edgeElementId(edge)] = true;
+    });
+    return ids;
+  }
+
+  function renderScenarioSteps(steps) {
+    var items = steps.map(function (step) {
+      if (isProcessEdgeStep(step)) {
+        var fromNode = NODES_BY_ID[step.from];
+        var toNode = NODES_BY_ID[step.to];
+        var fromName = fromNode ? fromNode.name : step.from;
+        var toName = toNode ? toNode.name : step.to;
+        var condition = step.condition
+          ? '<div class="nav-condition">Condicion: <span class="nav-condition-value">' + escapeHtml(step.condition) + "</span></div>"
+          : "";
+        return '<button type="button" class="nav-card" data-nav-node="' + escapeHtml(step.to) + '">' +
+          '<div class="nav-name">' + escapeHtml(fromName) + " &rarr; " + escapeHtml(toName) + "</div>" +
+          '<div class="nav-id">' + escapeHtml(step.from) + " -&gt; " + escapeHtml(step.to) + "</div>" +
+          condition +
+          "</button>";
+      }
+      if (isFunctionalActionStep(step)) {
+        var desc = step.description ? '<div class="nav-desc">' + escapeHtml(step.description) + "</div>" : "";
+        return '<div class="nav-card functional-action">' +
+          '<div class="nav-id">Accion funcional &middot; ' + escapeHtml(step.feature) + "</div>" +
+          '<div class="nav-name">' + escapeHtml(step.name) + "</div>" +
+          desc +
+          "</div>";
+      }
+      return "";
+    }).join("");
+    return '<div class="field"><div class="field-label">Recorrido</div><div class="nav-list">' + items + "</div></div>";
+  }
+
+  // Panel order (section 14, plus a final derived section): ID/Nombre/
+  // Tipo/Scope/Status/Descripcion, Condiciones del Happy Path (facts),
+  // Recorrido (steps), Resultado esperado (expected), Features
+  // involucradas (active_features - derived, shown last on purpose to
+  // read as computed information, not part of the Scenario's own
+  // authored definition).
+  function renderScenarioDetail(scenarioId) {
+    var scenario = SCENARIOS_BY_ID[scenarioId];
+    if (!scenario) return;
+
+    var html = "<h2>Happy Path</h2>" +
+      '<div class="field"><div class="field-value big">' + escapeHtml(scenario.name) + "</div>" +
+      '<span class="badge status-' + escapeHtml(scenario.status) + '">' + escapeHtml(scenario.status) + "</span></div>" +
+      '<div class="field"><div class="field-label">ID</div><div class="field-value">' + escapeHtml(scenario.id) + "</div></div>" +
+      '<div class="field"><div class="field-label">Tipo</div><div class="field-value">' + escapeHtml(scenario.type) + "</div></div>" +
+      '<div class="field"><div class="field-label">Scope</div><div class="field-value">' + escapeHtml(scenario.scope) + "</div></div>" +
+      (scenario.description ? '<div class="field"><div class="field-label">Descripcion</div><div class="field-value">' + escapeHtml(scenario.description) + "</div></div>" : "") +
+      '<hr class="divider">' +
+      renderFacts("Condiciones del Happy Path", scenario.facts) +
+      '<hr class="divider">' +
+      renderScenarioSteps(scenario.steps) +
+      '<hr class="divider">' +
+      renderFacts("Resultado esperado", scenario.expected) +
+      '<hr class="divider">' +
+      renderScenarioFeatures(scenario.active_features);
+
+    panelBody().innerHTML = html;
   }
 
   // --- Navigation derived from EDGES (never duplicated by hand) ----------
@@ -822,16 +1063,21 @@ const CLIENT_SCRIPT = `
   }
 
   /**
-   * Recomputes every node/edge highlight class from the two independent
-   * pieces of state, CURRENT_SELECTED_ID and ACTIVE_FEATURE_ID. Visual
-   * hierarchy: selected > feature member > context > dimmed.
+   * Recomputes every node/edge highlight class from three independent
+   * pieces of state: CURRENT_SELECTED_ID, ACTIVE_FEATURE_ID and
+   * ACTIVE_SCENARIO_ID. Visual hierarchy: selected > layer member (Feature
+   * or Scenario) > context > dimmed. Feature and Scenario are mutually
+   * exclusive (activateFeature()/activateScenario() enforce that), so at
+   * most one of the two branches below ever runs.
    *
-   * When ACTIVE_FEATURE_ID is null this is byte-for-byte the original
-   * node-context behavior (section 11: no Feature selected must not
-   * change existing navigation at all). When a Feature is active, node
-   * context (predecessor/successor highlighting) is not computed - the
-   * Feature's own membership highlighting takes over that role instead,
-   * to keep the two modes simple and non-overlapping.
+   * When neither is active this is byte-for-byte the original node-context
+   * behavior (section 11: no Feature selected must not change existing
+   * navigation at all). When a layer is active, node context
+   * (predecessor/successor highlighting) is not computed - the layer's own
+   * membership highlighting takes over that role instead, to keep the
+   * modes simple and non-overlapping. Feature and Scenario reuse the same
+   * "feature-*" CSS classes on purpose: they are the same visual treatment
+   * (a highlighted subset of the diagram), never shown at the same time.
    */
   function applyHighlight() {
     var container = document.getElementById("diagram-inner");
@@ -861,6 +1107,34 @@ const CLIENT_SCRIPT = `
         var endpoints = getEdgeEndpoints(edgeEl);
         var bothMembers = endpoints.from && endpoints.to && memberSet[endpoints.from] && memberSet[endpoints.to];
         edgeEl.classList.add(bothMembers ? "feature-edge" : "feature-edge-dimmed");
+      }
+      return;
+    }
+
+    if (ACTIVE_SCENARIO_ID) {
+      var scenario = SCENARIOS_BY_ID[ACTIVE_SCENARIO_ID];
+      var touchedNodes = scenario ? getScenarioTouchedNodes(scenario) : {};
+      var matchedEdgeIds = scenario ? getScenarioMatchedEdgeIds(scenario) : {};
+
+      for (var e = 0; e < nodeEls.length; e++) {
+        var scenarioNodeEl = nodeEls[e];
+        var scenarioNodeId = scenarioNodeEl.getAttribute("data-id");
+        if (scenarioNodeId === CURRENT_SELECTED_ID) {
+          scenarioNodeEl.classList.add("selected");
+        } else if (touchedNodes[scenarioNodeId]) {
+          scenarioNodeEl.classList.add("feature-member");
+        } else {
+          scenarioNodeEl.classList.add("feature-dimmed");
+        }
+      }
+
+      // Identified by from + condition + to (its rendered id), never by
+      // endpoints alone: two edges can share the same from/to with a
+      // different condition (see the module doc comment).
+      for (var f = 0; f < edgeEls.length; f++) {
+        var scenarioEdgeEl = edgeEls[f];
+        var isMatched = matchedEdgeIds[scenarioEdgeEl.getAttribute("id")];
+        scenarioEdgeEl.classList.add(isMatched ? "feature-edge" : "feature-edge-dimmed");
       }
       return;
     }
@@ -909,13 +1183,19 @@ const CLIENT_SCRIPT = `
   // activeFeatureId is intentionally a state separate from
   // CURRENT_SELECTED_ID (section 10): selecting a Feature does not clear
   // the current node selection, and clicking a node does not clear the
-  // active Feature.
+  // active Feature. Activating a Feature DOES clear an active Scenario
+  // (and vice versa, see activateScenario()): only one functional
+  // highlighting layer is active at a time, to avoid confusing overlapping
+  // layers on the diagram.
   function activateFeature(featureId) {
     ACTIVE_FEATURE_ID = featureId || null;
     var select = document.getElementById("feature-select");
     if (select && select.value !== (ACTIVE_FEATURE_ID || "")) select.value = ACTIVE_FEATURE_ID || "";
 
     if (ACTIVE_FEATURE_ID) {
+      ACTIVE_SCENARIO_ID = null;
+      var scenarioSelectToClear = document.getElementById("scenario-select");
+      if (scenarioSelectToClear) scenarioSelectToClear.value = "";
       renderFeatureDetail(ACTIVE_FEATURE_ID);
     } else if (CURRENT_SELECTED_ID) {
       renderNodeDetail(CURRENT_SELECTED_ID);
@@ -937,6 +1217,41 @@ const CLIENT_SCRIPT = `
     if (!select) return;
     select.addEventListener("change", function (event) {
       activateFeature(event.target.value || null);
+    });
+  }
+
+  // Mirrors activateFeature() above; see that function's comment for the
+  // mutual-exclusion rule.
+  function activateScenario(scenarioId) {
+    ACTIVE_SCENARIO_ID = scenarioId || null;
+    var select = document.getElementById("scenario-select");
+    if (select && select.value !== (ACTIVE_SCENARIO_ID || "")) select.value = ACTIVE_SCENARIO_ID || "";
+
+    if (ACTIVE_SCENARIO_ID) {
+      ACTIVE_FEATURE_ID = null;
+      var featureSelectToClear = document.getElementById("feature-select");
+      if (featureSelectToClear) featureSelectToClear.value = "";
+      renderScenarioDetail(ACTIVE_SCENARIO_ID);
+    } else if (CURRENT_SELECTED_ID) {
+      renderNodeDetail(CURRENT_SELECTED_ID);
+    } else {
+      renderProcessSummary();
+    }
+
+    applyHighlight();
+
+    if (ACTIVE_SCENARIO_ID && SCENARIOS_BY_ID[ACTIVE_SCENARIO_ID]) {
+      centerNodes(Object.keys(getScenarioTouchedNodes(SCENARIOS_BY_ID[ACTIVE_SCENARIO_ID])));
+    }
+  }
+
+  function wireScenarioSelect() {
+    // Omitted entirely when this revision has no Scenarios yet (e.g. V1.2
+    // today, see scenarioSelectorMarkup in buildHtml()).
+    var select = document.getElementById("scenario-select");
+    if (!select) return;
+    select.addEventListener("change", function (event) {
+      activateScenario(event.target.value || null);
     });
   }
 
@@ -1166,6 +1481,7 @@ const CLIENT_SCRIPT = `
     wireFocusToggle();
     wireSearch();
     wireFeatureSelect();
+    wireScenarioSelect();
   });
 `;
 
@@ -1173,6 +1489,7 @@ function buildHtml(
   model: ProcessModel,
   resolvedNodes: ResolvedNode[],
   resolvedFeatures: ResolvedFeature[],
+  scenarios: ResolvedScenario[],
   mermaidLib: string
 ): string {
   const nodesById: Record<string, ResolvedNode> = {};
@@ -1185,11 +1502,17 @@ function buildHtml(
     featuresById[feature.id] = feature;
   }
 
+  const scenariosById: Record<string, ResolvedScenario> = {};
+  for (const scenario of scenarios) {
+    scenariosById[scenario.id] = scenario;
+  }
+
   const diagramSource = buildDiagramSource(model);
-  // Passed through as-is (no derived fields) so the viewer's "Llega desde" /
-  // "Continua hacia" navigation can compute incoming/outgoing edges via
-  // simple edge.to === id / edge.from === id filters, entirely client-side.
-  const edges = model.edges;
+  // Passed through with one derived field added (mermaidIndex - see the
+  // module doc comment) so the viewer's "Llega desde" / "Continua hacia"
+  // navigation and the Scenario edge-highlighting layer can both work
+  // entirely client-side, without a second pass over the process file.
+  const edges = withMermaidIndex(model.edges);
 
   // Options only - never assume how many Features exist or which ids they
   // have; regenerating after a FEAT-REP-008 is added just adds an <option>.
@@ -1213,7 +1536,28 @@ function buildHtml(
         </select>`
       : "";
 
-  const sourceLines = [PROCESS_FILE, ACTORS_FILE, RULES_FILE, FEATURES_FILE]
+  // Same convention as featureOptions above. Labeled "Happy Path" because
+  // HAPPY_PATH is the only Scenario type that exists today (section 12);
+  // the underlying state/markup is generic enough to later show every
+  // Scenario type without a rewrite.
+  const scenarioOptions = scenarios
+    .map(
+      (scenario) =>
+        `<option value="${escapeHtmlStatic(scenario.id)}">${escapeHtmlStatic(scenario.id)} · ${escapeHtmlStatic(scenario.name)}</option>`
+    )
+    .join("\n        ");
+
+  const scenarioSelectorMarkup =
+    scenarios.length > 0
+      ? `<span class="toolbar-divider" aria-hidden="true"></span>
+        <label class="feature-select-label" for="scenario-select">Happy Path:</label>
+        <select id="scenario-select" title="Resaltar un Happy Path">
+          <option value="">Ninguno</option>
+        ${scenarioOptions}
+        </select>`
+      : "";
+
+  const sourceLines = [PROCESS_FILE, ACTORS_FILE, RULES_FILE, FEATURES_FILE, SCENARIOS_FILE]
     .filter((file): file is string => Boolean(file))
     .map((file) => `  - ${file.replace(/\\/g, "/")}`)
     .join("\n");
@@ -1260,7 +1604,7 @@ ${sourceLines}
         <span class="toolbar-divider" aria-hidden="true"></span>
         <button id="mode-full" type="button" class="mode-btn active" aria-pressed="true">Contexto completo</button>
         <button id="mode-focus" type="button" class="mode-btn" aria-pressed="false" disabled title="Seleccione un nodo para habilitar el modo foco">Modo foco</button>
-        ${featureSelectorMarkup}
+        ${[featureSelectorMarkup, scenarioSelectorMarkup].filter(Boolean).join("\n        ")}
       </div>
       <div id="diagram-inner">Cargando diagrama...</div>
       <details id="legend" class="legend-panel">
@@ -1276,6 +1620,7 @@ ${sourceLines}
     var NODES_BY_ID = ${embedJson(nodesById)};
     var EDGES = ${embedJson(edges)};
     var FEATURES_BY_ID = ${embedJson(featuresById)};
+    var SCENARIOS_BY_ID = ${embedJson(scenariosById)};
     var DIAGRAM_SOURCE = ${embedJson(diagramSource)};
     ${CLIENT_SCRIPT}
   </script>
@@ -1288,16 +1633,21 @@ function main(): void {
   const model = loadYaml<ProcessModel>(PROCESS_FILE);
   const actors = loadYaml<{ actors: Actor[] }>(ACTORS_FILE).actors;
   const rules = loadYaml<{ rules: BusinessRule[] }>(RULES_FILE).rules;
-  const features = FEATURES_FILE ? loadYaml<FeatureModel>(FEATURES_FILE).features : [];
+  const featuresModel: FeatureModel = FEATURES_FILE ? loadYaml<FeatureModel>(FEATURES_FILE) : { process: model.process, features: [] };
+  const scenarios = SCENARIOS_FILE ? loadYaml<ScenarioModel>(SCENARIOS_FILE).scenarios : [];
 
   const actorsById = new Map(actors.map((actor) => [actor.id, actor]));
   const rulesById = new Map(rules.map((rule) => [rule.id, rule]));
 
   const resolvedNodes = model.nodes.map((node) => resolveNode(node, actorsById, rulesById));
-  const resolvedFeatures = features.map((feature) => resolveFeature(feature, rulesById));
+  const resolvedFeatures = featuresModel.features.map((feature) => resolveFeature(feature, rulesById));
+  // active_features/touched_features (section 7) computed once here, using
+  // the SAME helper validate-references.ts and validate-scenarios.ts use,
+  // so this never drifts into a second, viewer-only implementation.
+  const resolvedScenarios = scenarios.map((scenario) => resolveScenario(scenario, featuresModel));
   const mermaidLib = readFileSync(MERMAID_LIB_FILE, "utf8");
 
-  const html = buildHtml(model, resolvedNodes, resolvedFeatures, mermaidLib);
+  const html = buildHtml(model, resolvedNodes, resolvedFeatures, resolvedScenarios, mermaidLib);
 
   mkdirSync(dirname(OUTPUT_FILE), { recursive: true });
   writeFileSync(OUTPUT_FILE, html, "utf8");

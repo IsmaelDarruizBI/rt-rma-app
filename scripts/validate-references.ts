@@ -36,6 +36,7 @@ import {
   type ProcessNode,
 } from "./lib/process-model";
 import type { FeatureModel } from "./lib/feature-model";
+import { validateSharedNodeBindings } from "./lib/feature-scenario-mapping";
 
 const DEFAULT_PROCESS_FILE = "business/processes/repair-management.yaml";
 const DEFAULT_FEATURES_FILE = "business/features/repair-management-features.yaml";
@@ -299,6 +300,12 @@ export function main(): void {
   if (featuresModel) {
     validateFeaturesAgainstProcess(featuresModel, processModel, new Set(nodesById.keys()), rulesById, report);
     validateFeatureRuleNodeConsistency(featuresModel, nodesById, report);
+    // Safe for a Features file with zero shared nodes (e.g. V1.2 today):
+    // the completeness check inside never fires, so this never forces V1.2
+    // to adopt shared_node_bindings. See feature-scenario-mapping.ts.
+    for (const error of validateSharedNodeBindings(processModel, featuresModel)) {
+      report.errors.push(error);
+    }
   } else {
     console.log(
       "Features: omitido (no se proporciono archivo de Features para esta revision del proceso).\n"

@@ -634,10 +634,11 @@ propias.
 (entre FEAT-REP-002 y FEAT-REP-007, porque alli se registra el precio
 snapshot), PROC-REP-211 (entre FEAT-REP-005, FEAT-REP-006 y FEAT-REP-009,
 porque las tres reevaluan la situacion de la Orden mediante el mismo
-resolver), y PROC-REP-280 (entre FEAT-REP-007 y FEAT-REP-008, porque el
-comprobante final materializa el resultado comercial aunque su
-generacion/entrega sea responsabilidad principal de Finalizacion).
-Cobertura: los 56 process_nodes funcionales de PROC-REP V1.3 (excluyendo
+resolver -pero no simultaneamente: ver la siguiente seccion-), y
+PROC-REP-280 (entre FEAT-REP-007 y FEAT-REP-008, porque el comprobante
+final materializa el resultado comercial aunque su generacion/entrega sea
+responsabilidad principal de Finalizacion). Cobertura: los 56
+process_nodes funcionales de PROC-REP V1.3 (excluyendo
 EVT-REP-001/EVT-REP-999) quedan cubiertos por al menos una Feature.
 
 Notas de numeracion: FEAT-REP-007 (Comercial y Pagos) precede
@@ -645,6 +646,112 @@ conceptualmente a FEAT-REP-008 (Finalizacion y Entrega), porque el gate
 de Saldo ocurre antes del comprobante final y la entrega. FEAT-REP-009
 (Cancelacion) queda al final de la numeracion porque es transversal -no
 una etapa secuencial posterior a FEAT-REP-008-.
+
+### Feature <-> Process Node compartido: ALWAYS vs. CONTEXTUAL
+
+Compartir un process_node entre varias Features sigue siendo valido -la
+relacion es N:M por diseño-, pero no todos los nodos compartidos
+significan lo mismo. `shared_node_bindings` (campo opcional en cada
+Feature, ver `business/schemas/feature.schema.json` y
+`scripts/lib/feature-model.ts`) distingue dos semanticas:
+
+- **ALWAYS**: el nodo ejecuta simultaneamente comportamiento de todas las
+  Features que lo declaran ALWAYS, cada vez que se atraviesa. Ejemplo:
+  `PROC-REP-070` es ALWAYS para FEAT-REP-002 (define el Detalle) y para
+  FEAT-REP-007 (registra su price snapshot) - ambas cosas ocurren en el
+  mismo paso.
+- **CONTEXTUAL**: el nodo es un mecanismo compartido, y que Feature esta
+  funcionalmente involucrada depende de por que transicion concreta se
+  alcanzo. El contexto se identifica por `from + condition + to` (la
+  misma identidad de edge que usan los Scenarios), declarado en
+  `when.incoming_edges`. Ejemplo: `PROC-REP-211` (el resolver
+  centralizado) es CONTEXTUAL para FEAT-REP-005 (via PROC-REP-186 o
+  PROC-REP-210, tras una Ejecucion o una reserva fallida), para
+  FEAT-REP-006 (via PROC-REP-235, tras un rechazo de control) y para
+  FEAT-REP-009 (via PROC-REP-300 o PROC-REP-305, tras una cancelacion) -
+  las tres reutilizan el mismo nodo, pero solo una esta funcionalmente
+  activa segun por donde se llego.
+
+`scripts/validate-references.ts` exige, como ERROR (no warning), que toda
+Feature propietaria de un node genuinamente compartido (mas de un
+process_nodes[] lo declara) tenga exactamente un `shared_node_binding`
+para ese node: evita que un futuro node compartido quede con su semantica
+sin explicar. El campo es opcional y retrocompatible: V1.2 no tiene nodes
+compartidos hoy, por lo que esta regla nunca se activa alli y no requiere
+migrarla.
+
+Tres conceptos distintos, deliberadamente NO llamados "coverage" todavia:
+
+- **touched_features**: interseccion bruta entre los nodos que un
+  Scenario recorre y `Feature.process_nodes[]`. Diagnostico only - puede
+  incluir falsos positivos semanticos en nodes CONTEXTUAL alcanzados por
+  la transicion "equivocada".
+- **active_features**: `touched_features` refinado por ALWAYS/CONTEXTUAL
+  y por `FUNCTIONAL_ACTION.feature` - las Features genuinamente
+  involucradas. Es lo que el viewer muestra.
+- **covered_features**: NO implementado todavia. Reservado para un futuro
+  Coverage Analyzer (agregando muchos Scenarios); no debe confundirse con
+  "un Scenario paso una vez por esta Feature".
+
+## Scenarios / Happy Path V1.3
+
+PROC-REP V1.3 incorpora una tercera capa, `Scenarios`
+(`business/scenarios/repair-management-scenarios-v1.3.yaml`), ademas de
+Business Rules y Features:
+
+```text
+Business Process
+  |- Business Rules
+  |- Features
+  `- Scenarios
+       `- HP-REP-001
+```
+
+Un Scenario es una capa SOBRE el Business Process: no lo reemplaza ni lo
+duplica. No crea un Mermaid alternativo ni nodos nuevos; cada paso
+`PROCESS_EDGE` referencia una transicion real de `process.edges`
+(identificada por from + condition + to, nunca solo por from/to, porque
+pueden existir varias transiciones entre los mismos dos nodos), y cada
+paso `FUNCTIONAL_ACTION` representa una capacidad funcional transversal
+sin nodo propio (por ejemplo Registrar Pago, FEAT-REP-007/BR-REP-017),
+mostrada unicamente en el panel de detalle del Scenario, nunca como una
+linea nueva del diagrama.
+
+`HP-REP-001` ("Reparacion estandar de cliente externo") es el primer
+baseline E2E: una Orden CLIENTE_EXTERNO con un unico Detalle conocido
+desde el ingreso, sin desvios operativos ni tecnicos. El Happy Path
+representa el comportamiento NORMAL del proceso, no necesariamente el
+camino con menos nodos: en particular, en lo comercial se considera
+normal que el cliente tenga Saldo pendiente hasta el momento de retirar
+el equipo, pague en ese momento (`PROC-REP-266` -> Registrar pago final
+-> revalida `PROC-REP-265` -> Saldo = 0), y solo entonces se genere el
+comprobante final y se entregue el equipo.
+
+Por ahora solo existe `type: HAPPY_PATH` y `scope: E2E`. El modelo
+(`business/schemas/scenario.schema.json`,
+`scripts/lib/scenario-model.ts`) ya admite `VARIANT`/`EXCEPTION`/
+`EDGE_CASE` y `scope: FEATURE`/`RULE` en el enum, para que una futura
+iteracion no requiera un cambio de schema, pero su comportamiento -en
+particular, una Variant como conjunto de overrides de `facts` sobre este
+baseline- no esta implementado ni validado todavia. Tampoco existen
+todavia Coverage Analyzer, generador automatico de Scenarios, ni User
+Stories: esta iteracion es unicamente el primer Happy Path formal,
+validado estructural y referencialmente (`npm run validate:scenarios:v1.3`)
+y visualizado como capa de highlighting en el viewer HTML
+(selector "Happy Path", independiente y mutuamente excluyente del
+selector de Features).
+
+Las Features que un Scenario "involucra" se calculan como
+`active_features` (ver la seccion anterior, ALWAYS/CONTEXTUAL), nunca
+como la interseccion bruta `touched_features`: para HP-REP-001 eso
+significa que FEAT-REP-001 a FEAT-REP-008 quedan activas, pero
+FEAT-REP-009 (Cancelacion) NO -aunque el Happy Path atraviesa
+PROC-REP-211, lo hace via PROC-REP-210 (que activa a FEAT-REP-005 por
+CONTEXTUAL), nunca via PROC-REP-300/305-. El panel del viewer muestra esta
+lista bajo "Features involucradas", calculada por
+`scripts/lib/feature-scenario-mapping.ts` (el mismo helper que usan
+`validate-references.ts` y `validate-scenarios.ts`, para que la semantica
+nunca diverja entre la CLI y el HTML).
 
 ## Pendientes especificos de V1.3
 

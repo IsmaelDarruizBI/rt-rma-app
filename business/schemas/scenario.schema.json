@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rosariotecno.local/schemas/scenario.schema.json",
+  "title": "Scenario",
+  "description": "Contrato de validacion ESTRUCTURAL para Scenarios (Etapa: Scenario Definition). Un Scenario es una capa sobre el Business Process: no duplica ni reemplaza nodes/edges, solo referencia una secuencia de transiciones (PROCESS_EDGE) y, cuando corresponde, acciones funcionales transversales sin nodo propio (FUNCTIONAL_ACTION). Valida unicamente la forma del YAML: no confirma que from/to/condition existan realmente en el Business Process, ni que feature exista en el archivo de Features real. Esa validacion de integridad REFERENCIAL vive en scripts/validate-scenarios.ts, que corre despues de este schema, no dentro de el. Por ahora solo existe type=HAPPY_PATH; VARIANT/EXCEPTION/EDGE_CASE quedan admitidos por el enum para no requerir un cambio de schema cuando se implementen, pero su comportamiento (por ejemplo overrides de facts) todavia no esta definido ni validado.",
+  "type": "object",
+  "required": ["process", "scenarios"],
+  "additionalProperties": true,
+  "properties": {
+    "process": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/scenario" }
+    }
+  },
+  "definitions": {
+    "scenario": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "type",
+        "scope",
+        "status",
+        "source_process",
+        "description",
+        "facts",
+        "steps",
+        "expected"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["HAPPY_PATH", "VARIANT", "EXCEPTION", "EDGE_CASE"]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["E2E", "FEATURE", "RULE"]
+        },
+        "status": { "type": "string" },
+        "source_process": { "$ref": "#/definitions/sourceProcess" },
+        "description": { "type": "string" },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fact" }
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/step" }
+        },
+        "expected": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/fact" }
+        }
+      }
+    },
+    "sourceProcess": {
+      "type": "object",
+      "required": ["id", "version"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "fact": {
+      "type": "object",
+      "required": ["key", "label", "value"],
+      "additionalProperties": true,
+      "properties": {
+        "key": { "type": "string" },
+        "label": { "type": "string" },
+        "value": { "type": ["string", "boolean", "number"] }
+      }
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/definitions/processEdgeStep" },
+        { "$ref": "#/definitions/functionalActionStep" }
+      ]
+    },
+    "processEdgeStep": {
+      "type": "object",
+      "required": ["kind", "from", "to"],
+      "additionalProperties": true,
+      "properties": {
+        "kind": { "const": "PROCESS_EDGE" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "condition": { "type": "string" }
+      }
+    },
+    "functionalActionStep": {
+      "type": "object",
+      "required": ["kind", "feature", "name"],
+      "additionalProperties": true,
+      "properties": {
+        "kind": { "const": "FUNCTIONAL_ACTION" },
+        "feature": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    }
+  }
+}

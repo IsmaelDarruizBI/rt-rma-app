@@ -15,9 +15,11 @@
     "validate:process:v1.3": "tsx scripts/validate-process.ts business/processes/repair-management-v1.3.yaml",
     "validate:features:v1.3": "tsx scripts/validate-features.ts business/features/repair-management-features-v1.3.yaml",
     "validate:references:v1.3": "tsx scripts/validate-references.ts business/processes/repair-management-v1.3.yaml business/rules/business-rules-v1.3.yaml business/actors/actors.yaml business/features/repair-management-features-v1.3.yaml",
-    "validate:v1.3": "npm run validate:process:v1.3 && npm run validate:features:v1.3 && npm run validate:references:v1.3",
+    "validate:scenarios:v1.3": "tsx scripts/validate-scenarios.ts business/scenarios/repair-management-scenarios-v1.3.yaml business/processes/repair-management-v1.3.yaml business/features/repair-management-features-v1.3.yaml",
+    "test:feature-scenario-mapping": "tsx scripts/test-feature-scenario-mapping.ts",
+    "validate:v1.3": "npm run validate:process:v1.3 && npm run validate:features:v1.3 && npm run validate:references:v1.3 && npm run validate:scenarios:v1.3 && npm run test:feature-scenario-mapping",
     "generate:mermaid:v1.3": "tsx scripts/generate-mermaid.ts business/processes/repair-management-v1.3.yaml",
-    "generate:viewer:v1.3": "tsx scripts/generate-process-viewer.ts business/processes/repair-management-v1.3.yaml business/rules/business-rules-v1.3.yaml business/actors/actors.yaml business/features/repair-management-features-v1.3.yaml",
+    "generate:viewer:v1.3": "tsx scripts/generate-process-viewer.ts business/processes/repair-management-v1.3.yaml business/rules/business-rules-v1.3.yaml business/actors/actors.yaml business/features/repair-management-features-v1.3.yaml business/scenarios/repair-management-scenarios-v1.3.yaml",
     "generate:v1.3": "npm run validate:v1.3 && npm run generate:mermaid:v1.3 && npm run generate:viewer:v1.3"
   },
   "devDependencies": {

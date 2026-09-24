@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://rosariotecno.local/schemas/feature.schema.json",
   "title": "Feature",
-  "description": "Contrato de validacion ESTRUCTURAL para la definicion de Features de un Business Process (Etapa 2: Feature Definition). Valida unicamente la forma del YAML: no confirma que process_nodes o business_rules existan realmente, ni que source_process coincida con el Business Process real. Esa validacion de integridad REFERENCIAL entre archivos vive en scripts/validate-references.ts (npm run validate:references), que corre despues de este schema, no dentro de el.",
+  "description": "Contrato de validacion ESTRUCTURAL para la definicion de Features de un Business Process (Etapa 2: Feature Definition). Valida unicamente la forma del YAML: no confirma que process_nodes o business_rules existan realmente, ni que source_process coincida con el Business Process real. Esa validacion de integridad REFERENCIAL entre archivos vive en scripts/validate-references.ts (npm run validate:references), que corre despues de este schema, no dentro de el. `shared_node_bindings` (opcional, retrocompatible con Features que no lo usan) declara, para un process_node compartido por mas de una Feature, si esa Feature participa siempre que se atraviesa el nodo (mode: ALWAYS) o solo cuando el nodo se alcanza por una transicion concreta (mode: CONTEXTUAL, identificada por from+condition+to en `when.incoming_edges`). Su validacion referencial (que el node exista, que realmente este compartido, que cada edge referenciado exista en el Business Process) tambien vive en validate-references.ts, no aqui; este schema solo exige, estructuralmente, que CONTEXTUAL traiga `when` y ALWAYS no lo traiga.",
   "type": "object",
   "required": ["process", "features"],
   "additionalProperties": true,
@@ -61,6 +61,10 @@
           "items": { "type": "string" },
           "uniqueItems": true
         },
+        "shared_node_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/sharedNodeBinding" }
+        },
         "business_rules": {
           "type": "array",
           "items": { "type": "string" },
@@ -98,6 +102,49 @@
           "items": { "type": "string" },
           "uniqueItems": true
         }
+      }
+    },
+    "sharedNodeBinding": {
+      "type": "object",
+      "required": ["node", "mode"],
+      "additionalProperties": true,
+      "properties": {
+        "node": { "type": "string" },
+        "mode": { "type": "string", "enum": ["ALWAYS", "CONTEXTUAL"] },
+        "when": { "$ref": "#/definitions/sharedNodeBindingWhen" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "ALWAYS" } } },
+          "then": { "not": { "required": ["when"] } }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "CONTEXTUAL" } } },
+          "then": { "required": ["when"] }
+        }
+      ]
+    },
+    "sharedNodeBindingWhen": {
+      "type": "object",
+      "required": ["incoming_edges"],
+      "additionalProperties": true,
+      "description": "Only incoming_edges exists today; the shape leaves room for a future outgoing_edges sibling without a schema rewrite.",
+      "properties": {
+        "incoming_edges": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/sharedNodeBindingEdgeRef" }
+        }
+      }
+    },
+    "sharedNodeBindingEdgeRef": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": true,
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "condition": { "type": "string" }
       }
     }
   }

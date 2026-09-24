@@ -25,6 +25,18 @@
 # FEAT-REP-009 (Cancelacion) queda al final de la numeracion porque es
 # transversal -puede iniciarse en cualquier momento en que la Orden este
 # disponible/en curso-, no una etapa posterior a FEAT-REP-008.
+#
+# shared_node_bindings (campo opcional, ver business/schemas/feature.schema.json
+# y scripts/lib/feature-model.ts): para cada process_node compartido por
+# mas de una Feature, declara si esa Feature participa SIEMPRE que se
+# atraviesa el nodo (mode: ALWAYS, por ejemplo PROC-REP-070 para
+# FEAT-REP-002/FEAT-REP-007) o solo cuando el nodo se alcanzo por una
+# transicion concreta (mode: CONTEXTUAL, identificada por from+condition+to
+# en when.incoming_edges - por ejemplo PROC-REP-211 para FEAT-REP-005 via
+# PROC-REP-186/210, FEAT-REP-006 via PROC-REP-235, FEAT-REP-009 via
+# PROC-REP-300/305). scripts/validate-references.ts exige que todo node
+# compartido tenga un binding por cada Feature propietaria (ver
+# docs/discovery/README.md, seccion "Feature <-> Process Node compartido").
 
 process:
   id: PROC-REP
@@ -145,6 +157,14 @@ features:
       - PROC-REP-125
       - PROC-REP-126
       - PROC-REP-127
+
+    shared_node_bindings:
+      - node: PROC-REP-070
+        mode: ALWAYS
+      - node: PROC-REP-075
+        mode: ALWAYS
+      - node: PROC-REP-127
+        mode: ALWAYS
 
     business_rules:
       - BR-REP-001
@@ -397,6 +417,16 @@ features:
       - PROC-REP-210
       - PROC-REP-211
 
+    shared_node_bindings:
+      - node: PROC-REP-211
+        mode: CONTEXTUAL
+        when:
+          incoming_edges:
+            - from: PROC-REP-186
+              to: PROC-REP-211
+            - from: PROC-REP-210
+              to: PROC-REP-211
+
     business_rules:
       - BR-REP-004
       - BR-REP-005
@@ -475,6 +505,14 @@ features:
       - PROC-REP-240
       - PROC-REP-211
 
+    shared_node_bindings:
+      - node: PROC-REP-211
+        mode: CONTEXTUAL
+        when:
+          incoming_edges:
+            - from: PROC-REP-235
+              to: PROC-REP-211
+
     business_rules:
       - BR-REP-008
       - BR-REP-009
@@ -550,6 +588,16 @@ features:
       - PROC-REP-075
       - PROC-REP-127
       - PROC-REP-280
+
+    shared_node_bindings:
+      - node: PROC-REP-070
+        mode: ALWAYS
+      - node: PROC-REP-075
+        mode: ALWAYS
+      - node: PROC-REP-127
+        mode: ALWAYS
+      - node: PROC-REP-280
+        mode: ALWAYS
 
     business_rules:
       - BR-REP-015
@@ -636,6 +684,10 @@ features:
       - PROC-REP-270
       - PROC-REP-290
 
+    shared_node_bindings:
+      - node: PROC-REP-280
+        mode: ALWAYS
+
     business_rules: []
 
     scope:
@@ -708,6 +760,16 @@ features:
       - PROC-REP-300
       - PROC-REP-305
       - PROC-REP-211
+
+    shared_node_bindings:
+      - node: PROC-REP-211
+        mode: CONTEXTUAL
+        when:
+          incoming_edges:
+            - from: PROC-REP-300
+              to: PROC-REP-211
+            - from: PROC-REP-305
+              to: PROC-REP-211
 
     business_rules:
       - BR-REP-014

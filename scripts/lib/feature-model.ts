@@ -22,6 +22,37 @@ export interface FeatureScope {
   excludes: string[];
 }
 
+export type SharedNodeBindingMode = "ALWAYS" | "CONTEXTUAL";
+
+/** Identifies a process edge the same way everywhere in this repo: from + condition + to, never from/to alone. */
+export interface SharedNodeBindingEdgeRef {
+  from: string;
+  to: string;
+  condition?: string;
+}
+
+export interface SharedNodeBindingWhen {
+  // Only incoming_edges exists today; an outgoing_edges sibling could be
+  // added later without a shape change (see scenario.schema.json's
+  // equivalent step-edge shape for the same from+condition+to identity).
+  incoming_edges: SharedNodeBindingEdgeRef[];
+}
+
+/**
+ * Declares how a Feature participates in a process_node it shares with at
+ * least one other Feature (see docs/discovery/README.md, "Feature <->
+ * Process Node compartido"): ALWAYS means the Feature's behavior runs
+ * every time the node is reached; CONTEXTUAL means it only runs when the
+ * node was reached via one of `when.incoming_edges` - other Features
+ * sharing the same node may be active via a different edge, or via
+ * ALWAYS, without this Feature being involved at all.
+ */
+export interface SharedNodeBinding {
+  node: string;
+  mode: SharedNodeBindingMode;
+  when?: SharedNodeBindingWhen;
+}
+
 export interface FeatureDefinition {
   id: string;
   name: string;
@@ -31,6 +62,8 @@ export interface FeatureDefinition {
   inputs: string[];
   outputs: string[];
   process_nodes: string[];
+  /** Optional (V1.2 Features predate this field and never declare it). */
+  shared_node_bindings?: SharedNodeBinding[];
   business_rules: string[];
   scope: FeatureScope;
   open_questions: string[];
