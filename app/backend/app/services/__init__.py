@@ -42,8 +42,18 @@ from .inventario import (
     generar_movimientos_inventario,
     hay_reservas_activas,
     insumos_previstos_de,
+    inventario_aplicado,
     reservas_activas,
     stock_disponible,
+)
+from .inventario_global import (
+    aplicar_movimientos_inventario,
+    cantidad_reservada_global,
+    cargar_reservas_externas,
+    reservas_activas_globales,
+    reservas_externas_a,
+    stock_disponible_global,
+    stock_disponible_por_insumo,
 )
 from .ordenes import (
     ResultadoEvaluacionOrden,
@@ -122,8 +132,17 @@ __all__ = [
     "generar_movimientos_inventario",
     "hay_reservas_activas",
     "insumos_previstos_de",
+    "inventario_aplicado",
     "reservas_activas",
     "stock_disponible",
+    # Inventario global (todas las Ordenes)
+    "aplicar_movimientos_inventario",
+    "cantidad_reservada_global",
+    "cargar_reservas_externas",
+    "reservas_activas_globales",
+    "reservas_externas_a",
+    "stock_disponible_global",
+    "stock_disponible_por_insumo",
     # Pagos
     "registrar_pago",
     "registrar_saldo_pendiente",

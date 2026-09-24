@@ -98,20 +98,49 @@ def hay_reservas_activas(movimientos: Sequence[MovimientoInsumo]) -> bool:
 def stock_disponible(
     insumo: Insumo,
     movimientos: Sequence[MovimientoInsumo],
+    reservas_externas: Decimal = CERO,
 ) -> Decimal:
     """Stock fisico menos lo reservado y todavia pendiente.
 
-    El MVP trabaja sobre una unica Orden en memoria: los movimientos
-    considerados son los de esa Orden. Cuando exista persistencia, el
-    calculo debera abarcar las reservas de todas las Ordenes.
+        disponible = stock_fisico - reservas propias - reservas ajenas
+
+    ``movimientos`` son los de UNA Orden: es lo unico que un aggregate
+    puede conocer. ``reservas_externas`` es lo que han reservado las
+    demas Ordenes, que el llamador obtiene de
+    ``app.services.inventario_global`` cuando trabaja contra la
+    persistencia. Su default en cero mantiene el calculo puramente en
+    memoria, sin repositories.
     """
-    return insumo.stock_fisico - sum(
+    propias = sum(
         (
             cantidad_pendiente(reserva, movimientos)
             for reserva in reservas_activas(movimientos)
             if reserva.insumo_id == insumo.id
         ),
         CERO,
+    )
+    return insumo.stock_fisico - propias - reservas_externas
+
+
+def inventario_aplicado(
+    orden: OrdenReparacion,
+    ejecucion_id: str,
+) -> bool:
+    """True si esa Ejecucion ya genero sus movimientos de inventario.
+
+    Se deduce del propio ledger, sin ningun flag persistido: si existe
+    algun movimiento resolutivo -CONSUMO o LIBERACION_RESERVA- trazado a
+    esa Ejecucion, PROC-REP-210 ya corrio para ella.
+
+    Borde conocido: una Ejecucion sin insumos previstos no genera
+    movimiento alguno, asi que nunca se la detecta como aplicada.
+    Reaplicarla tampoco produce movimientos ni toca el stock -que es lo
+    que la idempotencia protege-, solo vuelve a registrar el paso.
+    """
+    return any(
+        movimiento.ejecucion_id == ejecucion_id
+        and movimiento.tipo in _CIERRAN_RESERVA
+        for movimiento in orden.movimientos_insumo
     )
 
 
@@ -174,6 +203,10 @@ def generar_movimientos_inventario(
 
     El desperdicio que V1.3 tambien contempla en este nodo queda fuera
     del alcance del MVP.
+
+    Es IDEMPOTENTE: si esa Ejecucion ya aplico su inventario, devuelve la
+    Orden tal cual esta -sin movimientos nuevos y sin registrar el paso
+    otra vez-, para que un reintento no duplique consumos.
     """
     ejecucion = next(
         (e for e in orden.ejecuciones if e.id == ejecucion_id),
@@ -183,6 +216,9 @@ def generar_movimientos_inventario(
         raise EntidadNoEncontradaError(
             f"La Orden no tiene la Ejecucion {ejecucion_id}"
         )
+
+    if inventario_aplicado(orden, ejecucion_id):
+        return orden.model_copy(deep=True)
 
     detalle_id = ejecucion.reparacion_detail_id
     pendientes = [

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "TR-001",
+    "nombre": "Cambio bateria iPhone 14",
+    "precio": "80000",
+    "puntaje": 10,
+    "garantia_dias": 90,
+    "activo": true
+  }
+]

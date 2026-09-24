@@ -8,8 +8,9 @@ Features: FEAT-REP-002, FEAT-REP-003, FEAT-REP-006, FEAT-REP-007 (el
 precio snapshot se registra al crear el Detalle).
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from decimal import Decimal
 
 from app.domain.models import (
     EstadoControl,
@@ -110,6 +111,7 @@ def validar_factibilidad_detalles(
     insumos: Sequence[Insumo],
     insumos_previstos: Sequence[TipoReparacionInsumos],
     fecha: datetime,
+    reservas_externas: Mapping[str, Decimal] | None = None,
 ) -> tuple[OrdenReparacion, bool]:
     """PROC-REP-080 -> PROC-REP-090: hay disponibilidad para trabajar.
 
@@ -122,7 +124,13 @@ def validar_factibilidad_detalles(
 
     Los caminos de faltante (PROC-REP-100/110/120/130) no estan
     implementados: el MVP solo distingue factible / no factible.
+
+    ``reservas_externas`` (insumo_id -> cantidad) permite considerar
+    lo que otras Ordenes ya reservaron. Omitirlo consulta solo contra
+    esta Orden, que es el comportamiento en memoria.
     """
+    ajenas = reservas_externas or {}
+
     if not orden.reparaciones_detail:
         raise PrecondicionInvalidaError(
             "No se puede validar factibilidad sin Detalles de Reparacion."
@@ -137,7 +145,11 @@ def validar_factibilidad_detalles(
             detalle.tipo_reparacion_id, insumos_previstos
         ):
             insumo = buscar_insumo(previsto.insumo_id, insumos)
-            disponible = stock_disponible(insumo, orden.movimientos_insumo)
+            disponible = stock_disponible(
+                insumo,
+                orden.movimientos_insumo,
+                ajenas.get(insumo.id, Decimal("0")),
+            )
             if disponible < previsto.cantidad:
                 faltantes.append(insumo.id)
 

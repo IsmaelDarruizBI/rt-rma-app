@@ -1,0 +1,26 @@
+[
+  {
+    "id": "RECEP-001",
+    "nombre": "Recepcion Demo",
+    "rol": "RECEPCION",
+    "activo": true
+  },
+  {
+    "id": "COORD-001",
+    "nombre": "Coordinacion Demo",
+    "rol": "COORDINADOR_RMA",
+    "activo": true
+  },
+  {
+    "id": "TECH-001",
+    "nombre": "Tecnico Demo",
+    "rol": "TECNICO",
+    "activo": true
+  },
+  {
+    "id": "ADMIN-001",
+    "nombre": "Administracion Demo",
+    "rol": "ADMINISTRADOR",
+    "activo": true
+  }
+]

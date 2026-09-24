@@ -9,8 +9,9 @@ Ejecucion activa por Orden) y BR-REP-004 (registro de ejecucion real).
 Feature: FEAT-REP-005.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from decimal import Decimal
 
 from app.domain.models import (
     EjecucionReparacion,
@@ -59,6 +60,7 @@ def reservar_insumos_e_iniciar_ejecucion(
     insumos: Sequence[Insumo],
     insumos_previstos: Sequence[TipoReparacionInsumos],
     fecha: datetime,
+    reservas_externas: Mapping[str, Decimal] | None = None,
     ejecucion_id: str | None = None,
 ) -> OrdenReparacion:
     """PROC-REP-185: reserva real e inicio de la Ejecucion (BR-REP-006).
@@ -79,7 +81,13 @@ def reservar_insumos_e_iniciar_ejecucion(
 
     Nodo ACT-SYSTEM. El ``usuario`` recibido es el tecnico de la toma
     activa, al que se atribuye la Ejecucion que se abre aqui.
+
+    ``reservas_externas`` (insumo_id -> cantidad) revalida contra lo
+    que otras Ordenes ya reservaron: entre la factibilidad y este
+    momento el insumo pudo haber sido tomado por otra Orden.
     """
+    ajenas = reservas_externas or {}
+
     detalle = buscar_detalle(orden, detalle_id)
     if detalle.estado is not EstadoReparacionDetail.DEFINIDO:
         raise PrecondicionInvalidaError(
@@ -104,7 +112,11 @@ def reservar_insumos_e_iniciar_ejecucion(
     # Comprobar todo antes de modificar nada.
     for previsto in previstos:
         insumo = buscar_insumo(previsto.insumo_id, insumos)
-        disponible = stock_disponible(insumo, orden.movimientos_insumo)
+        disponible = stock_disponible(
+            insumo,
+            orden.movimientos_insumo,
+            ajenas.get(insumo.id, Decimal("0")),
+        )
         if disponible < previsto.cantidad:
             raise RecursoNoDisponibleError(
                 f"Insumo {insumo.id}: se necesitan {previsto.cantidad} y hay "
