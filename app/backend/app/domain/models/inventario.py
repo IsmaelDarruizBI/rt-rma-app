@@ -8,6 +8,18 @@ from pydantic import BaseModel, ConfigDict, Field
 from .enums import TipoMovimientoInsumo
 
 
+class InsumoUtilizado(BaseModel):
+    """Insumo realmente usado en una Ejecucion, con su cantidad.
+
+    Es lo que el tecnico confirma en PROC-REP-200, y la fuente de verdad
+    a partir de la cual PROC-REP-210 genera los movimientos. No modela
+    costo, lote, proveedor ni desperdicio.
+    """
+
+    insumo_id: str
+    cantidad: Decimal = Field(gt=0)
+
+
 class MovimientoInsumo(BaseModel):
     """Movimiento de inventario. No existe una entidad Reserva aparte.
 

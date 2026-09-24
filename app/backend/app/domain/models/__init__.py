@@ -27,7 +27,7 @@ from .enums import (
     TipoMovimientoInsumo,
 )
 from .equipos import Equipo
-from .inventario import MovimientoInsumo
+from .inventario import InsumoUtilizado, MovimientoInsumo
 from .orden_reparacion import OrdenReparacion
 from .pagos import Pago, ResumenPago
 from .personas import Cliente, Usuario
@@ -60,6 +60,7 @@ __all__ = [
     "ReparacionDetail",
     "TomaOrden",
     # Inventario
+    "InsumoUtilizado",
     "MovimientoInsumo",
     # Pagos
     "Pago",

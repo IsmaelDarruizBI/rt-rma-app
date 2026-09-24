@@ -1,0 +1,256 @@
+"""Detalles de Reparacion: definicion, factibilidad, control y puntaje.
+
+Nodos cubiertos: PROC-REP-045/070 (definir Detalles), PROC-REP-080/090
+(factibilidad), PROC-REP-220/230 (control tecnico) y PROC-REP-245
+(puntaje).
+
+Features: FEAT-REP-002, FEAT-REP-003, FEAT-REP-006, FEAT-REP-007 (el
+precio snapshot se registra al crear el Detalle).
+"""
+
+from collections.abc import Sequence
+from datetime import datetime
+
+from app.domain.models import (
+    EstadoControl,
+    EstadoEjecucion,
+    EstadoReparacionDetail,
+    EstadoWorkflow,
+    Insumo,
+    OrdenReparacion,
+    ReparacionDetail,
+    RolUsuario,
+    TipoReparacion,
+    TipoReparacionInsumos,
+    Usuario,
+)
+
+from .autorizacion import validar_actor
+from .exceptions import PrecondicionInvalidaError
+from .inventario import buscar_insumo, insumos_previstos_de, stock_disponible
+from .workflow import registrar_paso
+
+
+def definir_reparacion_detail(
+    orden: OrdenReparacion,
+    *,
+    detalle_id: str,
+    tipo_reparacion: TipoReparacion,
+    usuario: Usuario,
+    fecha: datetime,
+    observaciones: str | None = None,
+) -> OrdenReparacion:
+    """PROC-REP-045 ("Si") -> PROC-REP-070 (FEAT-REP-002 / FEAT-REP-007).
+
+    Crea un Detalle tomando de ``TipoReparacion`` un snapshot de precio,
+    puntaje y garantia (BR-REP-015): el Detalle guarda solo el ID del
+    tipo, nunca el objeto, para que un cambio posterior de catalogo no
+    reescriba una Orden ya registrada.
+
+    El Detalle nace DEFINIDO con control PENDIENTE. La decision
+    PROC-REP-045 se registra una sola vez, al definir el primer Detalle.
+
+    El MVP cubre unicamente el camino "los Detalles se conocen desde el
+    ingreso": PROC-REP-055/065/075 (revision tecnica previa) y
+    PROC-REP-126/127 no estan implementados.
+    """
+    validar_actor(usuario, RolUsuario.RECEPCION)
+
+    if orden.estado_workflow is not EstadoWorkflow.REQUERIMIENTO:
+        raise PrecondicionInvalidaError(
+            f"Solo se definen Detalles sobre una Orden en REQUERIMIENTO; "
+            f"esta en {orden.estado_workflow.value}."
+        )
+    if not tipo_reparacion.activo:
+        raise PrecondicionInvalidaError(
+            f"El Tipo de Reparacion {tipo_reparacion.id} no esta activo."
+        )
+    if any(detalle.id == detalle_id for detalle in orden.reparaciones_detail):
+        raise PrecondicionInvalidaError(
+            f"La Orden ya tiene un Detalle con id {detalle_id}."
+        )
+
+    nueva_orden = orden
+    if not orden.reparaciones_detail:
+        nueva_orden = registrar_paso(
+            nueva_orden,
+            process_id="PROC-REP-045",
+            accion="DETALLES_CONOCIDOS",
+            fecha=fecha,
+            usuario_id=usuario.id,
+            observacion="Si",
+        )
+
+    nueva_orden = registrar_paso(
+        nueva_orden,
+        process_id="PROC-REP-070",
+        accion="DEFINIR_DETALLES",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        reparacion_detail_id=detalle_id,
+    )
+    nueva_orden.reparaciones_detail.append(
+        ReparacionDetail(
+            id=detalle_id,
+            tipo_reparacion_id=tipo_reparacion.id,
+            precio=tipo_reparacion.precio,
+            puntaje=tipo_reparacion.puntaje,
+            garantia_dias=tipo_reparacion.garantia_dias,
+            estado=EstadoReparacionDetail.DEFINIDO,
+            control_estado=EstadoControl.PENDIENTE,
+            observaciones=observaciones,
+        )
+    )
+    return nueva_orden
+
+
+def validar_factibilidad_detalles(
+    orden: OrdenReparacion,
+    *,
+    insumos: Sequence[Insumo],
+    insumos_previstos: Sequence[TipoReparacionInsumos],
+    fecha: datetime,
+) -> tuple[OrdenReparacion, bool]:
+    """PROC-REP-080 -> PROC-REP-090: hay disponibilidad para trabajar.
+
+    Recorre ``tipo_reparacion_id -> TipoReparacionInsumos -> Insumo`` y
+    comprueba que cada Detalle DEFINIDO tenga stock suficiente para todos
+    sus insumos previstos.
+
+    Solo CONSULTA: no reserva, no genera movimientos y no toca el stock.
+    La reserva real ocurre recien en PROC-REP-185 (BR-REP-006).
+
+    Los caminos de faltante (PROC-REP-100/110/120/130) no estan
+    implementados: el MVP solo distingue factible / no factible.
+    """
+    if not orden.reparaciones_detail:
+        raise PrecondicionInvalidaError(
+            "No se puede validar factibilidad sin Detalles de Reparacion."
+        )
+
+    faltantes: list[str] = []
+
+    for detalle in orden.reparaciones_detail:
+        if detalle.estado is not EstadoReparacionDetail.DEFINIDO:
+            continue
+        for previsto in insumos_previstos_de(
+            detalle.tipo_reparacion_id, insumos_previstos
+        ):
+            insumo = buscar_insumo(previsto.insumo_id, insumos)
+            disponible = stock_disponible(insumo, orden.movimientos_insumo)
+            if disponible < previsto.cantidad:
+                faltantes.append(insumo.id)
+
+    es_factible = not faltantes
+
+    nueva_orden = registrar_paso(
+        orden,
+        process_id="PROC-REP-080",
+        accion="VALIDAR_FACTIBILIDAD",
+        fecha=fecha,
+    )
+    nueva_orden = registrar_paso(
+        nueva_orden,
+        process_id="PROC-REP-090",
+        accion="EXISTE_DETALLE_TRABAJABLE",
+        fecha=fecha,
+        observacion="Si" if es_factible else f"Faltantes: {sorted(faltantes)}",
+    )
+    return nueva_orden, es_factible
+
+
+def aprobar_control_tecnico(
+    orden: OrdenReparacion,
+    *,
+    usuario: Usuario,
+    fecha: datetime,
+    observaciones: str | None = None,
+) -> OrdenReparacion:
+    """PROC-REP-220 -> PROC-REP-230 ("Si"): Recepcion aprueba (BR-REP-008).
+
+    Recepcion controla la Orden completa pero aprueba Detalle por
+    Detalle. El MVP implementa solo la aprobacion total: el rechazo y el
+    retrabajo (PROC-REP-235) no estan implementados.
+
+    No cambia el estado tecnico del Detalle: sigue COMPLETO. La
+    aprobacion es otra dimension y vive en ``control_estado``.
+
+    PROC-REP-220 es ACT-RECEP: el control lo hace Recepcion, no el
+    tecnico que ejecuto el trabajo.
+    """
+    validar_actor(usuario, RolUsuario.RECEPCION)
+
+    if not orden.reparaciones_detail:
+        raise PrecondicionInvalidaError(
+            "No hay Detalles que controlar."
+        )
+    if any(
+        detalle.estado is not EstadoReparacionDetail.COMPLETO
+        for detalle in orden.reparaciones_detail
+    ):
+        raise PrecondicionInvalidaError(
+            "El control tecnico requiere todos los Detalles COMPLETO."
+        )
+    if any(
+        ejecucion.estado is EstadoEjecucion.EN_PROGRESO
+        for ejecucion in orden.ejecuciones
+    ):
+        raise PrecondicionInvalidaError(
+            "No se puede controlar con una Ejecucion activa."
+        )
+
+    nueva_orden = registrar_paso(
+        orden,
+        process_id="PROC-REP-220",
+        accion="REALIZAR_CONTROL_TECNICO",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        observacion=observaciones,
+    )
+    for detalle in nueva_orden.reparaciones_detail:
+        detalle.control_estado = EstadoControl.APROBADO
+        detalle.control_usuario_id = usuario.id
+        detalle.control_fecha = fecha
+        detalle.control_observaciones = observaciones
+
+    return registrar_paso(
+        nueva_orden,
+        process_id="PROC-REP-230",
+        accion="TODOS_LOS_DETALLES_APROBADOS",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        observacion="Si",
+    )
+
+
+def calcular_puntaje(
+    orden: OrdenReparacion,
+    *,
+    fecha: datetime,
+) -> OrdenReparacion:
+    """PROC-REP-245: se acredita el puntaje de los Detalles aprobados.
+
+    BR-REP-009. No persiste ningun total: ``OrdenReparacion.puntaje_total``
+    lo deriva de los Detalles con control APROBADO. Este service solo
+    registra que el paso ocurrio.
+
+    La distribucion del puntaje entre varios tecnicos sigue pendiente en
+    V1.3 y no se asume aqui.
+    """
+    aprobados = [
+        detalle
+        for detalle in orden.reparaciones_detail
+        if detalle.control_estado is EstadoControl.APROBADO
+    ]
+    if not aprobados:
+        raise PrecondicionInvalidaError(
+            "No hay Detalles aprobados a los que calcular puntaje."
+        )
+
+    return registrar_paso(
+        orden,
+        process_id="PROC-REP-245",
+        accion="CALCULAR_PUNTAJE",
+        fecha=fecha,
+        observacion=str(orden.puntaje_total),
+    )

@@ -6,7 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, computed_field
 
 from .documentos import DocumentosOrden
-from .enums import EstadoPago, EstadoWorkflow, OrigenOrden
+from .enums import EstadoControl, EstadoPago, EstadoWorkflow, OrigenOrden
 from .equipos import Equipo
 from .inventario import MovimientoInsumo
 from .pagos import ResumenPago
@@ -66,6 +66,20 @@ class OrdenReparacion(BaseModel):
         return sum(
             (detalle.precio for detalle in self.reparaciones_detail),
             Decimal("0"),
+        )
+
+    @computed_field
+    @property
+    def puntaje_total(self) -> int:
+        """Puntaje de la Orden: suma de sus Detalles aprobados.
+
+        El puntaje se acredita por Detalle en el momento de su
+        aprobacion (PROC-REP-245, BR-REP-009), no al cerrar la Orden.
+        """
+        return sum(
+            detalle.puntaje
+            for detalle in self.reparaciones_detail
+            if detalle.control_estado is EstadoControl.APROBADO
         )
 
     @computed_field

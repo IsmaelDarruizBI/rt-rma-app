@@ -1,0 +1,300 @@
+"""Ejecucion de un Detalle: reserva, trabajo y registro real.
+
+Nodos cubiertos: PROC-REP-185 (reservar insumos e iniciar Ejecucion),
+PROC-REP-190 (ejecutar Detalle) y PROC-REP-200 (registrar ejecucion
+real).
+
+Reglas: BR-REP-006 (reserva real al iniciar), BR-REP-007 (una sola
+Ejecucion activa por Orden) y BR-REP-004 (registro de ejecucion real).
+Feature: FEAT-REP-005.
+"""
+
+from collections.abc import Sequence
+from datetime import datetime
+
+from app.domain.models import (
+    EjecucionReparacion,
+    EstadoEjecucion,
+    EstadoReparacionDetail,
+    EstadoWorkflow,
+    Insumo,
+    InsumoUtilizado,
+    MovimientoInsumo,
+    OrdenReparacion,
+    RolUsuario,
+    TipoReparacionInsumos,
+    Usuario,
+)
+
+from .autorizacion import validar_actor
+from .exceptions import (
+    EntidadNoEncontradaError,
+    PrecondicionInvalidaError,
+    RecursoNoDisponibleError,
+)
+from .identificadores import nuevo_id
+from .inventario import (
+    buscar_insumo,
+    crear_reserva,
+    insumos_previstos_de,
+    stock_disponible,
+)
+from .tomas import buscar_detalle, hay_ejecucion_activa, toma_activa
+from .workflow import registrar_paso
+
+
+def ejecucion_activa(orden: OrdenReparacion) -> EjecucionReparacion | None:
+    """La Ejecucion en curso de la Orden, si existe (BR-REP-007)."""
+    for ejecucion in orden.ejecuciones:
+        if ejecucion.estado is EstadoEjecucion.EN_PROGRESO:
+            return ejecucion
+    return None
+
+
+def reservar_insumos_e_iniciar_ejecucion(
+    orden: OrdenReparacion,
+    *,
+    detalle_id: str,
+    usuario: Usuario,
+    insumos: Sequence[Insumo],
+    insumos_previstos: Sequence[TipoReparacionInsumos],
+    fecha: datetime,
+    ejecucion_id: str | None = None,
+) -> OrdenReparacion:
+    """PROC-REP-185: reserva real e inicio de la Ejecucion (BR-REP-006).
+
+    V1.3 define que este nodo hace las dos cosas. A diferencia de la
+    factibilidad (PROC-REP-080), que solo consulto disponibilidad, aqui
+    se reserva de verdad.
+
+    La operacion es atomica: primero se comprueba que TODOS los insumos
+    previstos alcancen y recien entonces se generan las reservas y la
+    Ejecucion. Si alguno falta no queda ninguna reserva parcial.
+
+    Las reservas se generan con ``usuario_id=None`` porque el nodo es
+    ACT-SYSTEM; la trazabilidad al tecnico pasa por la Ejecucion.
+
+    PROC-REP-186 (reserva fallida -> Detalle BLOQUEADO_POR_RECURSOS) no
+    esta implementado: el MVP falla con RecursoNoDisponibleError.
+
+    Nodo ACT-SYSTEM. El ``usuario`` recibido es el tecnico de la toma
+    activa, al que se atribuye la Ejecucion que se abre aqui.
+    """
+    detalle = buscar_detalle(orden, detalle_id)
+    if detalle.estado is not EstadoReparacionDetail.DEFINIDO:
+        raise PrecondicionInvalidaError(
+            f"El Detalle {detalle_id} no esta disponible para ejecutarse "
+            f"(estado {detalle.estado.value})."
+        )
+
+    toma = toma_activa(orden)
+    if toma is None:
+        raise PrecondicionInvalidaError(
+            "Hay que tomar la Orden antes de iniciar una Ejecucion."
+        )
+    if hay_ejecucion_activa(orden):
+        raise PrecondicionInvalidaError(
+            "La Orden ya tiene una Ejecucion activa (BR-REP-007)."
+        )
+
+    previstos = insumos_previstos_de(
+        detalle.tipo_reparacion_id, insumos_previstos
+    )
+
+    # Comprobar todo antes de modificar nada.
+    for previsto in previstos:
+        insumo = buscar_insumo(previsto.insumo_id, insumos)
+        disponible = stock_disponible(insumo, orden.movimientos_insumo)
+        if disponible < previsto.cantidad:
+            raise RecursoNoDisponibleError(
+                f"Insumo {insumo.id}: se necesitan {previsto.cantidad} y hay "
+                f"{disponible} disponibles. No se genero ninguna reserva."
+            )
+
+    reservas: list[MovimientoInsumo] = [
+        crear_reserva(
+            insumo_id=previsto.insumo_id,
+            reparacion_detail_id=detalle_id,
+            cantidad=previsto.cantidad,
+            fecha=fecha,
+        )
+        for previsto in previstos
+    ]
+
+    ejecucion = EjecucionReparacion(
+        id=ejecucion_id or nuevo_id("EJE"),
+        reparacion_detail_id=detalle_id,
+        toma_orden_id=toma.id,
+        usuario_id=usuario.id,
+        estado=EstadoEjecucion.EN_PROGRESO,
+        inicio=fecha,
+    )
+
+    nueva_orden = registrar_paso(
+        orden,
+        process_id="PROC-REP-185",
+        accion="RESERVAR_INSUMOS_E_INICIAR_EJECUCION",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        reparacion_detail_id=detalle_id,
+        ejecucion_id=ejecucion.id,
+    )
+    nueva_orden.movimientos_insumo.extend(reservas)
+    nueva_orden.ejecuciones.append(ejecucion)
+    buscar_detalle(nueva_orden, detalle_id).estado = (
+        EstadoReparacionDetail.EN_PROGRESO
+    )
+    nueva_orden.estado_workflow = EstadoWorkflow.EN_REPARACION
+
+    return nueva_orden
+
+
+def _validar_propiedad_de_la_ejecucion(
+    orden: OrdenReparacion,
+    ejecucion: EjecucionReparacion,
+    usuario: Usuario,
+) -> None:
+    """La Ejecucion activa solo la trabaja el tecnico que la inicio.
+
+    Comprueba las tres identidades que V1.3 mantiene unidas: la
+    Ejecucion es del tecnico, la toma activa tambien, y la Ejecucion
+    pertenece a esa toma.
+    """
+    if ejecucion.usuario_id != usuario.id:
+        raise PrecondicionInvalidaError(
+            f"La Ejecucion {ejecucion.id} la inicio "
+            f"{ejecucion.usuario_id}: {usuario.id} no puede "
+            "trabajarla. Continuarla requiere una Ejecucion nueva."
+        )
+
+    toma = toma_activa(orden)
+    if toma is None:
+        raise PrecondicionInvalidaError(
+            "La Orden no tiene una toma activa."
+        )
+    if toma.usuario_id != usuario.id:
+        raise PrecondicionInvalidaError(
+            f"La Orden esta tomada por {toma.usuario_id}, "
+            f"no por {usuario.id}."
+        )
+    if ejecucion.toma_orden_id != toma.id:
+        raise PrecondicionInvalidaError(
+            "La Ejecucion no pertenece a la toma activa de la Orden."
+        )
+
+
+def ejecutar_detalle(
+    orden: OrdenReparacion,
+    *,
+    detalle_id: str,
+    usuario: Usuario,
+    fecha: datetime,
+) -> OrdenReparacion:
+    """PROC-REP-190: el tecnico trabaja sobre el Detalle.
+
+    No crea una segunda Ejecucion: la Ejecucion ya se abrio en
+    PROC-REP-185. Solo verifica que exista una activa para ese Detalle
+    y deja registrado que el flujo paso por aqui.
+
+    La Ejecucion pertenece al tecnico que la inicio: nadie mas puede
+    trabajarla. Si otro tecnico continua el mismo Detalle mas adelante,
+    lo hace con una Ejecucion nueva, no tomando la ajena.
+    """
+    validar_actor(usuario, RolUsuario.TECNICO)
+
+    ejecucion = ejecucion_activa(orden)
+    if ejecucion is None:
+        raise PrecondicionInvalidaError(
+            "No hay una Ejecucion activa que trabajar."
+        )
+    if ejecucion.reparacion_detail_id != detalle_id:
+        raise PrecondicionInvalidaError(
+            f"La Ejecucion activa corresponde al Detalle "
+            f"{ejecucion.reparacion_detail_id}, no a {detalle_id}."
+        )
+
+    _validar_propiedad_de_la_ejecucion(orden, ejecucion, usuario)
+
+    return registrar_paso(
+        orden,
+        process_id="PROC-REP-190",
+        accion="EJECUTAR_DETALLE",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        reparacion_detail_id=detalle_id,
+        ejecucion_id=ejecucion.id,
+    )
+
+
+def registrar_ejecucion_completada(
+    orden: OrdenReparacion,
+    *,
+    ejecucion_id: str,
+    insumos_utilizados: Sequence[InsumoUtilizado],
+    usuario: Usuario,
+    fecha: datetime,
+    observaciones: str | None = None,
+) -> OrdenReparacion:
+    """PROC-REP-200 con resultado "Completado" (BR-REP-004).
+
+    El tecnico confirma los trabajos realizados, los repuestos
+    efectivamente utilizados y sus cantidades. La Ejecucion pasa a
+    COMPLETADO y el Detalle a COMPLETO.
+
+    ``insumos_utilizados`` es la fuente de verdad que PROC-REP-210 usa
+    despues para consumir y liberar reservas.
+
+    El resultado "Interrumpido" no esta implementado en el MVP.
+
+    Solo puede registrarla el tecnico que inicio la Ejecucion: esta
+    conserva tecnico, estacion, inicio, fin y trabajo realizado. V1.3
+    admite que varios tecnicos participen del mismo Detalle en momentos
+    distintos, pero cada uno con su propia Ejecucion, nunca cerrando la
+    del anterior.
+    """
+    validar_actor(usuario, RolUsuario.TECNICO)
+
+    ejecucion = next(
+        (e for e in orden.ejecuciones if e.id == ejecucion_id),
+        None,
+    )
+    if ejecucion is None:
+        raise EntidadNoEncontradaError(
+            f"La Orden no tiene la Ejecucion {ejecucion_id}"
+        )
+    if ejecucion.estado is not EstadoEjecucion.EN_PROGRESO:
+        raise PrecondicionInvalidaError(
+            f"La Ejecucion {ejecucion_id} ya esta "
+            f"{ejecucion.estado.value}."
+        )
+
+    _validar_propiedad_de_la_ejecucion(orden, ejecucion, usuario)
+
+    detalle_id = ejecucion.reparacion_detail_id
+
+    nueva_orden = registrar_paso(
+        orden,
+        process_id="PROC-REP-200",
+        accion="REGISTRAR_EJECUCION_REAL",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        reparacion_detail_id=detalle_id,
+        ejecucion_id=ejecucion_id,
+        observacion="Completado",
+    )
+
+    nueva_ejecucion = next(
+        e for e in nueva_orden.ejecuciones if e.id == ejecucion_id
+    )
+    nueva_ejecucion.estado = EstadoEjecucion.COMPLETADO
+    nueva_ejecucion.fin = fecha
+    nueva_ejecucion.insumos_utilizados = [
+        utilizado.model_copy(deep=True) for utilizado in insumos_utilizados
+    ]
+    nueva_ejecucion.observaciones = observaciones
+
+    buscar_detalle(nueva_orden, detalle_id).estado = (
+        EstadoReparacionDetail.COMPLETO
+    )
+
+    return nueva_orden

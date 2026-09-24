@@ -16,6 +16,7 @@ from .enums import (
     EstadoReparacionDetail,
     EstadoTomaOrden,
 )
+from .inventario import InsumoUtilizado
 
 
 class ReparacionDetail(BaseModel):
@@ -61,7 +62,12 @@ class TomaOrden(BaseModel):
 
 
 class EjecucionReparacion(BaseModel):
-    """Ejecucion concreta de un Detalle dentro de una toma de Orden."""
+    """Ejecucion concreta de un Detalle dentro de una toma de Orden.
+
+    ``insumos_utilizados`` es lo efectivamente consumido, confirmado por
+    el tecnico en PROC-REP-200. Es la fuente de verdad que PROC-REP-210
+    compara contra las reservas para generar consumos y liberaciones.
+    """
 
     id: str
     reparacion_detail_id: str
@@ -70,4 +76,5 @@ class EjecucionReparacion(BaseModel):
     estado: EstadoEjecucion = EstadoEjecucion.EN_PROGRESO
     inicio: datetime
     fin: datetime | None = None
+    insumos_utilizados: list[InsumoUtilizado] = Field(default_factory=list)
     observaciones: str | None = None
