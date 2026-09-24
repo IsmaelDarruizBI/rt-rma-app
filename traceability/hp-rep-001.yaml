@@ -283,12 +283,11 @@ items:
   - {id: FR-REP-056, type: functional_requirement, name: Restringir la notificacion al cliente al rol Recepcion, status: IMPLEMENTED}
   - {id: FR-REP-057, type: functional_requirement, name: Emitir el comprobante final y la garantia de reparacion dejando registro de su generacion, status: IMPLEMENTED}
   - {id: FR-REP-058, type: functional_requirement, name: Exigir saldo cero comprobante garantia y ausencia de reservas activas para entregar, status: IMPLEMENTED}
-  - {id: FR-REP-059, type: functional_requirement, name: Restringir la entrega del equipo al rol Administrador, status: IMPLEMENTED}
+  - {id: FR-REP-059, type: functional_requirement, name: Restringir la entrega del equipo a los roles Administrador o Recepcion, status: IMPLEMENTED}
   - {id: FR-REP-060, type: functional_requirement, name: Pasar la Orden a ENTREGADA y posicionarla en el evento final del flujo, status: IMPLEMENTED}
   - {id: FR-REP-061, type: functional_requirement, name: Exponer el nombre del Tipo de Reparacion de cada Detalle sin persistirlo en la Orden, status: IMPLEMENTED}
   - {id: FR-REP-062, type: functional_requirement, name: Clasificar cada Pago como ANTICIPO o PAGO derivandolo del estado de la Orden, status: IMPLEMENTED}
   - {id: FR-REP-063, type: functional_requirement, name: Permitir registrar Pagos antes de REPARACION_LISTA sin evaluar la condicion de entrega, status: IMPLEMENTED}
-  - {id: FR-REP-064, type: functional_requirement, name: Restringir la entrega del equipo a los roles Administrador o Recepcion, status: IMPLEMENTED}
   - {id: FR-REP-065, type: functional_requirement, name: Registrar en el historial de la Orden cada capacidad transversal ejecutada sin alterar el recorrido, status: IMPLEMENTED}
 
   # ================================================================== #
@@ -508,7 +507,7 @@ items:
   - {id: TASK-REP-129, type: task, name: "[US-REP-016] Implementar generar_comprobante_final (PROC-REP-280) emitiendo comprobante final y garantia de reparacion, despues del gate de saldo", status: DONE, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-130, type: task, name: "[US-REP-016] Implementar entregar_equipo (PROC-REP-270) con las cuatro precondiciones acumulativas", status: DONE, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-131, type: task, name: "[US-REP-016] Verificar la ausencia de reservas activas contra el ledger, sin flag propio", status: DONE, spec: 008-feat-rep-008-hp-slice}
-  - {id: TASK-REP-132, type: task, name: "[US-REP-016] Exigir actor ACT-ADMIN para la entrega", status: DONE, spec: 008-feat-rep-008-hp-slice}
+  - {id: TASK-REP-132, type: task, name: "[US-REP-016] Exigir actor ACT-ADMIN o ACT-RECEP para la entrega", status: DONE, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-133, type: task, name: "[US-REP-016] Fijar ENTREGADA y posicionar la Orden en EVT-REP-999 sin agregarlo como paso del historial", status: DONE, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-134, type: task, name: "[US-REP-016] Garantizar que la Orden final persistida se vuelve a validar sin perdida contra el modelo", status: DONE, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-135, type: task, name: "Implementar la rama No de PROC-REP-250 (Ordenes que no requieren entrega al cliente, RT_INTERNO)", status: NOT_IMPLEMENTED, spec: 008-feat-rep-008-hp-slice}
@@ -2263,13 +2262,12 @@ links:
   - {from: FR-REP-061, to: ACC-REP-004, relationship: derives_from}
   - {from: FR-REP-062, to: ACC-REP-020, relationship: derives_from}
   - {from: FR-REP-063, to: ACC-REP-020, relationship: derives_from}
-  - {from: FR-REP-064, to: ACC-REP-026, relationship: derives_from}
   - {from: TR-REP-051, to: FR-REP-017, relationship: satisfies}
-  - {from: TR-REP-051, to: FR-REP-064, relationship: satisfies}
+  - {from: TR-REP-051, to: FR-REP-059, relationship: satisfies}
   - {from: TR-REP-052, to: FR-REP-062, relationship: satisfies}
   - {from: TR-REP-053, to: FR-REP-061, relationship: satisfies}
   - {from: TR-REP-054, to: FR-REP-017, relationship: satisfies}
-  - {from: TR-REP-054, to: FR-REP-064, relationship: satisfies}
+  - {from: TR-REP-054, to: FR-REP-059, relationship: satisfies}
   - {from: TASK-REP-142, to: TR-REP-051, relationship: implements}
   - {from: TASK-REP-142, to: TR-REP-054, relationship: implements}
   - {from: TASK-REP-143, to: TR-REP-051, relationship: implements}
@@ -2301,17 +2299,17 @@ links:
   - {from: TEST-REP-182, to: FR-REP-017, relationship: verifies}
   - {from: TEST-REP-183, to: FR-REP-017, relationship: verifies}
   - {from: TEST-REP-184, to: FR-REP-017, relationship: verifies}
-  - {from: TEST-REP-185, to: FR-REP-064, relationship: verifies}
-  - {from: TEST-REP-186, to: FR-REP-064, relationship: verifies}
-  - {from: TEST-REP-187, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-185, to: FR-REP-059, relationship: verifies}
+  - {from: TEST-REP-186, to: FR-REP-059, relationship: verifies}
+  - {from: TEST-REP-187, to: FR-REP-059, relationship: verifies}
   - {from: TEST-REP-188, to: FR-REP-053, relationship: verifies}
-  - {from: TEST-REP-188, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-188, to: FR-REP-059, relationship: verifies}
   - {from: TEST-REP-189, to: TR-REP-054, relationship: verifies}
   - {from: TEST-REP-190, to: TR-REP-054, relationship: verifies}
   - {from: TEST-REP-191, to: FR-REP-017, relationship: verifies}
   - {from: TEST-REP-192, to: FR-REP-017, relationship: verifies}
-  - {from: TEST-REP-193, to: FR-REP-064, relationship: verifies}
-  - {from: TEST-REP-194, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-193, to: FR-REP-059, relationship: verifies}
+  - {from: TEST-REP-194, to: FR-REP-059, relationship: verifies}
   - {from: TEST-REP-195, to: FR-REP-053, relationship: verifies}
   - {from: TEST-REP-176, to: CODE-REP-109, relationship: exercises}
   - {from: TEST-REP-177, to: CODE-REP-109, relationship: exercises}

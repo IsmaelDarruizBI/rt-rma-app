@@ -4,9 +4,12 @@ Backend FastAPI del MVP. Convive con el tooling de modelado funcional de
 la raiz del repositorio (`business/`, `scripts/`, `generated/`) sin
 reemplazarlo: la fuente de verdad funcional sigue siendo `business/`.
 
-Estado actual: **scaffold**. Solo existe `GET /health`. Todavia no hay
-modelos de dominio, casos de uso, persistencia ni logica del Happy Path
-`HP-REP-001`.
+Implementa el escenario `HP-REP-001` ("Reparacion estandar de cliente
+externo") de `PROC-REP` V1.3, de punta a punta. Los caminos alternativos
+del proceso -revision tecnica, overrides, reserva fallida, retrabajo,
+cancelacion, origenes distintos de CLIENTE_EXTERNO- **no** estan
+implementados: fallan con un error de dominio explicito en vez de
+inventar comportamiento.
 
 ## Stack
 
@@ -14,29 +17,32 @@ modelos de dominio, casos de uso, persistencia ni logica del Happy Path
 - FastAPI
 - Pydantic v2 (+ pydantic-settings para la configuracion)
 - Uvicorn
+- Persistencia: JSON sobre el filesystem. **No hay base de datos.**
 
 ## Estructura
 
 ```text
 app/
-  main.py         Construccion de la app FastAPI y registro de routers
-  api/            Routers/endpoints FastAPI (unica capa que conoce HTTP)
-  domain/         Modelos y conceptos de negocio (sin FastAPI ni persistencia)
-    models/       Entidades del dominio (vacio en esta iteracion)
-  services/       Casos de uso y logica de aplicacion
-  repositories/   Contratos/interfaces de acceso a datos (QUE, no COMO)
-  storage/        Implementaciones concretas de persistencia (JSON/file-based)
+  main.py         Construye la app, monta el contexto y registra routers
+  api/            Routers finos, DTOs y mapeo de errores a HTTP
+  application/    Casos de uso: load -> services -> persistir
+  domain/
+    models/       Modelos Pydantic del dominio (sin FastAPI ni storage)
+  services/       Logica de negocio pura, un caso de uso por nodo/tramo
+  repositories/   Contratos (Protocol) de acceso a datos
+  storage/
+    json/         Implementacion JSON con escritura atomica
   core/           Configuracion tecnica transversal
 data/
-  ordenes/        Datos locales temporales del MVP (sin datos reales)
-  catalogs/       Catalogos locales del MVP (sin datos reales)
+  ordenes/        Ordenes persistidas (una por archivo)
+  catalogs/       Catalogos DEMO versionados
 tests/            Tests del backend
 ```
 
-Regla de dependencia: `api -> services -> repositories <- storage`, y
-`domain` no depende de ninguna de las otras. `storage` debe poder
-reemplazarse (por una base de datos, por ejemplo) sin tocar `domain` ni
-`services`.
+Regla de dependencia: `api -> application -> services -> repositories
+<- storage`, y `domain` no depende de ninguna de las otras. `services`
+no conoce HTTP ni el formato de persistencia; `storage` puede
+reemplazarse sin tocar `domain` ni `services`.
 
 ## Instalacion
 
@@ -46,18 +52,63 @@ Desde `app/backend/`:
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 source .venv/bin/activate     # Linux / macOS
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ## Ejecucion
 
 ```bash
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000 --workers 1
 ```
 
 - API: http://localhost:8000
 - Health: http://localhost:8000/health
 - Docs: http://localhost:8000/docs
+
+**Un solo worker, a proposito.** `PROC-REP-185` (reservar insumos) se
+protege con un lock de proceso (`threading.RLock`) que cubre la seccion
+critica completa: leer disponibilidad global, validar y escribir la
+reserva. Ese lock **no** es distribuido: con varios workers o instancias
+sobre el mismo directorio de datos, dos pedidos podrian reservar la
+misma unidad. Cuando el almacenamiento deje de ser JSON, la exclusion
+mutua debera resolverla el motor de persistencia.
+
+## Endpoints
+
+Lectura:
+
+```text
+GET  /health
+GET  /api/orders
+GET  /api/orders/{orden_id}
+GET  /api/catalogs/repair-types | stations | users
+```
+
+Comandos del Happy Path. Cada uno representa UNA intencion de una
+persona y arrastra los nodos ACT-SYSTEM que la siguen hasta la proxima
+frontera de actor humano:
+
+| Endpoint | Actor | Nodos |
+|---|---|---|
+| `POST /api/orders` | RECEPCION | 010 → 030 → 040 |
+| `POST /api/orders/{id}/details` | RECEPCION | 045 → 070 → 050 → 060 → 080 → 090 → 140 |
+| `POST /api/orders/{id}/queue` | COORDINADOR_RMA o RECEPCION | 150 → 170 |
+| `POST /api/orders/{id}/take` | TECNICO | 172 → 180 |
+| `POST /api/orders/{id}/details/{detalle_id}/start` | TECNICO | 181 → 174 → 185 |
+| `POST /api/orders/{id}/executions/{ejecucion_id}/complete` | TECNICO propietario | 190 → 200 → 210 → 211 |
+| `POST /api/orders/{id}/control/approve` | RECEPCION | 220 → 230 → 245 → 240 |
+| `POST /api/orders/{id}/notify` | RECEPCION | 250 → 260 → 265 [→ 266] |
+| `POST /api/orders/{id}/payments` | sin rol definido | capacidad transversal |
+| `POST /api/orders/{id}/deliver` | ADMINISTRADOR o RECEPCION | 280 → 270 → EVT-REP-999 |
+
+Registrar Pago no corresponde a ningun `PROC-REP-*`: no mueve
+`current_process`, pero deja traza en el historial como accion funcional
+`ACC-REP-020`. `BR-REP-017` todavia no define que rol puede cobrar, asi
+que solo se exige usuario activo.
+
+Errores: `404` no encontrado · `409` precondicion invalida o recurso no
+disponible · `422` request mal formado · `500` fallo de infraestructura
+(sin filtrar detalle interno).
 
 ## Configuracion
 
@@ -67,9 +118,57 @@ Variables de entorno con prefijo `RMA_` (ver `app/core/config.py`):
 |---|---|
 | `RMA_APP_NAME` | `Rosario Tecno RMA API` |
 | `RMA_APP_VERSION` | `0.1.0` |
+| `RMA_DATA_DIR` | `app/backend/data` |
 | `RMA_CORS_ALLOW_ORIGINS` | `["http://localhost:5173","http://127.0.0.1:5173"]` |
 
-## Datos
+`RMA_DATA_DIR` decide donde viven `ordenes/` y `catalogs/`. Los tests
+siempre usan `tmp_path`: nunca escriben sobre los catalogos DEMO
+versionados.
 
-`data/` contiene unicamente datos locales temporales del MVP. No debe
-contener datos reales, credenciales ni informacion sensible.
+## Catalogos DEMO
+
+`data/catalogs/` trae datos ficticios para poder probar sin cargar nada:
+
+```text
+TR-001    Cambio bateria iPhone 14   precio 80000 · puntaje 10 · garantia 90
+INS-001   BAT-IP14 Bateria iPhone 14 · stock_fisico 6
+EST-001   Mesa tecnica 1
+RECEP-001 · COORD-001 · TECH-001 · ADMIN-001
+```
+
+No contienen datos reales ni informacion personal.
+
+## Compatibilidad de persistencia del MVP
+
+**Los datos JSON locales del MVP son descartables. No se garantiza
+compatibilidad hacia atras para Ordenes persistidas antes de
+`mvp-reconcile`.**
+
+Concretamente:
+
+- `HistorialWorkflow` **si** mantiene compatibilidad: acepta el nombre
+  historico `process_id` al construirse y al validar JSON, y esas
+  entradas se cargan como `PROCESS_NODE`.
+- `Pago.tipo_pago` **no** hace backfill automatico y es obligatorio. Una
+  Orden guardada antes de esta version, con pagos sin ese campo, falla
+  al cargarse.
+- No se agrega un default como `tipo_pago = PAGO`: desde el objeto
+  `Pago` no se puede inferir si aquel cobro fue un anticipo o el pago
+  del cierre, y un default inventado seria trazabilidad falsa.
+- Para el MVP se espera **recrear o resetear** los datos locales
+  generados con versiones anteriores: borrar `data/ordenes/*.json`.
+- Esto debera resolverse con migraciones reales cuando exista una
+  persistencia estable o una base de datos.
+
+## Tests
+
+```bash
+pytest
+ruff check .
+```
+
+Cubren los modelos de dominio, los services en memoria, las invariantes
+(una sola toma activa, una sola ejecucion activa, idempotencia de
+`PROC-REP-210`), la autorizacion por actor, la persistencia JSON, el
+inventario global y `HP-REP-001` completo en tres niveles: services en
+memoria, services contra JSON, y HTTP real con `TestClient`.

@@ -58,9 +58,16 @@
 
 ### User Story `US-REP-005` — Ordenar el trabajo pendiente (Priority: P1)
 
-Como **Coordinador RMA**, quiero asignar una prioridad a la Orden
-habilitada e ingresarla a la cola de trabajo, para que los tecnicos sepan
-que hay para trabajar y en que orden.
+Como **Coordinador RMA** o **Recepcionista**, quiero asignar una
+prioridad a la Orden habilitada e ingresarla a la cola de trabajo, para
+que los tecnicos sepan que hay para trabajar y en que orden.
+
+`PROC-REP-150` declara `ACT-COORD` como actor y `ACT-RECEP` como
+`actores_alternativos`: son equivalentes, sin jerarquia. En la operacion
+real Recepcion necesita poder encolar sin esperar al Coordinador.
+
+HP-REP-001 recorre esta accion con `ACT-COORD`: ampliar quien PUEDE
+ejecutarla no cambia quien la ejecuta DENTRO del Happy Path.
 
 **Why this priority**: sin cola no hay trabajo disponible para los
 tecnicos. Es el puente entre la habilitacion y la ejecucion.
@@ -72,6 +79,9 @@ ingresarla a la cola, verificando que queda en `EN_COLA`.
 
 1. **Given** una Orden `HABILITADA`, **When** el Coordinador le asigna
    una prioridad, **Then** la Orden registra esa prioridad.
+1b. **Given** una Orden `HABILITADA`, **When** Recepcion le asigna una
+   prioridad, **Then** la Orden la registra igual: ambos actores estan
+   autorizados.
 2. **Given** una prioridad negativa, **When** se intenta asignarla,
    **Then** el sistema la rechaza.
 3. **Given** una Orden con prioridad asignada, **When** se la ingresa a
@@ -79,8 +89,9 @@ ingresarla a la cola, verificando que queda en `EN_COLA`.
    cualquier tecnico (no se asigna tecnico).
 4. **Given** una Orden ya `EN_COLA`, **When** se intenta ingresarla
    nuevamente, **Then** el sistema rechaza la operacion.
-5. **Given** un usuario cuyo rol no es Coordinador RMA, **When** intenta
-   definir la prioridad, **Then** el sistema rechaza la operacion.
+5. **Given** un usuario cuyo rol no es Coordinador RMA ni Recepcion
+   -por ejemplo un Tecnico o un Administrador-, **When** intenta definir
+   la prioridad, **Then** el sistema rechaza la operacion.
 
 ---
 
@@ -146,8 +157,9 @@ tecnico y a la estacion.
 - **FR-REP-016**: El sistema debe permitir asignar a la Orden una
   prioridad de ejecucion. La prioridad no puede ser negativa.
   *(`PROC-REP-150`)*
-- **FR-REP-017**: Solo un usuario con rol Coordinador RMA puede definir
-  la prioridad de la Orden. *(actores `ACT-COORD` o `ACT-RECEP`)*
+- **FR-REP-017**: Solo un usuario con rol Coordinador RMA o Recepcion
+  puede definir la prioridad de la Orden.
+  *(actores `ACT-COORD` o `ACT-RECEP`)*
 - **FR-REP-018**: El sistema debe poder ingresar la Orden a la cola de
   trabajo, donde queda disponible para cualquier tecnico sin asignacion
   previa. Una Orden no puede ingresar dos veces a la cola.

@@ -79,9 +79,18 @@ cliente y verificar que el paso queda registrado.
 
 ### User Story `US-REP-016` — Entregar el equipo con su documentacion y cerrar la Orden (Priority: P1)
 
-Como **Administrador**, quiero entregar el equipo al cliente junto con su
-comprobante final y su garantia de reparacion, y dejar la Orden cerrada,
-para que el circuito quede completo y documentado.
+Como **Administrador** o **Recepcionista**, quiero entregar el equipo al
+cliente junto con su comprobante final y su garantia de reparacion, y
+dejar la Orden cerrada, para que el circuito quede completo y
+documentado.
+
+`PROC-REP-270` declara `ACT-ADMIN` como actor y `ACT-RECEP` como
+`actores_alternativos`: es Recepcion quien atiende al cliente en el
+mostrador al momento del retiro. La condicion comercial NO cambia por el
+actor: `REPARACION_LISTA` y saldo cero se exigen igual a los dos.
+
+HP-REP-001 recorre la entrega con `ACT-ADMIN`: ampliar quien PUEDE
+ejecutarla no cambia quien la ejecuta DENTRO del Happy Path.
 
 **Why this priority**: es el cierre del proceso. Sin el, la Orden queda
 abierta indefinidamente.
@@ -98,6 +107,9 @@ y posicionada en el evento final.
 2. **Given** el comprobante generado, **When** el Administrador entrega
    el equipo, **Then** la Orden pasa a `ENTREGADA` y queda posicionada en
    el evento final del flujo.
+2b. **Given** el comprobante generado, **When** Recepcion entrega el
+   equipo, **Then** ocurre exactamente lo mismo: ambos actores estan
+   autorizados.
 3. **Given** una Orden sin comprobante final generado, **When** se
    intenta entregarla, **Then** el sistema lo rechaza.
 4. **Given** una Orden sin garantia de reparacion generada, **When** se
@@ -106,8 +118,12 @@ y posicionada en el evento final.
    **When** se intenta entregarla, **Then** el sistema lo rechaza.
 6. **Given** una Orden con saldo pendiente, **When** se intenta
    entregarla, **Then** el sistema lo rechaza.
-7. **Given** un usuario cuyo rol no es Administrador, **When** intenta
-   entregar el equipo, **Then** el sistema rechaza la operacion.
+7. **Given** un usuario cuyo rol no es Administrador ni Recepcion -por
+   ejemplo un Tecnico o un Coordinador-, **When** intenta entregar el
+   equipo, **Then** el sistema rechaza la operacion.
+7b. **Given** una Orden con saldo pendiente, **When** Recepcion intenta
+   entregarla, **Then** el sistema la rechaza igual: el actor ampliado no
+   relaja la condicion comercial.
 8. **Given** la Orden entregada, **When** se revisa el historial,
    **Then** contiene `PROC-REP-280` y `PROC-REP-270`, y el evento final
    **no** se registra como un paso mas: queda como posicion actual.
@@ -146,8 +162,8 @@ y posicionada en el evento final.
   acumulativa: condicion de entrega superada (saldo cero), comprobante
   final emitido, garantia de reparacion emitida y ninguna reserva de
   inventario activa. *(`PROC-REP-270`, `BR-REP-017-B`)*
-- **FR-REP-059**: Solo un usuario con rol Administrador puede entregar el
-  equipo. *(actores `ACT-ADMIN` o `ACT-RECEP`)*
+- **FR-REP-059**: Solo un usuario con rol Administrador o Recepcion puede
+  entregar el equipo. *(actores `ACT-ADMIN` o `ACT-RECEP`)*
 - **FR-REP-060**: Al entregarse, la Orden debe pasar al hito `ENTREGADA`
   y quedar posicionada en el evento final del flujo.
   *(`PROC-REP-270` → `EVT-REP-999`)*

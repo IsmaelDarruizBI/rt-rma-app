@@ -41,7 +41,10 @@ completa de IDs y las relaciones 1:N / N:M entre niveles, y
 [docs/discovery/README.md](docs/discovery/README.md) para el detalle de la
 etapa de Business Process Discovery & Modeling.
 
-No hay todavia aplicacion, frontend, backend ni base de datos.
+Sobre esa baseline funcional existe hoy un **MVP ejecutable** en `app/`
+(backend FastAPI + frontend React), que implementa el escenario
+`HP-REP-001`. Ver "Estado actual" mas abajo. No hay base de datos: la
+persistencia del MVP es JSON local.
 
 ## Principio arquitectonico
 
@@ -67,23 +70,31 @@ YAML → JSON Schema → Renderer → Mermaid / HTML Viewer (hoy) → React Flow
 ## Estructura
 
 ```text
-business/
-  processes/   Procesos de negocio en YAML (fuente de verdad)
-  actors/      Actores que participan en los procesos
-  rules/       Reglas de negocio
-  features/    Definiciones funcionales de Features
-  schemas/     JSON Schema de validacion para los procesos y Features
+business/        FUENTE DE VERDAD FUNCIONAL
+  processes/     Procesos de negocio en YAML
+  actors/        Actores que participan en los procesos
+  rules/         Reglas de negocio
+  features/      Definiciones funcionales de Features
+  scenarios/     Scenarios sobre el proceso (hoy: HP-REP-001)
+  schemas/       JSON Schema de validacion
+
+app/             MVP EJECUTABLE
+  backend/       FastAPI · Pydantic v2 · persistencia JSON
+  frontend/      React + TypeScript + Vite
+
+specs/           Especificacion Spec Kit, una por Feature activa
+.specify/        Constitution del proyecto y plantillas de Spec Kit
+
+traceability/    Cadena E2E: convencion, grafo items+links y su estado
 
 generated/
-  mermaid/     Diagramas Mermaid generados automaticamente (no editar)
-  viewer/      Viewer HTML interactivo generado automaticamente (no editar)
+  mermaid/       Diagramas Mermaid generados automaticamente (no editar)
+  viewer/        Viewer HTML interactivo generado automaticamente (no editar)
 
-scripts/       Generadores y herramientas de este repositorio
+scripts/         Generadores y validadores de este repositorio
 
 docs/
-  discovery/   Documentacion del proceso de descubrimiento de negocio
-
-traceability/  Convenciones de trazabilidad para etapas futuras
+  discovery/     Documentacion del proceso de descubrimiento de negocio
 ```
 
 ## Instalacion
@@ -150,67 +161,97 @@ npm run generate
 
 ## Estado actual
 
-**Etapa completada:** Business Process Discovery & Modeling, para el
-Business Process de Gestion de Ordenes de Reparacion.
+### Modelado funcional
 
 ```text
-PROC-REP  Gestion de Ordenes de Reparacion  V1.2 — approved
+PROC-REP  Gestion de Ordenes de Reparacion  V1.2 — approved  (baseline historica)
+PROC-REP  Gestion de Ordenes de Reparacion  V1.3 — draft     (baseline vigente)
 ```
 
-**Etapa actual:** Feature Definition. Existen actualmente **7 Features en
-estado `draft`** para `PROC-REP` V1.2, definidas en
-[business/features/repair-management-features.yaml](business/features/repair-management-features.yaml)
-y validadas estructuralmente contra
-`business/schemas/feature.schema.json` (`npm run validate:features`).
-Todavia no se crearon User Stories, ni se inicio la definicion de
-Functional Requirements o Technical Requirements. Ademas de la validacion
-estructural, `npm run validate:references` valida integridad referencial
-entre archivos (`process_nodes` y `business_rules` de cada Feature contra
-`repair-management.yaml` y `business-rules.yaml`, `source_process` contra
-la version aprobada, y la integridad interna del propio Business Process)
-y reporta cobertura de nodos y de Business Rules.
-
-La V1.2 (approved) de `PROC-REP` es Business Process validado con negocio:
-baseline funcional aprobada para iniciar la siguiente etapa del proyecto.
-Incorpora sobre la V1.1 la validacion de Estacion de Trabajo al momento de
-tomar una Orden. La aprobacion es documental (estado del proceso): no
-implica que los pendientes funcionales ya identificados (tercerizacion,
-scrap, reproceso definitivo, compras, ventas mayoristas, etc.) esten
-resueltos. Ver [docs/discovery/README.md](docs/discovery/README.md)
-(seccion Pendientes) para el detalle completo.
-
-`PROC-VTA` (Gestion de Ventas de Repuestos) y `PROC-COM` (Gestion de
-Compras de Repuestos) siguen siendo procesos futuros identificados dentro
-de `DOM-RMA`: todavia no tienen YAML ni modelado propio.
-
-La fuente de verdad continua siendo:
+V1.3 convive con V1.2 sin reemplazarla. Sobre V1.3 hay **9 Features en
+estado `draft`**, **18 Business Rules** y un Scenario formal:
 
 ```text
-YAML
-→ JSON Schema
-→ Mermaid / HTML Viewer
+HP-REP-001  Reparacion estandar de cliente externo  (HAPPY_PATH / E2E)
 ```
 
-React Flow sera una futura capa de visualizacion interactiva avanzada.
+`PROC-VTA` (Ventas de Repuestos) y `PROC-COM` (Compras de Repuestos)
+siguen siendo procesos futuros identificados dentro de `DOM-RMA`: todavia
+no tienen YAML ni modelado propio.
 
-Todavia no se incluyen deliberadamente:
+### MVP ejecutable
 
-- React / Next.js
-- React Flow
-- Base de datos
-- User Stories reales
-- Spec Kit
-- Requerimientos funcionales o tecnicos formales
-- Desarrollo de aplicacion
+```text
+app/backend/    FastAPI · Pydantic v2 · persistencia JSON local
+app/frontend/   React + TypeScript + Vite
+```
 
-Comandos principales:
+Implementa `HP-REP-001` de punta a punta: se puede crear una Orden desde
+el navegador y recorrer todo el circuito hasta `ENTREGADA`. Ver
+[app/backend/README.md](app/backend/README.md) y
+[app/frontend/README.md](app/frontend/README.md).
+
+**No hay base de datos productiva.** El almacenamiento es JSON sobre el
+filesystem, pensado como MVP y detras de contratos de repository para
+poder reemplazarse despues.
+
+### Especificacion y trazabilidad
+
+[Spec Kit](https://github.com/github/spec-kit) esta incorporado
+(`.specify/`, `specs/`), con una constitution del proyecto y una
+especificacion por Business Feature activa. La cadena de trazabilidad
+E2E fue **reconstruida desde el baseline implementado**:
+
+```text
+Business Process → Feature → User Story → System Action
+→ Functional Requirement → Technical Requirement → Task
+→ Code → Internal Test → UAT
+```
+
+y existe en formato machine-readable en
+[traceability/hp-rep-001.yaml](traceability/hp-rep-001.yaml) como items +
+links, validable con `npm run validate:traceability`. Ver
+[traceability/IMPLEMENTATION.md](traceability/IMPLEMENTATION.md).
+
+### Alcance: slice, no Feature completa
+
+Esta es la distincion mas importante del estado actual:
+
+- las Features V1.3 siguen en estado **`draft`**;
+- lo implementado es el **slice que recorre `HP-REP-001`**, no la
+  cobertura completa de ninguna Feature;
+- **ninguna Feature esta implementada por completo**;
+- los **UAT siguen `PENDING`**: los tests internos son evidencia de
+  desarrollo, no aceptacion de negocio.
+
+Los caminos alternativos de V1.3 -revision tecnica, overrides, reserva
+fallida, retrabajo, cancelacion (FEAT-REP-009), origenes distintos de
+CLIENTE_EXTERNO- no estan implementados y figuran como tareas
+`NOT_IMPLEMENTED` en la trazabilidad.
+
+### La fuente de verdad no cambio
+
+```text
+YAML (business/)  = Source of Truth funcional
+JSON Schema       = Contrato de validacion
+Mermaid / Viewer  = Visualizacion
+```
+
+El codigo **no** es fuente de verdad funcional: si difiere de
+`business/`, se reporta la divergencia en vez de reescribir el
+requerimiento. React Flow sigue siendo una futura capa de visualizacion
+avanzada.
+
+### Comandos principales
 
 ```bash
-npm run validate
-npm run generate:mermaid
-npm run generate:viewer
-npm run generate
+npm run validate:v1.3          # valida el modelado funcional V1.3
+npm run validate:traceability  # valida el grafo de trazabilidad
+npm run validate:all           # ambos
+npm run generate:v1.3          # regenera Mermaid + viewer de V1.3
 ```
+
+Backend y frontend tienen sus propios comandos: ver sus README.
 
 ### Nota sobre datos sensibles
 

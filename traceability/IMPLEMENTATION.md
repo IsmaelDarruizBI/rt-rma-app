@@ -5,11 +5,12 @@ repositorio. Complementa a [`README.md`](./README.md), que define la
 **convencion de IDs y la jerarquia** y que fue escrito cuando todavia no
 habia ninguna implementacion.
 
-> **Nota de reconciliacion**: `traceability/README.md` afirma en varios
-> puntos que "no hay todavia ninguna implementacion" y que no existen
-> User Stories reales. Esas afirmaciones quedaron desactualizadas con
-> este trabajo. `README.md` **no se modifico** aqui: se reconcilia
-> despues del merge, junto con el resto de los README generales.
+> **Nota de reconciliacion**: los README generales -raiz, backend y
+> frontend- ya fueron reconciliados con el estado real. Queda
+> `traceability/README.md`, que se conserva deliberadamente como el
+> documento de **convencion de IDs y jerarquia**: su contenido normativo
+> sigue vigente, y lleva al principio un aviso de que sus afirmaciones
+> sobre "no hay implementacion todavia" quedaron desactualizadas.
 
 ## Que se agrego
 
@@ -240,6 +241,28 @@ queda HABILITADA podria pasar sola a EN_COLA con prioridad por defecto.
 Alteraria el recorrido de HP-REP-001 -`PROC-REP-150` dejaria de ser una
 accion humana obligatoria del Scenario-, asi que queda fuera de alcance
 hasta modelarlo como variante.
+
+## Compatibilidad de persistencia del MVP
+
+**Decision explicita: los datos JSON locales del MVP son descartables. No
+se garantiza compatibilidad hacia atras para Ordenes persistidas antes de
+`mvp-reconcile`.**
+
+- `HistorialWorkflow` **si** mantiene compatibilidad: acepta el nombre
+  historico `process_id` al construirse y al validar JSON, y esas
+  entradas se cargan como `PROCESS_NODE`. No hace falta migrar nada.
+- `Pago.tipo_pago` **no** hace backfill automatico y es obligatorio. Una
+  Orden guardada antes de esta version, con pagos que no lo traen, falla
+  al cargarse.
+- **No se agrega un default** como `tipo_pago = PAGO`. Desde el objeto
+  `Pago` no se puede inferir si aquel cobro fue un ANTICIPO o el PAGO del
+  cierre -eso depende del estado que la Orden tenia en ese momento-, y
+  completarlo a ciegas seria trazabilidad falsa: exactamente lo que el
+  Principio V de la constitution prohibe.
+- Para el MVP se espera **recrear o resetear** los datos locales
+  generados con versiones anteriores (borrar `data/ordenes/*.json`).
+- Esto debera resolverse con migraciones reales cuando exista una
+  persistencia estable o una base de datos. Hoy no la hay.
 
 ## Divergencias entre baseline funcional y modelado tecnico
 

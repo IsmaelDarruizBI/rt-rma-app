@@ -1,11 +1,16 @@
 # Trazabilidad (futuro)
 
 Este documento describe la convencion de IDs y la jerarquia conceptual que
-sostendra la trazabilidad end-to-end del proyecto. **No hay todavia ninguna
-implementacion**: ni generacion automatica de matrices, ni validacion
-cruzada, ni herramientas. Es solo la convencion de nombres y niveles que los
-artefactos futuros deberan respetar para que la trazabilidad sea posible mas
-adelante.
+sostiene la trazabilidad end-to-end del proyecto.
+
+> **Estado**: este README se escribio ANTES de que existiera ninguna
+> implementacion, y se conserva como el documento de **convencion**. Las
+> afirmaciones del tipo "no hay todavia ninguna implementacion" o "todavia
+> no existen User Stories reales" quedaron desactualizadas: la cadena fue
+> reconstruida y hoy existe. Para el estado real ver
+> [IMPLEMENTATION.md](./IMPLEMENTATION.md) y el grafo
+> [hp-rep-001.yaml](./hp-rep-001.yaml). La convencion de IDs y niveles que
+> sigue vigente es la que este documento define.
 
 ## Business Domain
 
