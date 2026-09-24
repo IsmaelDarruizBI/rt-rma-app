@@ -507,11 +507,19 @@ nodes:
     type: activity
     name: Definir prioridad
     actor: ACT-COORD
+    actores_alternativos:
+      - ACT-RECEP
     description: >
-      El coordinador establece inicialmente la prioridad de ejecucion
-      de la Orden. El catalogo definitivo de prioridades queda pendiente.
-      Sin cambios respecto de V1.2 (prioridad sigue siendo de la Orden,
-      no de cada Detalle).
+      Se establece inicialmente la prioridad de ejecucion de la Orden. El
+      catalogo definitivo de prioridades queda pendiente. La prioridad
+      sigue siendo de la Orden, no de cada Detalle (sin cambios respecto
+      de V1.2).
+      Ampliacion posterior a V1.2: la accion admite dos actores
+      equivalentes, ACT-COORD y ACT-RECEP. En la operacion real Recepcion
+      necesita poder priorizar e ingresar la Orden a la cola sin esperar
+      al Coordinador; ninguno de los dos tiene precedencia sobre el otro.
+      ACT-COORD se conserva como actor principal por continuidad
+      historica y porque es el que recorre HP-REP-001.
 
   - id: PROC-REP-170
     type: activity
@@ -957,11 +965,21 @@ nodes:
     type: activity
     name: Entregar equipo
     actor: ACT-ADMIN
+    actores_alternativos:
+      - ACT-RECEP
     description: >
       Se entrega el equipo al cliente junto con el comprobante final
       (PROC-REP-280), una vez superada la validacion de condicion de
       entrega (PROC-REP-265); la Orden pasa a ENTREGADA. Sin cambios
-      respecto de V1.2 salvo esa nueva precondicion.
+      respecto de V1.2 salvo esa precondicion.
+      Ampliacion posterior a V1.2: la accion admite dos actores
+      equivalentes, ACT-ADMIN y ACT-RECEP, porque es Recepcion quien
+      atiende al cliente en el mostrador al momento del retiro. La
+      condicion comercial NO cambia por esto: sigue exigiendose
+      REPARACION_LISTA y la validacion de PROC-REP-265 (saldo 0, cortesia
+      total o condicion no cobrable). Ningun actor puede saltearla.
+      ACT-ADMIN se conserva como actor principal por continuidad
+      historica y porque es el que recorre HP-REP-001.
 
   - id: PROC-REP-290
     type: activity

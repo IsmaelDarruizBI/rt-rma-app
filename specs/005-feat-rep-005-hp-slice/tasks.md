@@ -196,3 +196,12 @@ Corresponden a `FEAT-REP-005` completa. Sin codigo ni test.
 | `US-REP-009` | 7 | 7 | 0 |
 | Fuera del slice | 8 | 0 | 8 |
 | **Total** | **26** | **18** | **8** |
+
+## Iteracion de reconciliacion (prueba manual del MVP)
+
+- [x] **TASK-REP-150** Subir el stock DEMO de `INS-001` de 2 a 6
+      unidades en `app/backend/data/catalogs/insumos.json`, para poder
+      recorrer el Happy Path varias veces sin quedarse sin insumo.
+      Cambio de datos DEMO unicamente: ninguna regla de inventario se
+      modifico. Los tests que fijan stocks propios usan `tmp_path` y no
+      se tocaron.

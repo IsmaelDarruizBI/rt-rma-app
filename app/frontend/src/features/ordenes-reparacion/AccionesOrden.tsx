@@ -102,8 +102,12 @@ function AccionUnica({
   ocupado,
   ejecutar,
 }: Props & { accion: Accion }) {
+  // El backend manda TODOS los roles autorizados: un nodo puede declarar
+  // actores_alternativos. Vacio = el negocio no definio rol (Registrar
+  // Pago, BR-REP-017). Ocultar el boton es UX; la autoridad es el backend.
   const habilitada =
-    actor !== null && (accion.rol === null || actor.rol === accion.rol);
+    actor !== null &&
+    (accion.roles.length === 0 || accion.roles.includes(actor.rol));
 
   return (
     <div
@@ -124,8 +128,8 @@ function AccionUnica({
             color: colores.alerta,
           }}
         >
-          Requiere el rol {accion.rol ?? "—"}. Cambiá el actor demo para
-          ejecutarla.
+          Requiere el rol {accion.roles.join(" o ") || "—"}. Cambiá el
+          actor demo para ejecutarla.
         </p>
       )}
       <FormularioAccion

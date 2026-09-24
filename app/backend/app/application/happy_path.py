@@ -26,6 +26,7 @@ from app.domain.models import (
     RolUsuario,
 )
 from app.services import ejecucion_activa, toma_activa
+from app.services.ordenes import ROLES_ENTREGA, ROLES_PRIORIZACION
 
 # Nodos de HP-REP-001 en el orden en que el escenario los recorre.
 # ``EVT-REP-999`` no genera historial: se alcanza cuando la Orden queda
@@ -93,20 +94,31 @@ class PasoHappyPath:
 class AccionDisponible:
     """Accion humana que la Orden admite ahora mismo.
 
-    ``rol`` es ``None`` cuando el negocio todavia no definio el actor
-    (Registrar Pago, BR-REP-017: capacidad transversal sin rol).
+    ``roles`` lista TODOS los actores autorizados: un nodo puede
+    declarar ``actores_alternativos`` en PROC-REP V1.3 (por ejemplo
+    PROC-REP-150 y PROC-REP-270), y entonces son varios sin jerarquia.
+
+    Vacia significa que el negocio todavia no definio el actor
+    (Registrar Pago, BR-REP-017: capacidad transversal sin rol), no que
+    cualquiera pueda: el backend igual exige usuario activo.
     """
 
     codigo: str
     etiqueta: str
-    rol: RolUsuario | None
+    roles: tuple[RolUsuario, ...] = ()
     detalle_id: str | None = None
     ejecucion_id: str | None = None
 
 
 def nodos_alcanzados(orden: OrdenReparacion) -> set[str]:
     """IDs de proceso por los que la Orden ya paso."""
-    alcanzados = {paso.process_id for paso in orden.historial}
+    # Solo los nodos: una accion transversal (ACC-REP-*) no forma parte
+    # del recorrido y no debe marcar progreso.
+    alcanzados = {
+        paso.referencia_id
+        for paso in orden.historial
+        if paso.process_id is not None
+    }
     if orden.current_process == "EVT-REP-999":
         alcanzados.add("EVT-REP-999")
     return alcanzados
@@ -164,7 +176,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_DEFINIR_REPARACION,
                 etiqueta="Definir la reparacion",
-                rol=RolUsuario.RECEPCION,
+                roles=(RolUsuario.RECEPCION,),
             )
         )
 
@@ -173,7 +185,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_ENCOLAR,
                 etiqueta="Priorizar e ingresar a la cola",
-                rol=RolUsuario.COORDINADOR_RMA,
+                roles=ROLES_PRIORIZACION,
             )
         )
 
@@ -182,7 +194,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_TOMAR,
                 etiqueta="Tomar la Orden",
-                rol=RolUsuario.TECNICO,
+                roles=(RolUsuario.TECNICO,),
             )
         )
 
@@ -194,7 +206,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_INICIAR_DETALLE,
                 etiqueta="Iniciar el Detalle",
-                rol=RolUsuario.TECNICO,
+                roles=(RolUsuario.TECNICO,),
                 detalle_id=trabajable,
             )
         )
@@ -204,7 +216,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_COMPLETAR_EJECUCION,
                 etiqueta="Registrar la ejecucion realizada",
-                rol=RolUsuario.TECNICO,
+                roles=(RolUsuario.TECNICO,),
                 detalle_id=en_curso.reparacion_detail_id,
                 ejecucion_id=en_curso.id,
             )
@@ -216,7 +228,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_APROBAR_CONTROL,
                 etiqueta="Aprobar el control tecnico",
-                rol=RolUsuario.RECEPCION,
+                roles=(RolUsuario.RECEPCION,),
             )
         )
 
@@ -227,7 +239,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_NOTIFICAR,
                 etiqueta="Notificar al cliente",
-                rol=RolUsuario.RECEPCION,
+                roles=(RolUsuario.RECEPCION,),
             )
         )
 
@@ -236,7 +248,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_REGISTRAR_PAGO,
                 etiqueta="Registrar un pago",
-                rol=None,
+                roles=(),
             )
         )
 
@@ -245,7 +257,7 @@ def acciones_disponibles(orden: OrdenReparacion) -> list[AccionDisponible]:
             AccionDisponible(
                 codigo=ACCION_ENTREGAR,
                 etiqueta="Entregar el equipo",
-                rol=RolUsuario.ADMINISTRADOR,
+                roles=ROLES_ENTREGA,
             )
         )
 

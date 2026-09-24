@@ -134,7 +134,8 @@ OrdenReparacion
   (`PROC-REP-174`, ver `specs/005-feat-rep-005-hp-slice/`).
   → satisface `FR-REP-019`
   → `app/backend/app/services/tomas.py::estacion_habilitada_para`
-- **TR-REP-009**: Validacion de actor: `ACT-COORD` para
+- **TR-REP-009 / TR-REP-051**: Validacion de actor: `ACT-COORD` o
+  `ACT-RECEP` (`actores_alternativos` de PROC-REP-150) para
   `definir_prioridad`, `ACT-TECH` para `validar_estacion_trabajo` y
   `tomar_orden`.
   → satisface `FR-REP-017`, `FR-REP-024`

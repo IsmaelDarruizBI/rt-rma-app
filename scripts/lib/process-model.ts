@@ -14,6 +14,12 @@ export interface ProcessNode {
   name: string;
   description?: string;
   actor?: string;
+  /**
+   * Otros actores igualmente autorizados a ejecutar el nodo, ademas de
+   * `actor`. Opcional y retrocompatible: un nodo sin este campo admite
+   * unicamente su `actor`. No hay jerarquia entre ellos.
+   */
+  actores_alternativos?: string[];
   inputs?: string[];
   outputs?: string[];
   rules?: string[];

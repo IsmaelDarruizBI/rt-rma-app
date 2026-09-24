@@ -40,7 +40,8 @@ description: "Tareas reconstruidas del slice HP-REP-001 de FEAT-REP-004"
 `tests/test_hp_rep_001_persistido.py::test_hp_rep_001_persistido_end_to_end`.
 
 - [x] **TASK-REP-054** [US-REP-005] Implementar `definir_prioridad`
-      (`PROC-REP-150`) con actor `ACT-COORD` y prioridad no negativa.
+      (`PROC-REP-150`) con actores `ACT-COORD` o `ACT-RECEP` y
+      prioridad no negativa.
       → `app/backend/app/services/ordenes.py::definir_prioridad`
       → test: `tests/test_services_invariantes.py::test_la_prioridad_no_puede_ser_negativa`,
         `tests/test_services_autorizacion.py::test_coordinador_puede_definir_prioridad`,
@@ -140,3 +141,24 @@ Corresponden a `FEAT-REP-004` completa. Sin codigo ni test.
 | `US-REP-006` | 5 | 5 | 0 |
 | Fuera del slice | 6 | 0 | 6 |
 | **Total** | **17** | **11** | **6** |
+
+## Iteracion de reconciliacion (prueba manual del MVP)
+
+- [x] **TASK-REP-142** [US-REP-005] Ampliar `PROC-REP-150` a `ACT-COORD`
+      o `ACT-RECEP`. Extension generica y retrocompatible: campo
+      opcional `actores_alternativos` en el schema del Business Process,
+      validado en `validate-references.ts`, mostrado en el viewer y
+      resuelto en el backend con `validar_alguno_de`. No es una
+      excepcion hardcodeada para este nodo.
+      Codigo: `app/backend/app/services/ordenes.py::ROLES_PRIORIZACION`,
+      `app/backend/app/services/autorizacion.py::validar_alguno_de`.
+      Tests: `test_api_reconcile.py::test_recepcion_puede_ingresar_la_orden_a_la_cola`,
+      `::test_el_coordinador_sigue_pudiendo_encolar`,
+      `::test_tecnico_y_admin_no_encolan`.
+- [ ] **TASK-REP-147** [US-REP-005] Auto-ingreso a cola: cuando una
+      Orden queda `HABILITADA` podria pasar sola a `EN_COLA` con una
+      prioridad por defecto, ajustable despues por Recepcion o
+      Coordinacion. **Fuera de alcance de esta iteracion**: alteraria el
+      recorrido de HP-REP-001, porque `PROC-REP-150` dejaria de ser una
+      accion humana obligatoria del Scenario. Requiere modelarlo antes
+      como variante. NO implementado.

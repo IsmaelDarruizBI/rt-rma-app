@@ -451,9 +451,15 @@ def test_registrar_pago_no_cambia_el_nodo_actual():
     )
 
     assert orden.current_process == previa.current_process
-    assert len(orden.historial) == len(previa.historial)
     assert orden.resumen_pago.pagado == Decimal("30000")
     assert orden.updated_at == t(185)
+
+    # Deja traza transversal, sin avanzar el recorrido.
+    assert len(orden.historial) == len(previa.historial) + 1
+    ultima = orden.historial[-1]
+    assert ultima.es_accion_funcional is True
+    assert ultima.referencia_id == "ACC-REP-020"
+    assert ultima.process_id is None
 
 
 # 15) Entrega con saldo pendiente: falla.

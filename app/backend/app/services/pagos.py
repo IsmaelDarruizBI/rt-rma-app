@@ -19,13 +19,46 @@ from app.domain.models import (
     OrdenReparacion,
     OrigenOrden,
     Pago,
+    TipoPago,
     Usuario,
 )
 
 from .autorizacion import validar_usuario_activo
 from .exceptions import PrecondicionInvalidaError
 from .identificadores import nuevo_id
-from .workflow import registrar_paso
+from .workflow import registrar_accion_funcional, registrar_paso
+
+# Capacidad transversal de FEAT-REP-007 / BR-REP-017-A. Tiene ID de
+# trazabilidad propio pero NO un PROC-REP-*: no es un nodo del proceso.
+ACCION_REGISTRAR_PAGO = "ACC-REP-020"
+
+
+def descripcion_de_pago(pago: Pago) -> str:
+    """Resumen legible del Pago para el historial de la Orden.
+
+    Deja recuperables el tipo, el medio y el importe sin que el lector
+    -o el frontend- tenga que ir a buscar el Pago por su ID.
+    """
+    return f"{pago.tipo_pago.value} · {pago.metodo} · ${pago.monto}"
+
+
+def tipo_de_pago_para(orden: OrdenReparacion) -> TipoPago:
+    """Deriva el tipo de Pago del estado de la Orden.
+
+        antes de REPARACION_LISTA -> ANTICIPO
+        desde REPARACION_LISTA    -> PAGO
+
+    ENTREGADA no introduce un tercer tipo: un cobro posterior a la
+    entrega sigue siendo el PAGO del cierre.
+    """
+    if orden.estado_workflow is EstadoWorkflow.REQUERIMIENTO:
+        return TipoPago.ANTICIPO
+    if orden.estado_workflow in (
+        EstadoWorkflow.REPARACION_LISTA,
+        EstadoWorkflow.ENTREGADA,
+    ):
+        return TipoPago.PAGO
+    return TipoPago.ANTICIPO
 
 
 def registrar_pago(
@@ -40,11 +73,18 @@ def registrar_pago(
     """Registra un Pago (BR-REP-017-A, FEAT-REP-007).
 
     Capacidad transversal: NO corresponde a ningun PROC-REP-*, asi que
-    no toca ``current_process`` ni agrega historial de workflow. El
-    propio Pago conserva importe, medio, usuario y fecha.
+    NO toca ``current_process`` -la Orden sigue parada donde estaba-.
+    Si deja traza en el historial, como accion funcional ``ACC-REP-020``
+    enlazada al Pago que la origino, para que el recorrido explique que
+    paso entre un nodo y el siguiente.
 
     Despues del pago, ``orden.saldo`` y ``orden.estado_pago`` se
     recalculan solos: son campos derivados.
+
+    El ``tipo_pago`` NO lo elige el usuario: se deriva del estado de
+    la Orden. Antes de REPARACION_LISTA el cobro es un ANTICIPO;
+    desde REPARACION_LISTA en adelante es el PAGO del cierre. Es una
+    dimension distinta del medio (``metodo``).
 
     PENDIENTE FUNCIONAL: BR-REP-017 no define que rol puede registrar
     un Pago, asi que aqui no se exige ninguno. Solo se comprueba que
@@ -58,17 +98,25 @@ def registrar_pago(
             f"El monto del pago debe ser positivo: {monto}."
         )
 
-    nueva_orden = orden.model_copy(deep=True)
-    nueva_orden.updated_at = fecha
-    nueva_orden.resumen_pago.pagos.append(
-        Pago(
-            id=pago_id or nuevo_id("PAG"),
-            monto=monto,
-            metodo=metodo,
-            usuario_id=usuario.id,
-            fecha=fecha,
-        )
+    pago = Pago(
+        id=pago_id or nuevo_id("PAG"),
+        monto=monto,
+        tipo_pago=tipo_de_pago_para(orden),
+        metodo=metodo,
+        usuario_id=usuario.id,
+        fecha=fecha,
     )
+
+    nueva_orden = registrar_accion_funcional(
+        orden,
+        accion_id=ACCION_REGISTRAR_PAGO,
+        accion="REGISTRAR_PAGO",
+        fecha=fecha,
+        usuario_id=usuario.id,
+        pago_id=pago.id,
+        observacion=descripcion_de_pago(pago),
+    )
+    nueva_orden.resumen_pago.pagos.append(pago)
     return nueva_orden
 
 

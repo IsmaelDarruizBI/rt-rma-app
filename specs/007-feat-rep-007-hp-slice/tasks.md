@@ -158,3 +158,33 @@ Corresponden a `FEAT-REP-007` completa. Sin codigo ni test.
 | `US-REP-014` | 3 | 3 | 0 |
 | Fuera del slice | 9 | 0 | 9 |
 | **Total** | **21** | **12** | **9** |
+
+## Iteracion de reconciliacion (prueba manual del MVP)
+
+- [x] **TASK-REP-144** [US-REP-012] Agregar `TipoPago` (ANTICIPO / PAGO)
+      al dominio y derivarlo en `registrar_pago` a partir del estado de
+      la Orden: antes de `REPARACION_LISTA` es ANTICIPO, desde
+      `REPARACION_LISTA` es PAGO. El usuario no lo elige. Es una
+      dimension distinta de `metodo` (medio de pago).
+      Codigo: `app/backend/app/domain/models/enums.py::TipoPago`,
+      `app/backend/app/services/pagos.py::tipo_de_pago_para`.
+      Tests: `test_api_reconcile.py::test_un_pago_temprano_es_un_anticipo`,
+      `::test_el_pago_del_cierre_es_de_tipo_pago`,
+      `::test_anticipo_y_pago_conviven_en_la_misma_orden`.
+- [x] **TASK-REP-146** [US-REP-012] Mostrar el historial de pagos en el
+      Resumen Comercial (fecha, tipo, medio, monto, usuario) y reordenar
+      la pantalla de Orden en una jerarquia vertical. Usa los `pagos[]`
+      que la API ya devolvia.
+- [x] **TASK-REP-148** [US-REP-012] Registrar `ACC-REP-020` en el
+      historial de la Orden al cobrar, con `pago_id` y una observacion
+      legible (`ANTICIPO · EFECTIVO · $20000`), **sin** mover
+      `current_process`.
+      Codigo: `app/backend/app/services/workflow.py::registrar_accion_funcional`,
+      `app/backend/app/services/pagos.py::descripcion_de_pago`.
+      Tests: `test_historial_transversal.py::test_el_pago_final_queda_entre_266_y_265`,
+      `::test_el_historial_enlaza_con_el_pago_que_lo_origino`.
+- [x] **TASK-REP-149** [US-REP-012] Evolucionar `HistorialWorkflow` a
+      `tipo_referencia` + `referencia_id`, manteniendo compatibilidad de
+      construccion y de carga con el nombre historico `process_id`.
+      Codigo: `app/backend/app/domain/models/workflow.py::HistorialWorkflow`,
+      `app/backend/app/domain/models/enums.py::TipoReferenciaHistorial`.

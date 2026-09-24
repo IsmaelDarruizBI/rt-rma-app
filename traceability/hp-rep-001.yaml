@@ -93,7 +93,7 @@ items:
   - {id: PROC-REP-080, type: process_node, name: Validar factibilidad por Detalle, node_type: activity, actor: ACT-SYSTEM, status: draft, in_scenario: true, implemented: true}
   - {id: PROC-REP-090, type: process_node, name: Existe al menos un Detalle trabajable, node_type: decision, status: draft, in_scenario: true, implemented: partial}
   - {id: PROC-REP-140, type: process_node, name: Habilitar Orden de Reparacion, node_type: activity, actor: ACT-SYSTEM, status: draft, in_scenario: true, implemented: true}
-  - {id: PROC-REP-150, type: process_node, name: Definir prioridad, node_type: activity, actor: ACT-COORD, status: draft, in_scenario: true, implemented: true}
+  - {id: PROC-REP-150, type: process_node, name: Definir prioridad, node_type: activity, actor: ACT-COORD, actores_alternativos: [ACT-RECEP], status: draft, in_scenario: true, implemented: true}
   - {id: PROC-REP-170, type: process_node, name: Ingresar orden a cola de trabajo, node_type: activity, actor: ACT-SYSTEM, status: draft, in_scenario: true, implemented: true}
   - {id: PROC-REP-172, type: process_node, name: Validar estacion de trabajo, node_type: activity, actor: ACT-SYSTEM, status: draft, in_scenario: true, implemented: true}
   - {id: PROC-REP-180, type: process_node, name: Tomar Orden de Reparacion, node_type: activity, actor: ACT-TECH, status: draft, in_scenario: true, implemented: true}
@@ -113,7 +113,7 @@ items:
   - {id: PROC-REP-265, type: process_node, name: Completar cobro - validar condicion de entrega, node_type: decision, status: draft, in_scenario: true, implemented: partial}
   - {id: PROC-REP-266, type: process_node, name: Orden con saldo pendiente (entrega bloqueada), node_type: activity, actor: ACT-SYSTEM, status: draft, in_scenario: true, implemented: true}
   - {id: PROC-REP-280, type: process_node, name: Generar comprobante final, node_type: activity, actor: ACT-SYSTEM, status: draft, in_scenario: true, implemented: partial, shared_by: [FEAT-REP-007, FEAT-REP-008]}
-  - {id: PROC-REP-270, type: process_node, name: Entregar equipo, node_type: activity, actor: ACT-ADMIN, status: draft, in_scenario: true, implemented: true}
+  - {id: PROC-REP-270, type: process_node, name: Entregar equipo, node_type: activity, actor: ACT-ADMIN, actores_alternativos: [ACT-RECEP], status: draft, in_scenario: true, implemented: true}
 
   # Nodos del Business Process que las Features declaran pero que
   # HP-REP-001 NO recorre. Se declaran para que los gaps sean
@@ -185,7 +185,7 @@ items:
   - {id: US-REP-013, type: user_story, name: "Como Administrador quiero que el sistema impida entregar un equipo con saldo pendiente para no perder el cobro", status: IMPLEMENTED, priority: P1, actor: ACT-ADMIN, slice_note: "Sin cortesia ni origen no cobrable"}
   - {id: US-REP-014, type: user_story, name: "Como Administrador quiero que el importe a cobrar y el saldo se calculen solos a partir de Detalles y pagos", status: IMPLEMENTED, priority: P2, actor: ACT-ADMIN}
   - {id: US-REP-015, type: user_story, name: "Como Recepcionista quiero avisarle al cliente que su equipo esta listo para que venga a retirarlo", status: IMPLEMENTED, priority: P1, actor: ACT-RECEP, slice_note: "Sin canal real de notificacion"}
-  - {id: US-REP-016, type: user_story, name: "Como Administrador quiero entregar el equipo con su comprobante y garantia y dejar la Orden cerrada", status: IMPLEMENTED, priority: P1, actor: ACT-ADMIN}
+  - {id: US-REP-016, type: user_story, name: "Como Administrador o Recepcionista quiero entregar el equipo con su comprobante y garantia y dejar la Orden cerrada", status: IMPLEMENTED, priority: P1, actor: ACT-ADMIN, actores_alternativos: [ACT-RECEP]}
 
   # ================================================================== #
   # System Actions (lo que el sistema hace para satisfacer las US)     #
@@ -212,7 +212,7 @@ items:
   - {id: ACC-REP-017, type: system_action, name: Registrar el control tecnico aprobando cada Detalle, status: IMPLEMENTED}
   - {id: ACC-REP-018, type: system_action, name: Acreditar el puntaje de los Detalles aprobados, status: IMPLEMENTED}
   - {id: ACC-REP-019, type: system_action, name: Fijar el hito REPARACION_LISTA, status: IMPLEMENTED}
-  - {id: ACC-REP-020, type: system_action, name: Registrar Pago de la Orden (capacidad transversal sin nodo de proceso), status: IMPLEMENTED, transversal: true, process_node: null, scenario_step_kind: FUNCTIONAL_ACTION}
+  - {id: ACC-REP-020, type: system_action, name: Registrar Pago de la Orden (capacidad transversal sin nodo de proceso; deja traza en el historial sin avanzar el recorrido), status: IMPLEMENTED, transversal: true, process_node: null, scenario_step_kind: FUNCTIONAL_ACTION}
   - {id: ACC-REP-021, type: system_action, name: Determinar el importe a cobrar y el saldo y validar la condicion de entrega, status: IMPLEMENTED}
   - {id: ACC-REP-022, type: system_action, name: Registrar que la entrega queda bloqueada por saldo pendiente, status: IMPLEMENTED}
   - {id: ACC-REP-023, type: system_action, name: Mantener derivados el importe a cobrar lo pagado el saldo y el estado de cobro, status: IMPLEMENTED, transversal: true, process_node: null}
@@ -241,7 +241,7 @@ items:
   - {id: FR-REP-014, type: functional_requirement, name: Habilitar la Orden cuando exista al menos un Detalle trabajable, status: IMPLEMENTED}
   - {id: FR-REP-015, type: functional_requirement, name: Impedir habilitar una Orden sin ningun Detalle definido, status: IMPLEMENTED}
   - {id: FR-REP-016, type: functional_requirement, name: Asignar a la Orden una prioridad de ejecucion no negativa, status: IMPLEMENTED}
-  - {id: FR-REP-017, type: functional_requirement, name: Restringir la definicion de prioridad al rol Coordinador RMA, status: IMPLEMENTED}
+  - {id: FR-REP-017, type: functional_requirement, name: Restringir la definicion de prioridad a los roles Coordinador RMA o Recepcion, status: IMPLEMENTED}
   - {id: FR-REP-018, type: functional_requirement, name: Ingresar la Orden a la cola de trabajo una sola vez y sin asignar tecnico, status: IMPLEMENTED}
   - {id: FR-REP-019, type: functional_requirement, name: Validar rol estacion operativa ausencia de Ejecucion activa y compatibilidad antes de la toma sin override, status: IMPLEMENTED}
   - {id: FR-REP-020, type: functional_requirement, name: Impedir mas de una toma o participacion activa simultanea sobre una Orden, status: IMPLEMENTED}
@@ -285,6 +285,11 @@ items:
   - {id: FR-REP-058, type: functional_requirement, name: Exigir saldo cero comprobante garantia y ausencia de reservas activas para entregar, status: IMPLEMENTED}
   - {id: FR-REP-059, type: functional_requirement, name: Restringir la entrega del equipo al rol Administrador, status: IMPLEMENTED}
   - {id: FR-REP-060, type: functional_requirement, name: Pasar la Orden a ENTREGADA y posicionarla en el evento final del flujo, status: IMPLEMENTED}
+  - {id: FR-REP-061, type: functional_requirement, name: Exponer el nombre del Tipo de Reparacion de cada Detalle sin persistirlo en la Orden, status: IMPLEMENTED}
+  - {id: FR-REP-062, type: functional_requirement, name: Clasificar cada Pago como ANTICIPO o PAGO derivandolo del estado de la Orden, status: IMPLEMENTED}
+  - {id: FR-REP-063, type: functional_requirement, name: Permitir registrar Pagos antes de REPARACION_LISTA sin evaluar la condicion de entrega, status: IMPLEMENTED}
+  - {id: FR-REP-064, type: functional_requirement, name: Restringir la entrega del equipo a los roles Administrador o Recepcion, status: IMPLEMENTED}
+  - {id: FR-REP-065, type: functional_requirement, name: Registrar en el historial de la Orden cada capacidad transversal ejecutada sin alterar el recorrido, status: IMPLEMENTED}
 
   # ================================================================== #
   # Technical Requirements (reconstruidos desde la arquitectura real)  #
@@ -329,7 +334,7 @@ items:
   - {id: TR-REP-037, type: technical_requirement, name: puntaje_total es computed_field que suma solo los Detalles aprobados, status: IMPLEMENTED}
   - {id: TR-REP-038, type: technical_requirement, name: aprobar_control_tecnico exige ausencia de Ejecucion activa antes de aprobar nada, status: IMPLEMENTED}
   - {id: TR-REP-039, type: technical_requirement, name: marcar_reparacion_lista exige control aprobado porque el hito no es derivable de los Detalles, status: IMPLEMENTED}
-  - {id: TR-REP-040, type: technical_requirement, name: registrar_pago no registra paso de workflow ni toca current_process por ser capacidad transversal, status: IMPLEMENTED}
+  - {id: TR-REP-040, type: technical_requirement, name: registrar_pago no toca current_process y deja traza como accion funcional ACC-REP-020 enlazada al Pago, status: IMPLEMENTED}
   - {id: TR-REP-041, type: technical_requirement, name: La situacion comercial es enteramente derivada y ResumenPago no conoce los Detalles, status: IMPLEMENTED}
   - {id: TR-REP-042, type: technical_requirement, name: estado_pago distingue Orden sin Detalles de Orden con total cero, status: IMPLEMENTED}
   - {id: TR-REP-043, type: technical_requirement, name: validar_condicion_entrega devuelve (Orden bool) y registra PROC-REP-265 en cada evaluacion, status: IMPLEMENTED}
@@ -340,6 +345,12 @@ items:
   - {id: TR-REP-048, type: technical_requirement, name: La ausencia de reservas activas se verifica contra el ledger no contra un flag, status: IMPLEMENTED}
   - {id: TR-REP-049, type: technical_requirement, name: EVT-REP-999 se fija como current_process pero no se agrega como paso del historial, status: IMPLEMENTED}
   - {id: TR-REP-050, type: technical_requirement, name: Los documentos se modelan como hecho registrado (generado + fecha) sin renderizado, status: IMPLEMENTED}
+  - {id: TR-REP-051, type: technical_requirement, name: Los nodos declaran actores_alternativos y la autorizacion se resuelve con validar_alguno_de, status: IMPLEMENTED}
+  - {id: TR-REP-052, type: technical_requirement, name: TipoPago es un enum del dominio derivado por el service, nunca elegido por el cliente, status: IMPLEMENTED}
+  - {id: TR-REP-053, type: technical_requirement, name: El nombre del Tipo de Reparacion se resuelve al leer contra el catalogo vigente, status: IMPLEMENTED}
+  - {id: TR-REP-054, type: technical_requirement, name: AccionDisponible expone la lista completa de roles autorizados, status: IMPLEMENTED}
+  - {id: TR-REP-055, type: technical_requirement, name: HistorialWorkflow discrimina PROCESS_NODE de FUNCTIONAL_ACTION y acepta el alias historico process_id al cargar, status: IMPLEMENTED}
+  - {id: TR-REP-056, type: technical_requirement, name: registrar_accion_funcional agrega historial sin tocar current_process y es distinto de registrar_paso, status: IMPLEMENTED}
 
   # ================================================================== #
   # Modelo de datos / arquitectura — artefacto TRANSVERSAL N:M         #
@@ -419,7 +430,7 @@ items:
   - {id: TASK-REP-051, type: task, name: "[P] Modelar TomaOrden con estado, inicio y fin, y el enum EstadoTomaOrden", status: DONE, spec: 004-feat-rep-004-hp-slice}
   - {id: TASK-REP-052, type: task, name: "[P] Definir RolUsuario con los cuatro roles operativos del MVP", status: DONE, spec: 004-feat-rep-004-hp-slice}
   - {id: TASK-REP-053, type: task, name: "Implementar los helpers de consulta sobre la Orden: toma_activa, hay_ejecucion_activa, estacion_habilitada_para, buscar_detalle", status: DONE, spec: 004-feat-rep-004-hp-slice}
-  - {id: TASK-REP-054, type: task, name: "[US-REP-005] Implementar definir_prioridad (PROC-REP-150) con actor ACT-COORD y prioridad no negativa", status: DONE, spec: 004-feat-rep-004-hp-slice}
+  - {id: TASK-REP-054, type: task, name: "[US-REP-005] Implementar definir_prioridad (PROC-REP-150) con actores ACT-COORD o ACT-RECEP y prioridad no negativa", status: DONE, spec: 004-feat-rep-004-hp-slice}
   - {id: TASK-REP-055, type: task, name: "[US-REP-005] Implementar ingresar_a_cola (PROC-REP-170) como ACT-SYSTEM, impidiendo el reingreso", status: DONE, spec: 004-feat-rep-004-hp-slice}
   - {id: TASK-REP-056, type: task, name: "[US-REP-006] Implementar validar_estacion_trabajo (PROC-REP-172) con las validaciones de BR-REP-011-A implementadas (rol/usuario activo, estacion O...", status: DONE, spec: 004-feat-rep-004-hp-slice}
   - {id: TASK-REP-057, type: task, name: "[US-REP-006] Registrar PROC-REP-172 en el historial tanto si la validacion pasa como si falla", status: DONE, spec: 004-feat-rep-004-hp-slice}
@@ -507,6 +518,15 @@ items:
   - {id: TASK-REP-139, type: task, name: "Materializar el contenido desglosado del comprobante final (Detalles, ajustes, pagos, saldo). Hoy solo se registra el hecho 'generado + fecha'", status: NOT_IMPLEMENTED, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-140, type: task, name: "Integrar la notificacion al cliente con un canal real (WhatsApp, chatbot o portal). Hoy solo se registra el hecho", status: NOT_IMPLEMENTED, spec: 008-feat-rep-008-hp-slice}
   - {id: TASK-REP-141, type: task, name: "Implementar la garantia de reparacion a nivel Detalle (hoy se relaciona a nivel Orden)", status: NOT_IMPLEMENTED, spec: 008-feat-rep-008-hp-slice}
+  - {id: TASK-REP-142, type: task, name: "[US-REP-005] Ampliar PROC-REP-150 a ACT-COORD o ACT-RECEP: schema, proceso, Feature, validador, viewer y service", status: DONE, spec: 004-feat-rep-004-hp-slice}
+  - {id: TASK-REP-143, type: task, name: "[US-REP-016] Ampliar PROC-REP-270 a ACT-ADMIN o ACT-RECEP sin relajar la condicion comercial", status: DONE, spec: 008-feat-rep-008-hp-slice}
+  - {id: TASK-REP-144, type: task, name: "[US-REP-012] Agregar TipoPago (ANTICIPO/PAGO) al dominio y derivarlo en registrar_pago", status: DONE, spec: 007-feat-rep-007-hp-slice}
+  - {id: TASK-REP-145, type: task, name: "[US-REP-003] Exponer tipo_reparacion_nombre en el DTO del Detalle sin persistirlo", status: DONE, spec: 002-feat-rep-002-hp-slice}
+  - {id: TASK-REP-146, type: task, name: "[US-REP-012] Mostrar el historial de pagos y reordenar la pantalla de Orden en el frontend", status: DONE, spec: 007-feat-rep-007-hp-slice}
+  - {id: TASK-REP-147, type: task, name: "[US-REP-005] Auto-ingreso a cola al quedar HABILITADA con prioridad por defecto: alteraria el recorrido de HP-REP-001, fuera de alcance", status: NOT_IMPLEMENTED, spec: 004-feat-rep-004-hp-slice}
+  - {id: TASK-REP-148, type: task, name: "[US-REP-012] Registrar ACC-REP-020 en el historial al cobrar, con pago_id y observacion legible, sin mover current_process", status: DONE, spec: 007-feat-rep-007-hp-slice}
+  - {id: TASK-REP-149, type: task, name: "[US-REP-012] Evolucionar HistorialWorkflow a tipo_referencia + referencia_id manteniendo compatibilidad con process_id", status: DONE, spec: 007-feat-rep-007-hp-slice}
+  - {id: TASK-REP-150, type: task, name: "Subir el stock DEMO de INS-001 de 2 a 6 unidades para facilitar pruebas manuales", status: DONE, spec: 005-feat-rep-005-hp-slice}
 
   # ================================================================== #
   # Code / Artifact. Unidad: archivo + simbolo (no linea).             #
@@ -623,6 +643,17 @@ items:
 
   # --- configuracion del proyecto ---
   - {id: CODE-REP-103, type: code_artifact, name: "pyproject.toml (Ruff line-length 79 reglas E W F I pytest)", status: IMPLEMENTED, source: "app/backend/pyproject.toml"}
+  - {id: CODE-REP-104, type: code_artifact, name: "app/backend/app/services/autorizacion.py::validar_alguno_de", status: IMPLEMENTED}
+  - {id: CODE-REP-105, type: code_artifact, name: "app/backend/app/services/ordenes.py::ROLES_PRIORIZACION", status: IMPLEMENTED}
+  - {id: CODE-REP-106, type: code_artifact, name: "app/backend/app/services/ordenes.py::ROLES_ENTREGA", status: IMPLEMENTED}
+  - {id: CODE-REP-107, type: code_artifact, name: "app/backend/app/domain/models/enums.py::TipoPago", status: IMPLEMENTED}
+  - {id: CODE-REP-108, type: code_artifact, name: "app/backend/app/services/pagos.py::tipo_de_pago_para", status: IMPLEMENTED}
+  - {id: CODE-REP-109, type: code_artifact, name: "app/backend/app/application/consultas.py::nombres_de_tipo_por_detalle", status: IMPLEMENTED}
+  - {id: CODE-REP-110, type: code_artifact, name: "business/schemas/process.schema.json::actores_alternativos", status: IMPLEMENTED}
+  - {id: CODE-REP-111, type: code_artifact, name: "app/backend/app/domain/models/enums.py::TipoReferenciaHistorial", status: IMPLEMENTED}
+  - {id: CODE-REP-112, type: code_artifact, name: "app/backend/app/services/workflow.py::registrar_accion_funcional", status: IMPLEMENTED}
+  - {id: CODE-REP-113, type: code_artifact, name: "app/backend/app/services/pagos.py::descripcion_de_pago", status: IMPLEMENTED}
+  - {id: CODE-REP-114, type: code_artifact, name: "app/backend/app/domain/models/workflow.py::HistorialWorkflow", status: IMPLEMENTED}
 
   # ================================================================== #
   # UAT. NINGUNO aprobado: no ha ocurrido UAT formal sobre esta        #
@@ -830,6 +861,38 @@ items:
   - {id: TEST-REP-173, type: internal_test, name: "test_no_se_toma_una_orden_que_no_esta_en_cola", status: PASSING, source: "app/backend/tests/test_services_invariantes.py::test_no_se_toma_una_orden_que_no_esta_en_cola"}
   - {id: TEST-REP-174, type: internal_test, name: "test_no_se_ingresa_dos_veces_a_la_cola", status: PASSING, source: "app/backend/tests/test_services_invariantes.py::test_no_se_ingresa_dos_veces_a_la_cola"}
   - {id: TEST-REP-175, type: internal_test, name: "test_no_se_selecciona_un_detalle_ya_en_progreso", status: PASSING, source: "app/backend/tests/test_services_invariantes.py::test_no_se_selecciona_un_detalle_ya_en_progreso"}
+  - {id: TEST-REP-176, type: internal_test, name: "tests/test_api_reconcile.py::test_el_detalle_expone_el_nombre_del_tipo", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-177, type: internal_test, name: "tests/test_api_reconcile.py::test_el_nombre_del_tipo_no_se_persiste", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-178, type: internal_test, name: "tests/test_api_reconcile.py::test_un_pago_temprano_es_un_anticipo", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-179, type: internal_test, name: "tests/test_api_reconcile.py::test_el_pago_del_cierre_es_de_tipo_pago", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-180, type: internal_test, name: "tests/test_api_reconcile.py::test_anticipo_y_pago_conviven_en_la_misma_orden", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-181, type: internal_test, name: "tests/test_api_reconcile.py::test_el_anticipo_habilita_la_accion_de_pago_temprano", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-182, type: internal_test, name: "tests/test_api_reconcile.py::test_recepcion_puede_ingresar_la_orden_a_la_cola", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-183, type: internal_test, name: "tests/test_api_reconcile.py::test_el_coordinador_sigue_pudiendo_encolar", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-184, type: internal_test, name: "tests/test_api_reconcile.py::test_tecnico_y_admin_no_encolan", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-185, type: internal_test, name: "tests/test_api_reconcile.py::test_recepcion_puede_entregar_el_equipo", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-186, type: internal_test, name: "tests/test_api_reconcile.py::test_el_administrador_sigue_pudiendo_entregar", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-187, type: internal_test, name: "tests/test_api_reconcile.py::test_tecnico_y_coordinador_no_entregan", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-188, type: internal_test, name: "tests/test_api_reconcile.py::test_recepcion_no_entrega_con_saldo_pendiente", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-189, type: internal_test, name: "tests/test_api_reconcile.py::test_las_acciones_multi_rol_declaran_sus_dos_actores", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-190, type: internal_test, name: "tests/test_api_reconcile.py::test_la_accion_de_entregar_declara_sus_dos_actores", status: PASSING, source: "app/backend/tests/test_api_reconcile.py"}
+  - {id: TEST-REP-191, type: internal_test, name: "tests/test_services_autorizacion.py::test_recepcion_tambien_puede_definir_prioridad", status: PASSING, source: "app/backend/tests/test_services_autorizacion.py"}
+  - {id: TEST-REP-192, type: internal_test, name: "tests/test_services_autorizacion.py::test_solo_coordinacion_o_recepcion_definen_prioridad", status: PASSING, source: "app/backend/tests/test_services_autorizacion.py"}
+  - {id: TEST-REP-193, type: internal_test, name: "tests/test_services_autorizacion.py::test_recepcion_tambien_puede_entregar_el_equipo", status: PASSING, source: "app/backend/tests/test_services_autorizacion.py"}
+  - {id: TEST-REP-194, type: internal_test, name: "tests/test_services_autorizacion.py::test_solo_administracion_o_recepcion_entregan", status: PASSING, source: "app/backend/tests/test_services_autorizacion.py"}
+  - {id: TEST-REP-195, type: internal_test, name: "tests/test_services_autorizacion.py::test_recepcion_no_puede_saltear_la_condicion_de_entrega", status: PASSING, source: "app/backend/tests/test_services_autorizacion.py"}
+  - {id: TEST-REP-196, type: internal_test, name: "tests/test_historial_transversal.py::test_una_entrada_nace_como_nodo_de_proceso", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-197, type: internal_test, name: "tests/test_historial_transversal.py::test_una_accion_funcional_no_expone_process_id", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-198, type: internal_test, name: "tests/test_historial_transversal.py::test_el_json_historico_se_carga_sin_migracion", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-199, type: internal_test, name: "tests/test_historial_transversal.py::test_al_serializar_se_escribe_referencia_id", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-200, type: internal_test, name: "tests/test_historial_transversal.py::test_registrar_paso_sigue_avanzando_el_nodo_actual", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-201, type: internal_test, name: "tests/test_historial_transversal.py::test_registrar_accion_funcional_no_toca_el_nodo_actual", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-202, type: internal_test, name: "tests/test_historial_transversal.py::test_un_historial_mixto_sobrevive_el_round_trip", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-203, type: internal_test, name: "tests/test_historial_transversal.py::test_la_api_distingue_los_dos_tipos_de_referencia", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-204, type: internal_test, name: "tests/test_historial_transversal.py::test_el_pago_final_queda_entre_266_y_265", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-205, type: internal_test, name: "tests/test_historial_transversal.py::test_la_accion_transversal_no_marca_progreso", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-206, type: internal_test, name: "tests/test_historial_transversal.py::test_el_historial_enlaza_con_el_pago_que_lo_origino", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
+  - {id: TEST-REP-207, type: internal_test, name: "tests/test_historial_transversal.py::test_el_stock_demo_alcanza_para_varias_pruebas", status: PASSING, source: "app/backend/tests/test_historial_transversal.py"}
 
 links:
 
@@ -2197,3 +2260,114 @@ links:
   - {from: UAT-REP-016, to: FR-REP-057, relationship: accepts}
   - {from: UAT-REP-016, to: FR-REP-058, relationship: accepts}
   - {from: UAT-REP-016, to: FR-REP-060, relationship: accepts}
+  - {from: FR-REP-061, to: ACC-REP-004, relationship: derives_from}
+  - {from: FR-REP-062, to: ACC-REP-020, relationship: derives_from}
+  - {from: FR-REP-063, to: ACC-REP-020, relationship: derives_from}
+  - {from: FR-REP-064, to: ACC-REP-026, relationship: derives_from}
+  - {from: TR-REP-051, to: FR-REP-017, relationship: satisfies}
+  - {from: TR-REP-051, to: FR-REP-064, relationship: satisfies}
+  - {from: TR-REP-052, to: FR-REP-062, relationship: satisfies}
+  - {from: TR-REP-053, to: FR-REP-061, relationship: satisfies}
+  - {from: TR-REP-054, to: FR-REP-017, relationship: satisfies}
+  - {from: TR-REP-054, to: FR-REP-064, relationship: satisfies}
+  - {from: TASK-REP-142, to: TR-REP-051, relationship: implements}
+  - {from: TASK-REP-142, to: TR-REP-054, relationship: implements}
+  - {from: TASK-REP-143, to: TR-REP-051, relationship: implements}
+  - {from: TASK-REP-144, to: TR-REP-052, relationship: implements}
+  - {from: TASK-REP-145, to: TR-REP-053, relationship: implements}
+  - {from: TASK-REP-146, to: TR-REP-054, relationship: implements}
+  - {from: CODE-REP-104, to: TASK-REP-142, relationship: produced_by}
+  - {from: CODE-REP-104, to: TR-REP-051, relationship: implements}
+  - {from: CODE-REP-105, to: TASK-REP-142, relationship: produced_by}
+  - {from: CODE-REP-105, to: TR-REP-051, relationship: implements}
+  - {from: CODE-REP-106, to: TASK-REP-143, relationship: produced_by}
+  - {from: CODE-REP-106, to: TR-REP-051, relationship: implements}
+  - {from: CODE-REP-107, to: TASK-REP-144, relationship: produced_by}
+  - {from: CODE-REP-107, to: TR-REP-052, relationship: implements}
+  - {from: CODE-REP-108, to: TASK-REP-144, relationship: produced_by}
+  - {from: CODE-REP-108, to: TR-REP-052, relationship: implements}
+  - {from: CODE-REP-109, to: TASK-REP-145, relationship: produced_by}
+  - {from: CODE-REP-109, to: TR-REP-053, relationship: implements}
+  - {from: CODE-REP-110, to: TASK-REP-142, relationship: produced_by}
+  - {from: CODE-REP-110, to: TR-REP-051, relationship: implements}
+  - {from: TEST-REP-176, to: FR-REP-061, relationship: verifies}
+  - {from: TEST-REP-177, to: FR-REP-061, relationship: verifies}
+  - {from: TEST-REP-178, to: FR-REP-062, relationship: verifies}
+  - {from: TEST-REP-178, to: FR-REP-063, relationship: verifies}
+  - {from: TEST-REP-179, to: FR-REP-062, relationship: verifies}
+  - {from: TEST-REP-180, to: FR-REP-062, relationship: verifies}
+  - {from: TEST-REP-180, to: FR-REP-063, relationship: verifies}
+  - {from: TEST-REP-181, to: FR-REP-063, relationship: verifies}
+  - {from: TEST-REP-182, to: FR-REP-017, relationship: verifies}
+  - {from: TEST-REP-183, to: FR-REP-017, relationship: verifies}
+  - {from: TEST-REP-184, to: FR-REP-017, relationship: verifies}
+  - {from: TEST-REP-185, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-186, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-187, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-188, to: FR-REP-053, relationship: verifies}
+  - {from: TEST-REP-188, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-189, to: TR-REP-054, relationship: verifies}
+  - {from: TEST-REP-190, to: TR-REP-054, relationship: verifies}
+  - {from: TEST-REP-191, to: FR-REP-017, relationship: verifies}
+  - {from: TEST-REP-192, to: FR-REP-017, relationship: verifies}
+  - {from: TEST-REP-193, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-194, to: FR-REP-064, relationship: verifies}
+  - {from: TEST-REP-195, to: FR-REP-053, relationship: verifies}
+  - {from: TEST-REP-176, to: CODE-REP-109, relationship: exercises}
+  - {from: TEST-REP-177, to: CODE-REP-109, relationship: exercises}
+  - {from: TEST-REP-178, to: CODE-REP-108, relationship: exercises}
+  - {from: TEST-REP-179, to: CODE-REP-108, relationship: exercises}
+  - {from: TEST-REP-180, to: CODE-REP-108, relationship: exercises}
+  - {from: TEST-REP-181, to: CODE-REP-108, relationship: exercises}
+  - {from: TEST-REP-182, to: CODE-REP-105, relationship: exercises}
+  - {from: TEST-REP-183, to: CODE-REP-105, relationship: exercises}
+  - {from: TEST-REP-184, to: CODE-REP-105, relationship: exercises}
+  - {from: TEST-REP-185, to: CODE-REP-106, relationship: exercises}
+  - {from: TEST-REP-186, to: CODE-REP-106, relationship: exercises}
+  - {from: TEST-REP-187, to: CODE-REP-106, relationship: exercises}
+  - {from: TEST-REP-188, to: CODE-REP-106, relationship: exercises}
+  - {from: TEST-REP-189, to: CODE-REP-105, relationship: exercises}
+  - {from: TEST-REP-190, to: CODE-REP-106, relationship: exercises}
+  - {from: TEST-REP-191, to: CODE-REP-104, relationship: exercises}
+  - {from: TEST-REP-192, to: CODE-REP-104, relationship: exercises}
+  - {from: TEST-REP-193, to: CODE-REP-104, relationship: exercises}
+  - {from: TEST-REP-194, to: CODE-REP-104, relationship: exercises}
+  - {from: TEST-REP-195, to: CODE-REP-106, relationship: exercises}
+  - {from: FR-REP-065, to: ACC-REP-020, relationship: derives_from}
+  - {from: TR-REP-055, to: FR-REP-065, relationship: satisfies}
+  - {from: TR-REP-056, to: FR-REP-065, relationship: satisfies}
+  - {from: TASK-REP-148, to: TR-REP-056, relationship: implements}
+  - {from: TASK-REP-149, to: TR-REP-055, relationship: implements}
+  - {from: TASK-REP-150, to: TR-REP-007, relationship: implements}
+  - {from: CODE-REP-111, to: TASK-REP-149, relationship: produced_by}
+  - {from: CODE-REP-111, to: TR-REP-055, relationship: implements}
+  - {from: CODE-REP-112, to: TASK-REP-148, relationship: produced_by}
+  - {from: CODE-REP-112, to: TR-REP-056, relationship: implements}
+  - {from: CODE-REP-113, to: TASK-REP-148, relationship: produced_by}
+  - {from: CODE-REP-113, to: TR-REP-056, relationship: implements}
+  - {from: CODE-REP-114, to: TASK-REP-149, relationship: produced_by}
+  - {from: CODE-REP-114, to: TR-REP-055, relationship: implements}
+  - {from: TEST-REP-196, to: TR-REP-055, relationship: verifies}
+  - {from: TEST-REP-197, to: TR-REP-055, relationship: verifies}
+  - {from: TEST-REP-198, to: TR-REP-055, relationship: verifies}
+  - {from: TEST-REP-199, to: TR-REP-055, relationship: verifies}
+  - {from: TEST-REP-200, to: TR-REP-056, relationship: verifies}
+  - {from: TEST-REP-201, to: TR-REP-056, relationship: verifies}
+  - {from: TEST-REP-202, to: TR-REP-055, relationship: verifies}
+  - {from: TEST-REP-203, to: FR-REP-065, relationship: verifies}
+  - {from: TEST-REP-204, to: FR-REP-065, relationship: verifies}
+  - {from: TEST-REP-205, to: FR-REP-065, relationship: verifies}
+  - {from: TEST-REP-206, to: FR-REP-065, relationship: verifies}
+  - {from: TEST-REP-207, to: TR-REP-007, relationship: verifies}
+  - {from: TEST-REP-196, to: CODE-REP-114, relationship: exercises}
+  - {from: TEST-REP-197, to: CODE-REP-114, relationship: exercises}
+  - {from: TEST-REP-198, to: CODE-REP-114, relationship: exercises}
+  - {from: TEST-REP-199, to: CODE-REP-114, relationship: exercises}
+  - {from: TEST-REP-200, to: CODE-REP-112, relationship: exercises}
+  - {from: TEST-REP-201, to: CODE-REP-112, relationship: exercises}
+  - {from: TEST-REP-202, to: CODE-REP-114, relationship: exercises}
+  - {from: TEST-REP-203, to: CODE-REP-112, relationship: exercises}
+  - {from: TEST-REP-204, to: CODE-REP-113, relationship: exercises}
+  - {from: TEST-REP-205, to: CODE-REP-112, relationship: exercises}
+  - {from: TEST-REP-206, to: CODE-REP-113, relationship: exercises}
+  - {from: TEST-REP-207, to: CODE-REP-111, relationship: exercises}

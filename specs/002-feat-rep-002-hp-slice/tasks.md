@@ -108,3 +108,13 @@ Corresponden a `FEAT-REP-002` completa pero **no** al slice de
 | `US-REP-003` | 5 | 5 | 0 |
 | Fuera del slice | 7 | 0 | 7 |
 | **Total** | **15** | **8** | **7** |
+
+## Iteracion de reconciliacion (prueba manual del MVP)
+
+- [x] **TASK-REP-145** [US-REP-003] Exponer `tipo_reparacion_nombre` en
+      el DTO del Detalle, resuelto al leer contra el catalogo vigente
+      igual que `insumos_previstos`. NO se agrega al modelo persistido
+      `ReparacionDetail`: el JSON de la Orden sigue guardando solo el ID.
+      Codigo: `app/backend/app/application/consultas.py::nombres_de_tipo_por_detalle`.
+      Tests: `test_api_reconcile.py::test_el_detalle_expone_el_nombre_del_tipo`,
+      `::test_el_nombre_del_tipo_no_se_persiste`.

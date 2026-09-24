@@ -348,9 +348,9 @@ def test_la_api_expone_las_acciones_disponibles(cliente):
 
     assert codigos, "una Orden en REQUERIMIENTO debe ofrecer una accion"
     assert all(
-        a["rol"] == "RECEPCION"
+        a["roles"] == ["RECEPCION"]
         for a in orden["acciones_disponibles"]
-        if a["rol"] is not None
+        if a["roles"]
     )
 
 

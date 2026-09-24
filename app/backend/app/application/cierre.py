@@ -13,7 +13,7 @@ precondicion del comando y va derecho a PROC-REP-280.
 
 from decimal import Decimal
 
-from app.domain.models import EstadoWorkflow, OrdenReparacion, RolUsuario
+from app.domain.models import EstadoWorkflow, OrdenReparacion
 from app.services import (
     PrecondicionInvalidaError,
     aprobar_control_tecnico,
@@ -24,9 +24,10 @@ from app.services import (
     notificar_cliente,
     registrar_pago,
     registrar_saldo_pendiente,
-    validar_actor,
+    validar_alguno_de,
     validar_condicion_entrega,
 )
+from app.services.ordenes import ROLES_ENTREGA
 
 from .contexto import ApplicationContext
 
@@ -145,7 +146,7 @@ def entregar(
     comprobante final.
     """
     usuario = contexto.catalogos.obtener_usuario(usuario_id)
-    validar_actor(usuario, RolUsuario.ADMINISTRADOR)
+    validar_alguno_de(usuario, ROLES_ENTREGA)
     fecha = contexto.ahora()
 
     orden = contexto.ordenes.obtener(orden_id)

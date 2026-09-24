@@ -162,6 +162,85 @@ baseline.
 | Features implementadas por completo | **0 / 9** |
 | UAT aprobados | **0 / 16** |
 
+## Iteracion de reconciliacion (prueba manual del MVP)
+
+Cambios funcionales que surgieron de probar el MVP desde el navegador.
+Todos se reflejaron primero en `business/` y despues en el codigo.
+
+### Actores alternativos por nodo
+
+PROC-REP V1.3 declaraba un unico `actor` por nodo y no tenia forma de
+representar autorizacion alternativa. Se agrego un campo OPCIONAL y
+retrocompatible al schema del Business Process:
+
+    actor: ACT-COORD
+    actores_alternativos: [ACT-RECEP]
+
+Un nodo sin el campo admite unicamente su `actor`, asi que ningun nodo
+existente cambia. No hay jerarquia entre ellos: `actor` es el actor
+historico y el que recorre HP-REP-001.
+
+Es un mecanismo generico, no una excepcion para un nodo: lo validan
+`validate-references.ts` (actor inexistente y actor repetido), lo
+muestra el viewer, y el backend lo resuelve con
+`app.services.autorizacion.validar_alguno_de`.
+
+Aplicado a dos nodos:
+
+- `PROC-REP-150` (definir prioridad): ACT-COORD **o** ACT-RECEP.
+- `PROC-REP-270` (entregar equipo): ACT-ADMIN **o** ACT-RECEP. La
+  condicion comercial NO cambia: `REPARACION_LISTA` + saldo 0 se exigen
+  igual, para cualquiera de los dos actores.
+
+### Tipo de Pago
+
+`Pago` gana `tipo_pago` (ANTICIPO / PAGO), dimension distinta de
+`metodo` (EFECTIVO, TRANSFERENCIA, ...). No lo elige el usuario: se
+deriva del estado de la Orden al registrarlo. Da soporte real a la
+capacidad transversal de BR-REP-017, que ya permitia cobrar antes de la
+fase de cierre. `PROC-REP-265` sigue evaluandose solo en el cierre: un
+anticipo no lo dispara.
+
+### Nombre del Tipo de Reparacion
+
+El DTO del Detalle expone `tipo_reparacion_nombre`, resuelto al leer
+contra el catalogo vigente igual que `insumos_previstos`. NO se agrega
+al modelo persistido: el JSON de la Orden sigue guardando solo el ID.
+
+### Traza de las capacidades transversales
+
+`ACC-REP-020` (Registrar Pago) ahora deja entrada en el historial de la
+Orden. Antes no dejaba ninguna, y el recorrido mostraba `PROC-REP-266`
+seguido de `PROC-REP-265` sin explicar que habia pasado entre ambos.
+
+Cada entrada declara su clase:
+
+    tipo_referencia: PROCESS_NODE       referencia_id: PROC-REP-266
+    tipo_referencia: FUNCTIONAL_ACTION  referencia_id: ACC-REP-020
+    tipo_referencia: PROCESS_NODE       referencia_id: PROC-REP-265
+
+La accion transversal **no mueve `current_process`** y **no marca
+progreso** en HP-REP-001: no pertenece al recorrido. Son dos helpers
+distintos en `services/workflow.py` -`registrar_paso` para nodos,
+`registrar_accion_funcional` para capacidades- y pasar un `ACC-REP-*`
+por el primero dejaria `current_process = ACC-REP-020`, que es falso.
+
+La entrada enlaza al Pago que la origino (`pago_id`) y guarda una
+observacion legible con tipo, medio e importe, para que el significado
+se recupere sin ir a buscar el Pago ni depender del frontend.
+
+Retrocompatibilidad: el campo acepta el nombre historico `process_id` al
+construirse y al validar JSON, asi que las Ordenes ya persistidas se
+cargan sin migracion y quedan como `PROCESS_NODE`.
+
+### Pendiente registrado, no implementado
+
+Auto-ingreso a cola (TASK-REP-147, `NOT_IMPLEMENTED`): cuando una Orden
+queda HABILITADA podria pasar sola a EN_COLA con prioridad por defecto.
+Alteraria el recorrido de HP-REP-001 -`PROC-REP-150` dejaria de ser una
+accion humana obligatoria del Scenario-, asi que queda fuera de alcance
+hasta modelarlo como variante.
+
 ## Divergencias entre baseline funcional y modelado tecnico
 
 Diferencias entre lo que `business/` define y lo que el modelado tecnico

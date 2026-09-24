@@ -34,6 +34,7 @@ from app.domain.models import (
     ResumenPago,
     RolUsuario,
     TipoMovimientoInsumo,
+    TipoPago,
     TipoReparacion,
     TipoReparacionEstacion,
     TipoReparacionInsumos,
@@ -161,6 +162,7 @@ def construir_orden_hp_rep_001() -> OrdenReparacion:
     pago_final = Pago(
         id="PAG-001",
         monto=detalle.precio,
+        tipo_pago=TipoPago.PAGO,
         metodo="EFECTIVO",
         usuario_id=ADMINISTRADOR.id,
         fecha=_t(185),

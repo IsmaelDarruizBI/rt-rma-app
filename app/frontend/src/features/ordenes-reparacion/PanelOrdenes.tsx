@@ -177,19 +177,15 @@ export function PanelOrdenes() {
               ← Volver al listado
             </Boton>
           </div>
+          {/*
+            Jerarquia vertical, cada bloque a ancho completo:
+            Datos OR -> Detalles -> Accion -> Resumen comercial ->
+            Progreso -> Historial. Detalles y Resumen ya no compiten
+            horizontalmente.
+          */}
           <div style={{ display: "grid", gap: "0.75rem" }}>
             <CabeceraOrden orden={orden} />
-            <div
-              style={{
-                display: "grid",
-                gap: "0.75rem",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              }}
-            >
-              <ResumenComercialOrden orden={orden} />
-              <DetallesOrden orden={orden} />
-            </div>
-            <ProgresoHappyPath orden={orden} />
+            <DetallesOrden orden={orden} />
             <AccionesOrden
               orden={orden}
               actor={actor}
@@ -198,6 +194,8 @@ export function PanelOrdenes() {
               ocupado={ocupado}
               ejecutar={ejecutor}
             />
+            <ResumenComercialOrden orden={orden} />
+            <ProgresoHappyPath orden={orden} />
             <HistorialOrden orden={orden} />
           </div>
         </>

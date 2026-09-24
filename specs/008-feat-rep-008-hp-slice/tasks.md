@@ -49,7 +49,8 @@ description: "Tareas reconstruidas del slice HP-REP-001 de FEAT-REP-008"
       → `app/backend/app/services/inventario.py::hay_reservas_activas`
       → test: `tests/test_hp_rep_001.py::test_la_reserva_y_el_consumo_se_conservan_ambos`,
         `tests/test_hp_rep_001_persistido.py::test_hp_rep_001_persistido_end_to_end`
-- [x] **TASK-REP-132** [US-REP-016] Exigir actor `ACT-ADMIN` para la
+- [x] **TASK-REP-132** [US-REP-016] Exigir actor `ACT-ADMIN` o
+      `ACT-RECEP` para la
       entrega.
       → test: `tests/test_services_autorizacion.py::test_administrador_puede_entregar_el_equipo`,
         `::test_solo_el_administrador_puede_entregar_el_equipo`
@@ -109,3 +110,16 @@ Corresponden a `FEAT-REP-008` completa. Sin codigo ni test.
 | `US-REP-016` | 6 | 6 | 0 |
 | Fuera del slice | 7 | 0 | 7 |
 | **Total** | **15** | **8** | **7** |
+
+## Iteracion de reconciliacion (prueba manual del MVP)
+
+- [x] **TASK-REP-143** [US-REP-016] Ampliar `PROC-REP-270` a
+      `ACT-ADMIN` o `ACT-RECEP`, con el mismo mecanismo generico de
+      `actores_alternativos`. La condicion comercial NO cambia:
+      `REPARACION_LISTA` + saldo 0 se siguen exigiendo igual, y
+      Recepcion no puede saltear ninguna validacion.
+      Codigo: `app/backend/app/services/ordenes.py::ROLES_ENTREGA`.
+      Tests: `test_api_reconcile.py::test_recepcion_puede_entregar_el_equipo`,
+      `::test_el_administrador_sigue_pudiendo_entregar`,
+      `::test_tecnico_y_coordinador_no_entregan`,
+      `::test_recepcion_no_entrega_con_saldo_pendiente`.

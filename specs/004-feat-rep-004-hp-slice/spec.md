@@ -31,7 +31,7 @@
 
 | Nodo | Nombre | Actor | En HP-REP-001 |
 |---|---|---|---|
-| `PROC-REP-150` | Definir prioridad | `ACT-COORD` | si |
+| `PROC-REP-150` | Definir prioridad | `ACT-COORD` o `ACT-RECEP` | si |
 | `PROC-REP-170` | Ingresar orden a cola de trabajo | `ACT-SYSTEM` | si |
 | `PROC-REP-172` | Validar estacion de trabajo | `ACT-SYSTEM` | si, rama `Valida y compatible` |
 | `PROC-REP-180` | Tomar Orden de Reparacion | `ACT-TECH` | si |
@@ -147,7 +147,7 @@ tecnico y a la estacion.
   prioridad de ejecucion. La prioridad no puede ser negativa.
   *(`PROC-REP-150`)*
 - **FR-REP-017**: Solo un usuario con rol Coordinador RMA puede definir
-  la prioridad de la Orden. *(actor `ACT-COORD`)*
+  la prioridad de la Orden. *(actores `ACT-COORD` o `ACT-RECEP`)*
 - **FR-REP-018**: El sistema debe poder ingresar la Orden a la cola de
   trabajo, donde queda disponible para cualquier tecnico sin asignacion
   previa. Una Orden no puede ingresar dos veces a la cola.

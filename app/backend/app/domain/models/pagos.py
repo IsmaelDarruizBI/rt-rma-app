@@ -5,16 +5,23 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, computed_field
 
+from .enums import TipoPago
+
 
 class Pago(BaseModel):
     """Pago registrado sobre la Orden.
 
     Puede registrarse en cualquier momento de la vida de la Orden (seña,
     anticipo, pago parcial o pago final), no unicamente al cierre.
+
+    ``tipo_pago`` y ``metodo`` son dos dimensiones distintas: el primero
+    dice CUANDO se cobro respecto del cierre (ANTICIPO / PAGO), el
+    segundo COMO (EFECTIVO, TRANSFERENCIA, ...).
     """
 
     id: str
     monto: Decimal = Field(gt=0)
+    tipo_pago: TipoPago
     metodo: str
     usuario_id: str
     fecha: datetime

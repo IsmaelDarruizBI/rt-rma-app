@@ -122,6 +122,19 @@ export function validateProcessIntegrity(
     if (node.actor && !actorsById.has(node.actor)) {
       report.errors.push(`[process] ${node.id}: actor inexistente "${node.actor}"`);
     }
+    for (const actorId of node.actores_alternativos ?? []) {
+      if (!actorsById.has(actorId)) {
+        report.errors.push(
+          `[process] ${node.id}: actor alternativo inexistente "${actorId}"`,
+        );
+      }
+      if (actorId === node.actor) {
+        report.errors.push(
+          `[process] ${node.id}: "${actorId}" ya es el actor principal, ` +
+            `no corresponde repetirlo como alternativo`,
+        );
+      }
+    }
     for (const ruleId of node.rules ?? []) {
       if (!rulesById.has(ruleId)) {
         report.errors.push(`[process] ${node.id}: business rule inexistente "${ruleId}"`);

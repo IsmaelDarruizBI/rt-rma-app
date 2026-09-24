@@ -31,10 +31,22 @@ from app.domain.models import (
     Usuario,
 )
 
-from .autorizacion import validar_actor
+from .autorizacion import validar_actor, validar_alguno_de
 from .exceptions import PrecondicionInvalidaError
 from .inventario import hay_reservas_activas
 from .workflow import registrar_paso
+
+# Nodos que PROC-REP V1.3 declara con ``actores_alternativos``:
+# actores equivalentes, sin jerarquia entre ellos.
+ROLES_PRIORIZACION = (
+    RolUsuario.COORDINADOR_RMA,
+    RolUsuario.RECEPCION,
+)
+
+ROLES_ENTREGA = (
+    RolUsuario.ADMINISTRADOR,
+    RolUsuario.RECEPCION,
+)
 
 
 class ResultadoEvaluacionOrden(str, Enum):
@@ -152,8 +164,12 @@ def definir_prioridad(
 
     El catalogo definitivo de prioridades sigue pendiente en V1.3: aqui
     solo se valida que sea un entero no negativo.
+
+    El nodo declara ``actores_alternativos: [ACT-RECEP]``: la
+    priorizacion la puede hacer Coordinacion o Recepcion, sin
+    jerarquia entre ellas.
     """
-    validar_actor(usuario, RolUsuario.COORDINADOR_RMA)
+    validar_alguno_de(usuario, ROLES_PRIORIZACION)
 
     if prioridad < 0:
         raise PrecondicionInvalidaError(
@@ -342,8 +358,12 @@ def entregar_equipo(
     Al terminar, ``current_process`` avanza al evento terminal
     EVT-REP-999. Ese evento no genera entrada de historial: es el fin del
     flujo, no una accion.
+
+    El nodo declara ``actores_alternativos: [ACT-RECEP]``: entrega
+    Administracion o Recepcion. El actor NO relaja la condicion
+    comercial: las precondiciones de abajo se exigen igual.
     """
-    validar_actor(usuario, RolUsuario.ADMINISTRADOR)
+    validar_alguno_de(usuario, ROLES_ENTREGA)
 
     if orden.estado_workflow is not EstadoWorkflow.REPARACION_LISTA:
         raise PrecondicionInvalidaError(

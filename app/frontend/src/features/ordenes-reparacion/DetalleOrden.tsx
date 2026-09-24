@@ -90,7 +90,78 @@ export function ResumenComercialOrden({ orden }: { orden: Orden }) {
           </div>
         ))}
       </dl>
+      <PagosOrden orden={orden} />
     </Panel>
+  );
+}
+
+/** Historial de pagos: fecha, tipo, medio, monto y quién lo registró. */
+function PagosOrden({ orden }: { orden: Orden }) {
+  return (
+    <div style={{ marginTop: "1rem" }}>
+      <h4
+        style={{
+          margin: "0 0 0.5rem",
+          fontSize: "0.8rem",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: colores.suave,
+        }}
+      >
+        Pagos
+      </h4>
+      {orden.pagos.length === 0 ? (
+        <p style={{ margin: 0, color: colores.suave, fontSize: "0.85rem" }}>
+          Todavía no se registró ningún pago.
+        </p>
+      ) : (
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: "0.82rem",
+          }}
+        >
+          <thead>
+            <tr style={{ textAlign: "left", color: colores.suave }}>
+              <th style={{ padding: "0.2rem 0" }}>Fecha</th>
+              <th>Tipo</th>
+              <th>Medio</th>
+              <th style={{ textAlign: "right" }}>Monto</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orden.pagos.map((pago) => (
+              <tr
+                key={pago.id}
+                style={{ borderTop: `1px solid ${colores.borde}` }}
+              >
+                <td style={{ padding: "0.3rem 0", whiteSpace: "nowrap" }}>
+                  {fechaCorta(pago.fecha)}
+                </td>
+                <td>
+                  <Etiqueta
+                    color={
+                      pago.tipo_pago === "ANTICIPO"
+                        ? colores.alerta
+                        : colores.ok
+                    }
+                  >
+                    {pago.tipo_pago}
+                  </Etiqueta>
+                </td>
+                <td>{pago.metodo}</td>
+                <td style={{ textAlign: "right", fontWeight: 600 }}>
+                  {importe(pago.monto)}
+                </td>
+                <td style={{ color: colores.suave }}>{pago.usuario_id}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 
@@ -120,13 +191,32 @@ export function DetallesOrden({ orden }: { orden: Orden }) {
             }}
           >
             <div>
-              <strong>{detalle.id}</strong>{" "}
-              <span style={{ color: colores.suave }}>
+              <div style={{ fontSize: "0.75rem", color: colores.suave }}>
+                {detalle.id}
+              </div>
+              <strong style={{ fontSize: "1rem" }}>
+                {detalle.tipo_reparacion_nombre}
+              </strong>
+              <div
+                style={{
+                  fontSize: "0.7rem",
+                  color: colores.suave,
+                  fontFamily: "ui-monospace, monospace",
+                }}
+              >
                 {detalle.tipo_reparacion_id}
-              </span>
+              </div>
+              <div
+                style={{
+                  fontSize: "0.8rem",
+                  color: colores.suave,
+                  marginTop: "0.35rem",
+                }}
+              >
+                Garantía: {detalle.garantia_dias} días
+              </div>
               <div style={{ fontSize: "0.8rem", color: colores.suave }}>
-                Garantía {detalle.garantia_dias} días · Puntaje{" "}
-                {detalle.puntaje}
+                Puntaje: {detalle.puntaje}
               </div>
               {detalle.insumos_previstos.length > 0 && (
                 <div style={{ fontSize: "0.8rem", color: colores.suave }}>
@@ -199,6 +289,16 @@ export function ProgresoHappyPath({ orden }: { orden: Orden }) {
   );
 }
 
+/**
+ * Secuencia de eventos de la Orden.
+ *
+ * Conviven dos clases: los nodos del Business Process, que avanzan el
+ * recorrido, y las capacidades transversales (ACC-REP-*), que dejan
+ * traza sin moverlo. El badge PROC / ACC las distingue.
+ *
+ * Es una vista distinta de la tabla de Pagos del Resumen Comercial: ahí
+ * está el estado económico, acá la secuencia de lo que fue pasando.
+ */
 export function HistorialOrden({ orden }: { orden: Orden }) {
   return (
     <Panel titulo="Historial">
@@ -212,29 +312,60 @@ export function HistorialOrden({ orden }: { orden: Orden }) {
         <thead>
           <tr style={{ textAlign: "left", color: colores.suave }}>
             <th style={{ padding: "0.2rem 0" }}>Fecha</th>
-            <th>Nodo</th>
+            <th>Referencia</th>
             <th>Acción</th>
             <th>Usuario</th>
+            <th>Detalle</th>
           </tr>
         </thead>
         <tbody>
-          {orden.historial.map((paso, indice) => (
-            <tr
-              key={`${paso.process_id}-${indice}`}
-              style={{ borderTop: `1px solid ${colores.borde}` }}
-            >
-              <td style={{ padding: "0.3rem 0", whiteSpace: "nowrap" }}>
-                {fechaCorta(paso.fecha)}
-              </td>
-              <td style={{ fontFamily: "ui-monospace, monospace" }}>
-                {paso.process_id}
-              </td>
-              <td>{paso.accion}</td>
-              <td style={{ color: colores.suave }}>
-                {paso.usuario_id ?? "sistema"}
-              </td>
-            </tr>
-          ))}
+          {orden.historial.map((paso, indice) => {
+            const transversal =
+              paso.tipo_referencia === "FUNCTIONAL_ACTION";
+            return (
+              <tr
+                key={`${paso.referencia_id}-${indice}`}
+                style={{ borderTop: `1px solid ${colores.borde}` }}
+              >
+                <td style={{ padding: "0.3rem 0", whiteSpace: "nowrap" }}>
+                  {fechaCorta(paso.fecha)}
+                </td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <span
+                    title={
+                      transversal
+                        ? "Capacidad transversal: no avanza el proceso"
+                        : "Nodo del Business Process"
+                    }
+                    style={{
+                      display: "inline-block",
+                      marginRight: "0.4rem",
+                      padding: "0.05rem 0.3rem",
+                      borderRadius: 3,
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      color: "#fff",
+                      background: transversal
+                        ? colores.alerta
+                        : colores.acento,
+                    }}
+                  >
+                    {transversal ? "ACC" : "PROC"}
+                  </span>
+                  <span style={{ fontFamily: "ui-monospace, monospace" }}>
+                    {paso.referencia_id}
+                  </span>
+                </td>
+                <td>{paso.accion}</td>
+                <td style={{ color: colores.suave }}>
+                  {paso.usuario_id ?? "sistema"}
+                </td>
+                <td style={{ color: colores.suave }}>
+                  {paso.observacion ?? ""}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </Panel>

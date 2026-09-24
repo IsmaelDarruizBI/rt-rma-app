@@ -43,6 +43,8 @@ from app.domain.models import (
     OrigenOrden,
     ReparacionDetail,
     RolUsuario,
+    TipoPago,
+    TipoReferenciaHistorial,
     TipoReparacion,
     TomaOrden,
     Usuario,
@@ -268,6 +270,7 @@ class DetalleOut(BaseModel):
 
     id: str
     tipo_reparacion_id: str
+    tipo_reparacion_nombre: str
     precio: Decimal
     puntaje: int
     garantia_dias: int
@@ -284,9 +287,13 @@ class DetalleOut(BaseModel):
         cls,
         detalle: ReparacionDetail,
         previstos: Sequence[InsumoPrevisto] = (),
+        tipo_reparacion_nombre: str | None = None,
     ) -> "DetalleOut":
         return cls(
             **detalle.model_dump(),
+            tipo_reparacion_nombre=(
+                tipo_reparacion_nombre or detalle.tipo_reparacion_id
+            ),
             insumos_previstos=[
                 InsumoPrevistoOut.desde_aplicacion(previsto)
                 for previsto in previstos
@@ -331,8 +338,15 @@ class EjecucionOut(BaseModel):
 
 
 class PagoOut(BaseModel):
+    """Pago registrado.
+
+    ``tipo_pago`` (ANTICIPO / PAGO) y ``metodo`` (EFECTIVO,
+    TRANSFERENCIA, ...) son dimensiones distintas.
+    """
+
     id: str
     monto: Decimal
+    tipo_pago: TipoPago
     metodo: str
     usuario_id: str
     fecha: datetime
@@ -360,19 +374,36 @@ class ResumenComercialOut(BaseModel):
 
 
 class HistorialOut(BaseModel):
-    """Paso del recorrido por el Business Process."""
+    """Un evento registrado de la Orden.
 
-    process_id: str
+    ``tipo_referencia`` distingue las dos clases que conviven en el
+    historial:
+
+        PROCESS_NODE      -> PROC-REP-*, paso del recorrido
+        FUNCTIONAL_ACTION -> ACC-REP-*, capacidad transversal
+
+    ``process_id`` se mantiene por compatibilidad con los consumidores
+    que solo entienden nodos, y llega en ``null`` cuando la entrada es
+    una accion transversal. Lo que siempre viene es ``referencia_id``.
+    """
+
+    tipo_referencia: TipoReferenciaHistorial
+    referencia_id: str
     accion: str
     fecha: datetime
     usuario_id: str | None = None
     reparacion_detail_id: str | None = None
     ejecucion_id: str | None = None
+    pago_id: str | None = None
     observacion: str | None = None
+    process_id: str | None = None
 
     @classmethod
     def desde_dominio(cls, paso: HistorialWorkflow) -> "HistorialOut":
-        return cls(**paso.model_dump())
+        return cls(
+            **paso.model_dump(),
+            process_id=paso.process_id,
+        )
 
 
 class PasoProgresoOut(BaseModel):
@@ -394,13 +425,17 @@ class PasoProgresoOut(BaseModel):
 class AccionOut(BaseModel):
     """Accion humana que la Orden admite ahora.
 
-    ``rol`` en ``null`` significa que el negocio todavia no definio el
-    actor (Registrar Pago, BR-REP-017), no que cualquiera pueda.
+    ``roles`` lista TODOS los actores autorizados; puede haber mas de uno
+    cuando el nodo declara ``actores_alternativos`` en PROC-REP V1.3.
+
+    Una lista vacia significa que el negocio todavia no definio el actor
+    (Registrar Pago, BR-REP-017), no que cualquiera pueda: el backend
+    igual exige usuario activo.
     """
 
     codigo: str
     etiqueta: str
-    rol: RolUsuario | None = None
+    roles: list[RolUsuario] = Field(default_factory=list)
     detalle_id: str | None = None
     ejecucion_id: str | None = None
 
@@ -409,7 +444,7 @@ class AccionOut(BaseModel):
         return cls(
             codigo=accion.codigo,
             etiqueta=accion.etiqueta,
-            rol=accion.rol,
+            roles=list(accion.roles),
             detalle_id=accion.detalle_id,
             ejecucion_id=accion.ejecucion_id,
         )
@@ -480,6 +515,7 @@ class OrdenOut(BaseModel):
         acciones: list[AccionDisponible],
         insumos_previstos: Mapping[str, Sequence[InsumoPrevisto]]
         | None = None,
+        nombres_de_tipo: Mapping[str, str] | None = None,
     ) -> "OrdenOut":
         return cls(
             id=orden.id,
@@ -493,6 +529,7 @@ class OrdenOut(BaseModel):
                 DetalleOut.desde_dominio(
                     detalle,
                     (insumos_previstos or {}).get(detalle.id, ()),
+                    (nombres_de_tipo or {}).get(detalle.id),
                 )
                 for detalle in orden.reparaciones_detail
             ],

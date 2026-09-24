@@ -125,7 +125,9 @@ que es la fuente de verdad.
   siempre hubo reparacion (`SIN_REPARACION` no implementado).
   → satisface `FR-REP-057`
   → `app/backend/app/services/documentos.py::generar_comprobante_final`
-- **TR-REP-009**: Actor `ACT-RECEP` para notificar, `ACT-ADMIN` para
+- **TR-REP-009 / TR-REP-051**: Actor `ACT-RECEP` para notificar;
+  `ACT-ADMIN` o `ACT-RECEP` (`actores_alternativos` de
+  PROC-REP-270) para
   entregar.
   → satisface `FR-REP-056`, `FR-REP-059`
 - **TR-REP-010**: `generar_comprobante_final` es `ACT-SYSTEM` y no recibe

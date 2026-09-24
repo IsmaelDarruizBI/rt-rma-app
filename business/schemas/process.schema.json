@@ -45,6 +45,13 @@
           "type": "string",
           "description": "Conceptualmente requerido para nodos de tipo activity, aunque el schema no lo obliga todavia."
         },
+        "actores_alternativos": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Otros actores igualmente autorizados a ejecutar este nodo, ademas del declarado en 'actor'. Opcional y retrocompatible: un nodo sin este campo admite unicamente su 'actor'. No establece jerarquia: 'actor' es el actor historico/principal y estos son alternativas equivalentes."
+        },
         "inputs": {
           "type": "array",
           "items": { "type": "string" }

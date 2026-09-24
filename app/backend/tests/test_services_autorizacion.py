@@ -1,9 +1,9 @@
 """Los services hacen cumplir los actores que PROC-REP V1.3 define.
 
-    ACT-RECEP  -> 030/040, 070, 220/230, 260
-    ACT-COORD  -> 150
-    ACT-TECH   -> 172, 180, 181, 190, 200
-    ACT-ADMIN  -> 270
+    ACT-RECEP            -> 030/040, 070, 220/230, 260
+    ACT-COORD/ACT-RECEP  -> 150  (actores_alternativos)
+    ACT-TECH             -> 172, 180, 181, 190, 200
+    ACT-ADMIN/ACT-RECEP  -> 270  (actores_alternativos)
 
 Los nodos ACT-SYSTEM (060, 140, 170, 174, 185, 210, 211, 240, 245, 265,
 266, 280) no exigen rol: como mucho, que el usuario que dispara la
@@ -160,7 +160,7 @@ def test_solo_recepcion_puede_definir_detalle(usuario):
         )
 
 
-# 4) y 5) PROC-REP-150: ACT-COORD.
+# 4) y 5) PROC-REP-150: ACT-COORD o ACT-RECEP.
 
 
 def test_coordinador_puede_definir_prioridad():
@@ -175,10 +175,26 @@ def test_coordinador_puede_definir_prioridad():
     assert orden.prioridad == 2
 
 
+def test_recepcion_tambien_puede_definir_prioridad():
+    """PROC-REP-150 declara actores_alternativos: [ACT-RECEP]."""
+    habilitada = habilitar_orden(
+        flujo_mvp.orden_con_detalle(), fecha=t(20)
+    )
+
+    orden = definir_prioridad(
+        habilitada, prioridad=3, usuario=RECEPCION, fecha=t(25)
+    )
+
+    assert orden.prioridad == 3
+    assert orden.historial[-1].usuario_id == RECEPCION.id
+
+
 @pytest.mark.parametrize(
-    "usuario", [RECEPCION, TECNICO, ADMINISTRADOR, COORDINADOR_INACTIVO]
+    "usuario",
+    [TECNICO, ADMINISTRADOR, COORDINADOR_INACTIVO, RECEPCION_INACTIVA],
 )
-def test_solo_el_coordinador_puede_definir_prioridad(usuario):
+def test_solo_coordinacion_o_recepcion_definen_prioridad(usuario):
+    """Ampliar a dos actores no abre la accion a cualquiera."""
     habilitada = habilitar_orden(
         flujo_mvp.orden_con_detalle(), fecha=t(20)
     )
@@ -362,7 +378,7 @@ def test_solo_recepcion_puede_notificar_al_cliente(usuario):
         notificar_cliente(lista, usuario=usuario, fecha=t(175))
 
 
-# 12) y 13) PROC-REP-270: ACT-ADMIN.
+# 12) y 13) PROC-REP-270: ACT-ADMIN o ACT-RECEP.
 
 
 def test_administrador_puede_entregar_el_equipo():
@@ -374,14 +390,33 @@ def test_administrador_puede_entregar_el_equipo():
     assert orden.current_process == "EVT-REP-999"
 
 
+def test_recepcion_tambien_puede_entregar_el_equipo():
+    """PROC-REP-270 declara actores_alternativos: [ACT-RECEP]."""
+    orden = entregar_equipo(
+        flujo_mvp.orden_documentada(), usuario=RECEPCION, fecha=t(195)
+    )
+
+    assert orden.estado_workflow is EstadoWorkflow.ENTREGADA
+    assert orden.current_process == "EVT-REP-999"
+
+
 @pytest.mark.parametrize(
-    "usuario", [TECNICO, RECEPCION, COORDINADOR, ADMINISTRADOR_INACTIVO]
+    "usuario",
+    [TECNICO, COORDINADOR, ADMINISTRADOR_INACTIVO, RECEPCION_INACTIVA],
 )
-def test_solo_el_administrador_puede_entregar_el_equipo(usuario):
+def test_solo_administracion_o_recepcion_entregan(usuario):
     with pytest.raises(PrecondicionInvalidaError):
         entregar_equipo(
             flujo_mvp.orden_documentada(), usuario=usuario, fecha=t(195)
         )
+
+
+def test_recepcion_no_puede_saltear_la_condicion_de_entrega():
+    """Ampliar el actor no relaja la regla comercial (BR-REP-017-B)."""
+    con_saldo = flujo_mvp.orden_reparacion_lista()
+
+    with pytest.raises(PrecondicionInvalidaError):
+        entregar_equipo(con_saldo, usuario=RECEPCION, fecha=t(195))
 
 
 # 14) Un usuario inactivo falla aunque tenga el rol correcto.

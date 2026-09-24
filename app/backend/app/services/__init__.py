@@ -18,6 +18,7 @@ funcional. Lo unico que comparten con ella son los IDs
 from .autorizacion import (
     actor_valido,
     validar_actor,
+    validar_alguno_de,
     validar_usuario_activo,
 )
 from .documentos import (
@@ -69,6 +70,7 @@ from .ordenes import (
 from .pagos import (
     registrar_pago,
     registrar_saldo_pendiente,
+    tipo_de_pago_para,
     validar_condicion_entrega,
 )
 from .reparaciones import (
@@ -85,12 +87,13 @@ from .tomas import (
     validar_compatibilidad_detalle,
     validar_estacion_trabajo,
 )
-from .workflow import registrar_paso
+from .workflow import registrar_accion_funcional, registrar_paso
 
 __all__ = [
     # Autorizacion funcional
     "actor_valido",
     "validar_actor",
+    "validar_alguno_de",
     "validar_usuario_activo",
     # Errores de dominio
     "DomainError",
@@ -99,6 +102,7 @@ __all__ = [
     "RecursoNoDisponibleError",
     # Trazabilidad e identificadores
     "nuevo_id",
+    "registrar_accion_funcional",
     "registrar_paso",
     # Ciclo de vida de la Orden
     "ResultadoEvaluacionOrden",
@@ -145,6 +149,7 @@ __all__ = [
     "stock_disponible_por_insumo",
     # Pagos
     "registrar_pago",
+    "tipo_de_pago_para",
     "registrar_saldo_pendiente",
     "validar_condicion_entrega",
     # Documentos

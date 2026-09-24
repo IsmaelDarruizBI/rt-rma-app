@@ -129,3 +129,34 @@ def insumos_previstos_por_detalle(
         detalle.id: por_tipo.get(detalle.tipo_reparacion_id, [])
         for detalle in orden.reparaciones_detail
     }
+
+
+def nombres_de_tipo_por_detalle(
+    contexto: ApplicationContext,
+    orden: OrdenReparacion,
+) -> dict[str, str]:
+    """Nombre del Tipo de Reparacion de cada Detalle.
+
+    Se resuelve al leer, igual que ``insumos_previstos_por_detalle``: el
+    Detalle guarda el ``tipo_reparacion_id`` y el precio snapshot, no el
+    nombre. El nombre es dato de catalogo vigente y NO se persiste en el
+    aggregate.
+
+    Un Detalle cuyo Tipo ya no existe en el catalogo devuelve el ID como
+    nombre, en vez de romper la lectura: a diferencia de un insumo
+    previsto, aqui no se pierde informacion operativa -el precio, el
+    puntaje y la garantia son snapshot del Detalle-, solo la etiqueta.
+    """
+    if not orden.reparaciones_detail:
+        return {}
+
+    tipos = {
+        tipo.id: tipo.nombre
+        for tipo in contexto.catalogos.listar_tipos_reparacion()
+    }
+    return {
+        detalle.id: tipos.get(
+            detalle.tipo_reparacion_id, detalle.tipo_reparacion_id
+        )
+        for detalle in orden.reparaciones_detail
+    }

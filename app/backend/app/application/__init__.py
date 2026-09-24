@@ -35,6 +35,7 @@ from .consultas import (
     listar_ordenes,
     listar_tipos_reparacion,
     listar_usuarios,
+    nombres_de_tipo_por_detalle,
     obtener_orden,
 )
 from .contexto import ApplicationContext, construir_contexto
@@ -67,6 +68,7 @@ __all__ = [
     "listar_ordenes",
     "listar_tipos_reparacion",
     "listar_usuarios",
+    "nombres_de_tipo_por_detalle",
     "obtener_orden",
     # Avance sobre HP-REP-001
     "AccionDisponible",

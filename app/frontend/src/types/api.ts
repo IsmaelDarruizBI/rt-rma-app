@@ -16,6 +16,9 @@ export type EstadoWorkflow =
 
 export type EstadoPago = "PENDIENTE" | "PARCIAL" | "PAGADO";
 
+/** Momento comercial del cobro. Distinto del medio (`metodo`). */
+export type TipoPago = "ANTICIPO" | "PAGO";
+
 export type EstadoDetalle = "DEFINIDO" | "EN_PROGRESO" | "COMPLETO";
 
 export type EstadoControl = "PENDIENTE" | "APROBADO";
@@ -79,6 +82,8 @@ export interface InsumoPrevisto {
 export interface Detalle {
   id: string;
   tipo_reparacion_id: string;
+  /** Nombre del catálogo, resuelto por la API. No se persiste. */
+  tipo_reparacion_nombre: string;
   precio: string;
   puntaje: number;
   garantia_dias: number;
@@ -121,6 +126,7 @@ export interface Ejecucion {
 export interface Pago {
   id: string;
   monto: string;
+  tipo_pago: TipoPago;
   metodo: string;
   usuario_id: string;
   fecha: string;
@@ -145,14 +151,27 @@ export interface ResumenComercial {
   puntaje_total: number;
 }
 
+/**
+ * Qué clase de referencia guarda una entrada del historial.
+ *
+ * PROCESS_NODE      → paso del recorrido del Business Process.
+ * FUNCTIONAL_ACTION → capacidad transversal (ACC-REP-*), que no mueve
+ *                     `current_process`.
+ */
+export type TipoReferencia = "PROCESS_NODE" | "FUNCTIONAL_ACTION";
+
 export interface PasoHistorial {
-  process_id: string;
+  tipo_referencia: TipoReferencia;
+  referencia_id: string;
   accion: string;
   fecha: string;
   usuario_id: string | null;
   reparacion_detail_id: string | null;
   ejecucion_id: string | null;
+  pago_id: string | null;
   observacion: string | null;
+  /** Compatibilidad: `null` cuando la entrada es transversal. */
+  process_id: string | null;
 }
 
 export interface PasoProgreso {
@@ -165,8 +184,8 @@ export interface PasoProgreso {
 export interface Accion {
   codigo: string;
   etiqueta: string;
-  /** `null` = el negocio todavia no definio el rol (Registrar Pago). */
-  rol: RolUsuario | null;
+  /** Todos los actores autorizados. Vacío = el negocio no definió rol. */
+  roles: RolUsuario[];
   detalle_id: string | null;
   ejecucion_id: string | null;
 }

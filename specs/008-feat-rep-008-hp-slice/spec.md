@@ -32,7 +32,7 @@
 | `PROC-REP-250` | Requiere entrega a cliente | decision | rama `Si` |
 | `PROC-REP-260` | Notificar cliente | `ACT-RECEP` | si |
 | `PROC-REP-280` | Generar comprobante final | `ACT-SYSTEM` | si (compartido con `FEAT-REP-007`) |
-| `PROC-REP-270` | Entregar equipo | `ACT-ADMIN` | si |
+| `PROC-REP-270` | Entregar equipo | `ACT-ADMIN` o `ACT-RECEP` | si |
 | `EVT-REP-999` | Fin del flujo de Orden de Reparacion | end | si |
 
 ### Nodos de la Feature FUERA del slice (no implementados)
@@ -147,7 +147,7 @@ y posicionada en el evento final.
   final emitido, garantia de reparacion emitida y ninguna reserva de
   inventario activa. *(`PROC-REP-270`, `BR-REP-017-B`)*
 - **FR-REP-059**: Solo un usuario con rol Administrador puede entregar el
-  equipo. *(actor `ACT-ADMIN`)*
+  equipo. *(actores `ACT-ADMIN` o `ACT-RECEP`)*
 - **FR-REP-060**: Al entregarse, la Orden debe pasar al hito `ENTREGADA`
   y quedar posicionada en el evento final del flujo.
   *(`PROC-REP-270` → `EVT-REP-999`)*

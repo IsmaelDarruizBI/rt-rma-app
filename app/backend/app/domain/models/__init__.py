@@ -4,7 +4,7 @@ Alcance: lo necesario para representar el escenario HP-REP-001
 ("Reparacion estandar de cliente externo") de PROC-REP V1.3. Los modelos
 no leen ni derivan nada de ``business/``: esa sigue siendo la unica
 fuente de verdad funcional, y aqui solo se conservan sus IDs
-(``HistorialWorkflow.process_id``).
+(``HistorialWorkflow.referencia_id``).
 """
 
 from .catalogos import (
@@ -25,6 +25,8 @@ from .enums import (
     OrigenOrden,
     RolUsuario,
     TipoMovimientoInsumo,
+    TipoPago,
+    TipoReferenciaHistorial,
 )
 from .equipos import Equipo
 from .inventario import InsumoUtilizado, MovimientoInsumo
@@ -45,6 +47,8 @@ __all__ = [
     "OrigenOrden",
     "RolUsuario",
     "TipoMovimientoInsumo",
+    "TipoPago",
+    "TipoReferenciaHistorial",
     # Personas y equipo
     "Cliente",
     "Equipo",

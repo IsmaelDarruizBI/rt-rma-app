@@ -24,6 +24,7 @@ from app.application import (
     iniciar_detalle,
     insumos_previstos_por_detalle,
     listar_ordenes,
+    nombres_de_tipo_por_detalle,
     notificar,
     obtener_orden,
     progreso,
@@ -64,6 +65,7 @@ def _salida(orden: OrdenReparacion, contexto: ApplicationContext) -> OrdenOut:
         progreso=progreso(orden),
         acciones=acciones_disponibles(orden),
         insumos_previstos=insumos_previstos_por_detalle(contexto, orden),
+        nombres_de_tipo=nombres_de_tipo_por_detalle(contexto, orden),
     )
 
 

@@ -91,8 +91,13 @@ app/backend/app/
 
 **Structure Decision**: `registrar_pago` vive en `services/pagos.py`
 junto al gate de cobro, pero es el unico service que **no** llama a
-`registrar_paso`. La ausencia de esa llamada es la implementacion
-literal de "capacidad transversal sin nodo propio".
+`registrar_paso`: usa `registrar_accion_funcional`. Esa distincion es
+la implementacion literal de "capacidad transversal sin nodo propio".
+
+Registrar Pago SI deja traza en la Orden -entrada `FUNCTIONAL_ACTION`
+con `referencia_id: ACC-REP-020`, enlazada al `Pago` por `pago_id`-,
+pero NO mueve `current_process`. Antes no dejaba ninguna, y el recorrido
+no explicaba que ocurria entre `PROC-REP-266` y `PROC-REP-265`.
 
 ## Data Model (artefacto transversal)
 

@@ -92,6 +92,36 @@ class RolUsuario(str, Enum):
     TECNICO = "TECNICO"
 
 
+class TipoReferenciaHistorial(str, Enum):
+    """Que clase de referencia guarda una entrada del historial.
+
+    PROCESS_NODE       -> paso del recorrido secuencial del Business
+                          Process (``PROC-REP-*``). Avanza el flujo.
+    FUNCTIONAL_ACTION  -> capacidad transversal ejecutada sobre la Orden
+                          (``ACC-REP-*``). No pertenece al recorrido y
+                          no mueve ``current_process``.
+    """
+
+    PROCESS_NODE = "PROCESS_NODE"
+    FUNCTIONAL_ACTION = "FUNCTIONAL_ACTION"
+
+
+class TipoPago(str, Enum):
+    """Momento comercial en que se registra un Pago.
+
+    Dimension distinta del medio de pago (``Pago.metodo``): un ANTICIPO
+    en EFECTIVO y un PAGO en EFECTIVO son el mismo medio y distinto tipo.
+
+    No lo elige el usuario: se deriva del estado de la Orden al
+    registrarlo (ver ``app.services.pagos.registrar_pago``). BR-REP-017
+    define el Pago como capacidad transversal, asi que puede registrarse
+    antes de que la reparacion este lista.
+    """
+
+    ANTICIPO = "ANTICIPO"
+    PAGO = "PAGO"
+
+
 class EstadoPago(str, Enum):
     """Estado de cobro, siempre derivado del total y de lo pagado."""
 

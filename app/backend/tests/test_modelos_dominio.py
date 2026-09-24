@@ -20,6 +20,7 @@ from app.domain.models import (
     ReparacionDetail,
     ResumenPago,
     TipoMovimientoInsumo,
+    TipoPago,
     TipoReparacion,
     TipoReparacionInsumos,
 )
@@ -32,6 +33,7 @@ def _pago(identificador: str, monto: str) -> Pago:
     return Pago(
         id=identificador,
         monto=Decimal(monto),
+        tipo_pago=TipoPago.PAGO,
         metodo="EFECTIVO",
         usuario_id="ADMIN-001",
         fecha=AHORA,

@@ -19,7 +19,13 @@ Correspondencia con ``business/actors/actors.yaml``:
     ACT-COORD  -> RolUsuario.COORDINADOR_RMA
     ACT-TECH   -> RolUsuario.TECNICO
     ACT-ADMIN  -> RolUsuario.ADMINISTRADOR
+
+Un nodo puede declarar ``actores_alternativos``: varios actores
+igualmente autorizados, sin jerarquia. Para esos casos se usa
+``validar_alguno_de``.
 """
+
+from collections.abc import Sequence
 
 from app.domain.models import RolUsuario, Usuario
 
@@ -40,13 +46,30 @@ def validar_actor(usuario: Usuario, rol_requerido: RolUsuario) -> None:
 
     Falla si esta inactivo o si su rol no corresponde.
     """
+    validar_alguno_de(usuario, (rol_requerido,))
+
+
+def validar_alguno_de(
+    usuario: Usuario,
+    roles_autorizados: Sequence[RolUsuario],
+) -> None:
+    """Exige que el usuario tenga ALGUNO de los roles indicados.
+
+    Para los nodos que V1.3 declara con ``actores_alternativos``: varios
+    actores igualmente autorizados, sin jerarquia entre ellos. Por
+    ejemplo PROC-REP-150 (ACT-COORD o ACT-RECEP) y PROC-REP-270
+    (ACT-ADMIN o ACT-RECEP).
+
+    ``validar_actor`` es el caso de un solo rol.
+    """
     if not usuario.activo:
         raise PrecondicionInvalidaError(
             f"El usuario {usuario.id} no esta activo."
         )
-    if usuario.rol is not rol_requerido:
+    if usuario.rol not in roles_autorizados:
+        esperados = " o ".join(rol.value for rol in roles_autorizados)
         raise PrecondicionInvalidaError(
-            f"La operacion requiere el rol {rol_requerido.value}; "
+            f"La operacion requiere el rol {esperados}; "
             f"el usuario {usuario.id} es {usuario.rol.value}."
         )
 
