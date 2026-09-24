@@ -11,6 +11,7 @@ coverage/
 
 # Python (futuro backend)
 __pycache__/
+*.egg-info/
 *.py[cod]
 *.pyo
 .venv/
