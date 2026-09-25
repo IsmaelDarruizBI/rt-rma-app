@@ -14,8 +14,9 @@
  *    - PROCESS_EDGE continuity: ignoring FUNCTIONAL_ACTION steps (they
  *      never move the "current node"), step[n].to must equal
  *      step[n+1].from;
- *    - a HAPPY_PATH/E2E scenario must start at the process's start/event
- *      node and end at its end node;
+ *    - a HAPPY_PATH/E2E scenario must start at one of the process's entry
+ *      points (a start/event node with no incoming edge, e.g. EVT-REP-001 or
+ *      EVT-REP-002) and end at its end node;
  *    - every FUNCTIONAL_ACTION step's `feature` must exist in the
  *      Features file;
  *    - skipped_nodes (optional) must exist, be unique and never overlap
@@ -186,13 +187,22 @@ export function validateScenario(
   }
 
   if (scenario.type === "HAPPY_PATH" && scenario.scope === "E2E") {
-    const startNode = processModel.nodes.find((node) => node.type === "start") ?? processModel.nodes.find((node) => node.type === "event");
+    // A process can have several entry points (e.g. EVT-REP-001 "surge una
+    // necesidad" and EVT-REP-002 "una Orden finalizada requiere garantia"):
+    // a valid start is any start/event node with no incoming edge.
+    const hasIncoming = new Set(processModel.edges.map((edge) => edge.to));
+    const startNodes = processModel.nodes.filter(
+      (node) => (node.type === "start" || node.type === "event") && !hasIncoming.has(node.id)
+    );
     const endNode = processModel.nodes.find((node) => node.type === "end");
     if (edgeSteps.length === 0) {
       errors.push("HAPPY_PATH/E2E sin ningun step PROCESS_EDGE");
     } else {
-      if (startNode && edgeSteps[0].from !== startNode.id) {
-        errors.push(`HAPPY_PATH/E2E debe comenzar en "${startNode.id}", comienza en "${edgeSteps[0].from}"`);
+      if (startNodes.length > 0 && !startNodes.some((node) => node.id === edgeSteps[0].from)) {
+        errors.push(
+          `HAPPY_PATH/E2E debe comenzar en un nodo de inicio (${startNodes.map((node) => node.id).join(", ")}), ` +
+            `comienza en "${edgeSteps[0].from}"`
+        );
       }
       if (endNode && edgeSteps[edgeSteps.length - 1].to !== endNode.id) {
         errors.push(`HAPPY_PATH/E2E debe terminar en "${endNode.id}", termina en "${edgeSteps[edgeSteps.length - 1].to}"`);

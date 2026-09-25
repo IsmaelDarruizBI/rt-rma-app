@@ -780,12 +780,13 @@ que crecerian de forma explosiva.
 Process Graph  +  Happy Path (steps sobre edges reales)  =  Recorrido E2E
 ```
 
-Hoy existen dos Happy Paths (`business/scenarios/repair-management-scenarios-v1.3.yaml`):
+Hoy existen tres Happy Paths (`business/scenarios/repair-management-scenarios-v1.3.yaml`):
 
 | Happy Path | Origen | Recorrido distintivo |
 |---|---|---|
 | **HP-REP-001** Cliente externo | CLIENTE_EXTERNO | registra cliente/equipo, comprobante de recepcion, cobro (Saldo), notificacion, comprobante final y entrega al cliente |
 | **HP-REP-002** Equipo RT | RT_INTERNO | recibe contexto del equipo RT (PROC-REP-020), sin comprobante de recepcion; tras REPARACION_LISTA informa el resultado a Gestion RT (PROC-REP-290) y RECIEN DESPUES registra la entrega/devolucion del equipo a Gestion RT (PROC-REP-270), luego fin |
+| **HP-REP-003** Garantia RMA | RMA_GARANTIA_REPARACION | parte de una Orden origen finalizada (EVT-REP-002), identifica la Orden y el Detalle origen (PROC-REP-035), recupera cliente/equipo, crea una NUEVA Orden vinculada; NO_COBRABLE: recorre 265 (validacion de condicion de entrega) que aprueba por origen, sin pago ni 266, con notificacion, comprobante final y entrega al cliente |
 
 HP-REP-002 es un Happy Path propio (y no una Variant) porque el origen
 cambia estructuralmente el recorrido E2E. NO tiene pago/anticipo de
@@ -851,6 +852,67 @@ y puede impactar nodos de varias Features (`affected_nodes`), sin
 duplicarse por Feature. Steps/facts/expected solo son obligatorios para un
 HAPPY_PATH.
 
+**HP-REP-003 - Garantia de reparacion RMA.** Es un Happy Path propio (no una
+Variant local) porque cambia estructuralmente el recorrido E2E, igual que
+HP-REP-002:
+
+```text
+HP-REP-001: necesidad nueva -> registrar cliente/equipo -> crear OR -> ... -> cobro -> saldo -> entrega
+HP-REP-003: OR origen finalizada -> generar garantia -> recuperar cliente/equipo/origen
+            -> crear NUEVA OR vinculada -> ... -> (sin cobro, sin saldo) -> entrega
+```
+
+- **Evento inicial propio**: `EVT-REP-002` "Una Orden de Reparacion finalizada
+  requiere garantia" (nuevo, unico nodo agregado). Forzar `EVT-REP-001`
+  ("surge una necesidad de reparacion") habria borrado la diferencia
+  funcional. Converge en `PROC-REP-035`; la entrada por `PROC-REP-010` se
+  conserva como alternativa.
+- **`PROC-REP-035` reutilizado y ampliado**: toma como entrada la Orden
+  origen finalizada, la identifica junto con el/los Detalle(s) origen que
+  fallaron, y recupera cliente y equipo de ella (no hay alta nueva, por eso
+  no pasa por `PROC-REP-030`). `PROC-REP-040` crea una NUEVA Orden con origen
+  RMA_GARANTIA_REPARACION, condicion NO_COBRABLE y referencia a la Orden
+  origen; `PROC-REP-070` crea cada Detalle nuevo referenciando su Detalle
+  origen. La Orden origen NO se reabre y conserva su estado: no se crearon
+  estados como REABIERTA_POR_GARANTIA.
+- **Trazabilidad en ambos niveles** (`BR-REP-019`): Orden nueva -> Orden
+  origen y Detalle nuevo -> Detalle origen. Esto RESUELVE el pendiente
+  "Orden origen vs. Detalle origen". Sigue pendiente el modelo tecnico
+  (sin base de datos aqui) y las reglas de garantia RMA configurable/vencida.
+- **Sin estado CERRADA**: el modelo no lo tiene (V1.2 lo excluye). La
+  precondicion se define como "Orden origen finalizada (ENTREGADA)"; si
+  negocio quiere otra definicion es una decision aparte.
+- **Convergencia y gate general de condicion de entrega**: desde
+  `PROC-REP-040` hasta `PROC-REP-260` es el mismo circuito tecnico de
+  HP-REP-001, y luego HP-REP-003 recorre `PROC-REP-265` igual que
+  HP-REP-001: es el mismo gate general de condicion de entrega para todo
+  origen con entrega a cliente, y NO se creo ningun bypass alrededor de el
+  (`260 -> 265` sin condicion, `265 -> 280 [Si]`; no hay edge
+  `260 -> 280`). Lo que cambia es COMO se aprueba:
+
+  ```text
+  CLIENTE_EXTERNO          -> aprueba por Saldo = 0 o cortesia total
+  RT_GARANTIA_VENTA        -> aprueba por condicion NO_COBRABLE
+  RMA_GARANTIA_REPARACION  -> aprueba por condicion NO_COBRABLE
+  ```
+
+  HP-REP-003 recorre `PROC-REP-265` como validacion de condicion de
+  entrega, pero nunca entra en `PROC-REP-266` ni registra pagos porque la
+  condicion NO_COBRABLE aprueba directamente la entrega: no hay cobro
+  pendiente, ni anticipo, ni Saldo = 0 mediante pagos, ni cortesia usada
+  para evitar el cobro. Los edges de HP-REP-001 no cambian. Business
+  Rules: `BR-REP-016` y `BR-REP-017` extendidas y `BR-REP-019` nueva.
+- **Omitidos** (`skipped_nodes`): 010 (origen ya conocido), 030 (cliente/
+  equipo se recuperan), 266 (no hay cobro pendiente ni registro de pago) y
+  290 (informe a Gestion RT, propio de RT_INTERNO). `PROC-REP-265` NO esta
+  omitido. El pago no tiene nodo propio (es una capacidad transversal):
+  simplemente no hay ninguna accion funcional de pago.
+- **Features activas**: FEAT-REP-001 a 008 (no 009). FEAT-REP-007 esta
+  activa por su nodo propio `PROC-REP-265` (validacion de condicion de
+  entrega) y por los nodos compartidos ALWAYS 070 (precio snapshot) y 280
+  (comprobante final), pero no por `PROC-REP-266`: activa no significa
+  que se ejecute el cobro. Precio registrado no implica pago requerido.
+
 **Variants futuras ya identificadas sobre HP-REP-001** (documentadas, no
 implementadas):
 
@@ -858,14 +920,11 @@ implementadas):
   a el; debe existir referencia/trazabilidad con la venta RT; la reparacion
   es NO_COBRABLE, sin pago del cliente ni bloqueo de entrega por saldo; sigue
   existiendo notificacion y entrega al cliente.
-- *Garantia de reparacion RMA* (RMA_GARANTIA_REPARACION): el cliente vuelve
-  por una reparacion anterior; debe identificarse la reparacion RMA original
-  y relacionarse la nueva Orden con ella; es NO_COBRABLE; sigue existiendo
-  entrega al cliente. **Pendiente, no resuelto**: si la vinculacion es a la
-  Orden original o al Detalle especifico que fallo (ver Pendientes de V1.3).
+- *(La garantia de reparacion RMA ya no es una Variant futura: es el Happy
+  Path HP-REP-003, ver arriba.)*
 
 **Viewer.** El selector "Happy Path" ofrece "Proceso completo",
-HP-REP-001 y HP-REP-002: resalta los nodes y los edges exactos del camino
+HP-REP-001, HP-REP-002 y HP-REP-003: resalta los nodes y los edges exactos del camino
 (no elimina los demas del DOM, los atenua) y muestra los `skipped_nodes`
 con su motivo. Ademas, el diagrama ahora se muestra a su tamano real y
 legible (100% = tamano natural de Mermaid): antes el SVG se colapsaba a ~16%
@@ -896,8 +955,10 @@ deliberadamente fuera de alcance de esta revision:
   PROC-REP-305 omiten deliberadamente el campo `actor` en el YAML (el
   schema no lo exige para nodos `activity`) en vez de inventar uno sin
   aprobacion de negocio.
-- Si el reproceso de RMA_GARANTIA_REPARACION debe referenciar la Orden
-  origen completa o el Detalle especifico que fallo.
+- (Resuelto en V1.3, BR-REP-019) Vinculacion de la garantia RMA: la Orden
+  nueva referencia la Orden origen y cada Detalle nuevo referencia su
+  Detalle origen. Siguen pendientes las reglas de garantia RMA configurable
+  y de garantia vencida, y el modelo tecnico de esa relacion.
 - Distribucion/acreditacion de puntaje entre multiples tecnicos que
   participaron de un mismo Detalle (ya pendiente en V1.2, ahora ademas
   interactua con multiples Ejecuciones por Detalle).

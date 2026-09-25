@@ -85,6 +85,7 @@ features:
 
     business_rules:
       - BR-REP-013
+      - BR-REP-019
 
     scope:
       includes:
@@ -171,6 +172,7 @@ features:
       - BR-REP-010
       - BR-REP-012
       - BR-REP-015
+      - BR-REP-019
 
     scope:
       includes:

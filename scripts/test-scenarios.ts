@@ -27,6 +27,10 @@ const processModel = loadYaml<ProcessModel>(PROCESS_FILE);
 const featuresModel = loadYaml<FeatureModel>(FEATURES_FILE);
 const scenariosModel = loadYaml<ScenarioModel>(SCENARIOS_FILE);
 const featureIds = new Set(featuresModel.features.map((feature) => feature.id));
+const rulesModel = loadYaml<{ rules: { id: string; name: string; description?: string }[] }>(
+  "business/rules/business-rules-v1.3.yaml"
+);
+const nodeById = new Map(processModel.nodes.map((node) => [node.id, node]));
 const scenariosById = new Map(scenariosModel.scenarios.map((scenario) => [scenario.id, scenario]));
 
 function real(id: string): Scenario {
@@ -78,15 +82,17 @@ function expectError(scenario: Scenario, fragment: string): void {
 
 console.log("Happy Paths reales\n");
 
-check("HP-REP-001 y HP-REP-002 existen, IDs unicos", () => {
+check("HP-REP-001, HP-REP-002 y HP-REP-003 existen, IDs unicos", () => {
   assert.deepEqual(findDuplicateIds(scenariosModel.scenarios), []);
   assert.ok(scenariosById.has("HP-REP-001"));
   assert.ok(scenariosById.has("HP-REP-002"));
+  assert.ok(scenariosById.has("HP-REP-003"));
 });
 
-check("ambos Happy Paths validan sin errores", () => {
+check("los tres Happy Paths validan sin errores", () => {
   assert.deepEqual(errorsOf(real("HP-REP-001")), []);
   assert.deepEqual(errorsOf(real("HP-REP-002")), []);
+  assert.deepEqual(errorsOf(real("HP-REP-003")), []);
 });
 
 /** Ordered list of edge steps' "to" nodes, for order assertions (start node prepended). */
@@ -192,7 +198,7 @@ check("la derivacion explica POR QUE cada Feature esta activa (razones), sin imp
 });
 
 check("ningun nodo esta a la vez en steps[] y en skipped_nodes (HP-REP-001 y HP-REP-002)", () => {
-  for (const id of ["HP-REP-001", "HP-REP-002"]) {
+  for (const id of ["HP-REP-001", "HP-REP-002", "HP-REP-003"]) {
     const nodes = traversedNodes(real(id));
     for (const skipped of real(id).skipped_nodes ?? []) {
       assert.ok(!nodes.has(skipped.node), `${id}: ${skipped.node} en steps y skipped_nodes`);
@@ -201,6 +207,202 @@ check("ningun nodo esta a la vez en steps[] y en skipped_nodes (HP-REP-001 y HP-
 });
 
 
+
+console.log("\nHP-REP-003 - Garantia de reparacion RMA\n");
+
+const factOf = (scenario: Scenario, key: string): unknown => scenario.facts.find((fact) => fact.key === key)?.value;
+const expectedOf = (scenario: Scenario, key: string): unknown => scenario.expected.find((fact) => fact.key === key)?.value;
+const desc = (nodeId: string): string => (nodeById.get(nodeId)?.description ?? "").replace(/\s+/g, " ");
+const ruleText = (ruleId: string): string =>
+  (rulesModel.rules.find((rule) => rule.id === ruleId)?.description ?? "").replace(/\s+/g, " ");
+
+check("1) existe HP-REP-003 (HAPPY_PATH/E2E) y valida sin errores", () => {
+  const scenario = real("HP-REP-003");
+  assert.equal(scenario.type, "HAPPY_PATH");
+  assert.equal(scenario.scope, "E2E");
+  assert.deepEqual(errorsOf(scenario), []);
+});
+
+check("2) el trigger es garantia sobre una reparacion anterior (EVT-REP-002, no EVT-REP-001)", () => {
+  const order = orderOf(real("HP-REP-003"));
+  assert.equal(order[0], "EVT-REP-002");
+  assert.ok(!order.includes("EVT-REP-001"));
+  assert.match(nodeById.get("EVT-REP-002")?.name ?? "", /garantia/i);
+  assert.match(desc("EVT-REP-002"), /Generar garantia/);
+  // entry point: no incoming edges; converges into PROC-REP-035
+  assert.ok(!processModel.edges.some((edge) => edge.to === "EVT-REP-002"));
+  assert.ok(processModel.edges.some((edge) => edge.from === "EVT-REP-002" && edge.to === "PROC-REP-035"));
+});
+
+check("3) se identifica la Orden anterior (PROC-REP-035, Orden origen finalizada como input)", () => {
+  const node = nodeById.get("PROC-REP-035");
+  assert.ok(node);
+  assert.ok(orderOf(real("HP-REP-003")).includes("PROC-REP-035"));
+  assert.ok((node.inputs ?? []).some((input) => /Orden de Reparacion origen/.test(input)));
+  assert.ok((node.outputs ?? []).some((output) => /Orden de Reparacion origen identificada/.test(output)));
+  assert.equal(factOf(real("HP-REP-003"), "origin_order_finished"), true);
+});
+
+check("4) se identifica/referencia el Detalle origen (035 output, 070 + BR-REP-019)", () => {
+  const node = nodeById.get("PROC-REP-035");
+  assert.ok((node?.outputs ?? []).some((output) => /Detalle\(s\) origen/.test(output)));
+  assert.ok((nodeById.get("PROC-REP-070")?.rules ?? []).includes("BR-REP-019"));
+  assert.match(desc("PROC-REP-070"), /Detalle origen/);
+  assert.match(ruleText("BR-REP-019"), /Detalle original/);
+  assert.equal(factOf(real("HP-REP-003"), "origin_detail_identified"), true);
+  assert.equal(expectedOf(real("HP-REP-003"), "new_detail_linked_to_origin_detail"), true);
+});
+
+check("5) se crea una NUEVA Orden vinculada (035 -> 040, BR-REP-019)", () => {
+  const order = orderOf(real("HP-REP-003"));
+  assert.ok(order.indexOf("PROC-REP-035") < order.indexOf("PROC-REP-040"));
+  assert.match(desc("PROC-REP-040"), /NUEVA Orden/);
+  assert.ok((nodeById.get("PROC-REP-040")?.rules ?? []).includes("BR-REP-019"));
+  assert.match(ruleText("BR-REP-019"), /NUEVA Orden vinculada/);
+  assert.equal(expectedOf(real("HP-REP-003"), "new_order_linked_to_origin_order"), true);
+});
+
+check("6) la Orden anterior no se reabre (ni estado nuevo tipo REABIERTA_POR_GARANTIA)", () => {
+  assert.equal(expectedOf(real("HP-REP-003"), "origin_order_reopened"), false);
+  assert.equal(expectedOf(real("HP-REP-003"), "origin_order_state_unchanged"), true);
+  assert.match(ruleText("BR-REP-019"), /NO se reabre/);
+  const everything = JSON.stringify(real("HP-REP-003")) + ruleText("BR-REP-019");
+  assert.ok(!/REABIERTA_POR_GARANTIA|ORIGINAL_EN_GARANTIA/.test(everything.replace(/no se crean estados como REABIERTA_POR_GARANTIA/g, "")));
+});
+
+check("7) el origen es RMA_GARANTIA_REPARACION", () => {
+  assert.equal(factOf(real("HP-REP-003"), "origin"), "RMA_GARANTIA_REPARACION");
+});
+
+check("8) la condicion comercial es NO_COBRABLE (hecho y BR-REP-016; se aprueba en 265)", () => {
+  assert.equal(factOf(real("HP-REP-003"), "origin_billing_condition"), "NO_COBRABLE");
+  assert.match(ruleText("BR-REP-016"), /RMA_GARANTIA_REPARACION[^.]*NO_COBRABLE|NO_COBRABLE[^.]*RMA_GARANTIA_REPARACION/);
+  assert.equal(factOf(real("HP-REP-003"), "delivery_condition_approved_by"), "NO_COBRABLE_POR_ORIGEN");
+});
+
+check("9) no recorre registro de cliente/equipo nuevo (030) ni otros origenes; recupera de la origen", () => {
+  const nodes = traversedNodes(real("HP-REP-003"));
+  for (const skipped of ["PROC-REP-030", "PROC-REP-020", "PROC-REP-025", "PROC-REP-010"]) assert.ok(!nodes.has(skipped), skipped);
+  assert.equal(factOf(real("HP-REP-003"), "new_customer_equipment_registration"), false);
+  assert.equal(factOf(real("HP-REP-003"), "customer_equipment_recovered_from_origin"), true);
+});
+
+check("10) no recorre pagos", () => {
+  assert.ok(!traversedNodes(real("HP-REP-003")).has("PROC-REP-266"));
+  assert.ok(!real("HP-REP-003").steps.some((s) => s.kind === "FUNCTIONAL_ACTION"));
+  assert.equal(factOf(real("HP-REP-003"), "payment_required"), false);
+  assert.equal(expectedOf(real("HP-REP-003"), "payment_registered"), false);
+});
+
+check("11) recorre PROC-REP-265 como validacion de condicion de entrega, pero nunca 266 ni pagos", () => {
+  const scenario = real("HP-REP-003");
+  const nodes = traversedNodes(scenario);
+  assert.ok(nodes.has("PROC-REP-265"), "recorre PROC-REP-265");
+  assert.ok(!nodes.has("PROC-REP-266"), "no entra en PROC-REP-266");
+  assert.ok(scenario.steps.some((s) => isProcessEdgeStep(s) && s.from === "PROC-REP-265" && s.to === "PROC-REP-280" && s.condition === "Si"));
+  assert.ok(!scenario.steps.some((s) => isProcessEdgeStep(s) && s.from === "PROC-REP-265" && s.to === "PROC-REP-266"));
+  assert.equal(factOf(scenario, "delivery_condition_gate_traversed"), true);
+  assert.equal(expectedOf(scenario, "delivery_condition_approved"), true);
+  assert.ok(!(scenario.skipped_nodes ?? []).some((n) => n.node === "PROC-REP-265"), "265 no esta omitido");
+  assert.ok((scenario.skipped_nodes ?? []).some((n) => n.node === "PROC-REP-266"), "266 esta omitido");
+});
+
+check("11b) la condicion de entrega se aprueba por origen NO_COBRABLE: sin saldo mediante pagos, sin anticipo, sin cortesia", () => {
+  const scenario = real("HP-REP-003");
+  assert.equal(factOf(scenario, "delivery_condition_approved_by"), "NO_COBRABLE_POR_ORIGEN");
+  assert.equal(factOf(scenario, "balance_via_payments_required"), false);
+  assert.equal(factOf(scenario, "courtesy_used_to_avoid_charge"), false);
+  assert.equal(factOf(scenario, "payment_required"), false);
+  assert.match(desc("PROC-REP-265"), /RMA_GARANTIA_REPARACION[\s\S]*NO_COBRABLE|NO_COBRABLE[\s\S]*RMA_GARANTIA_REPARACION/);
+  assert.match(desc("PROC-REP-265"), /no existe un bypass/i);
+  assert.match(ruleText("BR-REP-016"), /recorre PROC-REP-265/);
+  assert.match(ruleText("BR-REP-017"), /mismo gate de condicion de entrega/);
+});
+
+check("12) mantiene price snapshot (070) sin que implique pago", () => {
+  assert.ok(traversedNodes(real("HP-REP-003")).has("PROC-REP-070"));
+  assert.equal(factOf(real("HP-REP-003"), "price_snapshot_registered"), true);
+  assert.equal(factOf(real("HP-REP-003"), "payment_required"), false);
+  assert.match(desc("PROC-REP-070"), /precio registrado no implica/i);
+});
+
+check("13) recorre notificacion al cliente (260)", () => {
+  assert.ok(traversedNodes(real("HP-REP-003")).has("PROC-REP-260"));
+  assert.equal(expectedOf(real("HP-REP-003"), "client_notified"), true);
+});
+
+check("14) recorre documentacion final y entrega al cliente: 260 -> 265 -> 280 -> 270", () => {
+  const order = orderOf(real("HP-REP-003"));
+  assert.deepEqual(order.slice(-6), ["PROC-REP-250", "PROC-REP-260", "PROC-REP-265", "PROC-REP-280", "PROC-REP-270", "EVT-REP-999"]);
+  assert.equal(expectedOf(real("HP-REP-003"), "equipment_delivered_to_client"), true);
+  assert.equal(factOf(real("HP-REP-003"), "client_delivery_required"), true);
+});
+
+check("15) no recorre el informe a Gestion RT propio de RT_INTERNO (290)", () => {
+  assert.ok(!traversedNodes(real("HP-REP-003")).has("PROC-REP-290"));
+});
+
+check("16) llega a EVT-REP-999", () => {
+  const order = orderOf(real("HP-REP-003"));
+  assert.equal(order[order.length - 1], "EVT-REP-999");
+});
+
+check("17) ningun nodo esta en steps[] y en skipped_nodes de HP-REP-003", () => {
+  const nodes = traversedNodes(real("HP-REP-003"));
+  assert.ok((real("HP-REP-003").skipped_nodes ?? []).length > 0);
+  for (const skipped of real("HP-REP-003").skipped_nodes ?? []) {
+    assert.ok(!nodes.has(skipped.node), skipped.node);
+    assert.ok(skipped.reason.trim().length > 0);
+  }
+});
+
+check("18) todas las referencias (nodes/edges/features/reglas) de HP-REP-003 son validas", () => {
+  assert.deepEqual(errorsOf(real("HP-REP-003")), []);
+  const ruleIds = new Set(rulesModel.rules.map((rule) => rule.id));
+  for (const nodeId of traversedNodes(real("HP-REP-003"))) {
+    for (const ruleId of nodeById.get(nodeId)?.rules ?? []) assert.ok(ruleIds.has(ruleId), `${nodeId} -> ${ruleId}`);
+  }
+  assert.ok(ruleIds.has("BR-REP-019"));
+});
+
+check("19) HP-REP-001 sigue pasando (misma ruta de cobro, sin cambios)", () => {
+  assert.deepEqual(errorsOf(real("HP-REP-001")), []);
+  const edges = real("HP-REP-001").steps.filter(isProcessEdgeStep);
+  assert.ok(edges.some((s) => s.from === "PROC-REP-260" && s.to === "PROC-REP-265" && s.condition === undefined));
+  assert.ok(!traversedNodes(real("HP-REP-001")).has("PROC-REP-035"));
+});
+
+check("20) HP-REP-002 sigue pasando (290 -> 270 -> fin, sin cobro)", () => {
+  assert.deepEqual(errorsOf(real("HP-REP-002")), []);
+  assert.deepEqual(orderOf(real("HP-REP-002")).slice(-4), ["PROC-REP-250", "PROC-REP-290", "PROC-REP-270", "EVT-REP-999"]);
+});
+
+check("no hay bypass alrededor de 265: 260 solo llega a 265 y 280 solo se alcanza desde 265", () => {
+  const outOf260 = processModel.edges.filter((edge) => edge.from === "PROC-REP-260");
+  assert.deepEqual(outOf260.map((edge) => edge.to), ["PROC-REP-265"]);
+  const into280 = processModel.edges.filter((edge) => edge.to === "PROC-REP-280");
+  assert.deepEqual(into280.map((edge) => edge.from), ["PROC-REP-265"]);
+  assert.deepEqual(processModel.edges.filter((edge) => edge.to === "PROC-REP-266").map((edge) => edge.from), ["PROC-REP-265"]);
+});
+
+check("Features activas de HP-REP-003 = 001..008 (sin 009), con razones reales", () => {
+  const { activeFeatureIds, activationReasons } = deriveScenarioFeatures(featuresModel, real("HP-REP-003"));
+  assert.deepEqual(activeFeatureIds, [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `FEAT-REP-00${n}`));
+  assert.ok(activationReasons["FEAT-REP-001"].some((r) => r.includes("PROC-REP-035")));
+  // FEAT-REP-007: own node 265 (delivery-condition gate) plus shared ALWAYS nodes (070, 280); never its own 266
+  const r7 = activationReasons["FEAT-REP-007"];
+  assert.ok(r7.some((r) => r.includes("nodo propio PROC-REP-265")));
+  assert.ok(r7.some((r) => r.includes("PROC-REP-070") && r.includes("(ALWAYS)")));
+  assert.ok(r7.some((r) => r.includes("PROC-REP-280") && r.includes("(ALWAYS)")));
+  assert.ok(!r7.some((r) => r.includes("PROC-REP-266")));
+});
+
+check("HP-REP-003 converge con HP-REP-001 desde PROC-REP-040 (mismo circuito tecnico)", () => {
+  const a = orderOf(real("HP-REP-001"));
+  const b = orderOf(real("HP-REP-003"));
+  const tail = (o: string[], from: string, to: string): string[] => o.slice(o.indexOf(from), o.indexOf(to) + 1);
+  assert.deepEqual(tail(b, "PROC-REP-040", "PROC-REP-260"), tail(a, "PROC-REP-040", "PROC-REP-260"));
+});
 
 console.log("\nCasos negativos del validador\n");
 
@@ -353,7 +555,7 @@ check("no hay Variants reales todavia (sin explosion combinatoria)", () => {
     scenariosModel.scenarios.filter((s) => s.type !== "HAPPY_PATH").map((s) => s.id),
     []
   );
-  assert.equal(scenariosModel.scenarios.filter((s) => s.type === "HAPPY_PATH").length, 2);
+  assert.equal(scenariosModel.scenarios.filter((s) => s.type === "HAPPY_PATH").length, 3);
 });
 
 console.log("");
