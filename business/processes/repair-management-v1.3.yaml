@@ -873,8 +873,9 @@ nodes:
       como cuando la Orden finalizo SIN_REPARACION (PROC-REP-069). Las
       ordenes que requieren entrega/documentacion al cliente son
       CLIENTE_EXTERNO, RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION.
-      RT_INTERNO continua hacia informar el resultado al sistema RT. Sin
-      cambios respecto de V1.2.
+      RT_INTERNO continua hacia informar el resultado al sistema RT
+      (PROC-REP-290) y luego a la entrega/devolucion del equipo a Gestion RT
+      (PROC-REP-270).
 
   - id: PROC-REP-260
     type: activity
@@ -958,10 +959,17 @@ nodes:
     name: Entregar equipo
     actor: ACT-ADMIN
     description: >
-      Se entrega el equipo al cliente junto con el comprobante final
-      (PROC-REP-280), una vez superada la validacion de condicion de
-      entrega (PROC-REP-265); la Orden pasa a ENTREGADA. Sin cambios
-      respecto de V1.2 salvo esa nueva precondicion.
+      Entrega del equipo. Para origenes con entrega a cliente
+      (CLIENTE_EXTERNO, RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION) se
+      entrega al cliente junto con el comprobante final (PROC-REP-280),
+      una vez superada la validacion de condicion de entrega
+      (PROC-REP-265); la Orden pasa a ENTREGADA. Para RT_INTERNO (alcanzado
+      desde PROC-REP-290, despues de informar el resultado a Gestion RT) es
+      la entrega/devolucion del equipo a Gestion RT: no es una entrega
+      comercial, no pasa por PROC-REP-265/266/280, no depende de Saldo ni de
+      Pagos, y NO define el estado terminal de la Orden RT_INTERNO, que sigue
+      pendiente de decision funcional (no se asume ENTREGADA ni ningun
+      estado nuevo).
 
   - id: PROC-REP-290
     type: activity
@@ -972,9 +980,10 @@ nodes:
       la reparacion realizada o, si corresponde, SIN_REPARACION) debera
       poder informarse a futuro al sistema que gestiona stock y ventas.
       RT_INTERNO es NO_COBRABLE_AL_CLIENTE: no pasa por la validacion de
-      saldo de PROC-REP-265. El estado terminal definitivo para
-      RT_INTERNO queda pendiente de definicion. Sin cambios respecto de
-      V1.2.
+      saldo de PROC-REP-265. Para RT_INTERNO este nodo se ejecuta ANTES de
+      la entrega/devolucion del equipo a Gestion RT (PROC-REP-270): primero
+      se informa el resultado, despues se registra la devolucion. El estado
+      terminal definitivo para RT_INTERNO queda pendiente de definicion.
 
   - id: PROC-REP-300
     type: activity
@@ -1036,8 +1045,9 @@ nodes:
     type: end
     name: Fin del flujo de Orden de Reparacion
     description: >
-      Punto de fin comun a la entrega (PROC-REP-270), la integracion con
-      Gestion RT (PROC-REP-290), y a la Orden CANCELADA que resulta del
+      Punto de fin comun a la entrega (PROC-REP-270, tanto a cliente como
+      la devolucion a Gestion RT de RT_INTERNO, que llega alli despues de
+      PROC-REP-290), y a la Orden CANCELADA que resulta del
       resolver (PROC-REP-211) cuando, tras cancelar un Detalle
       (PROC-REP-300) o cancelar los Detalles no terminales de la Orden
       (PROC-REP-305), todos los Detalles quedan CANCELADO sin ningun
@@ -1331,7 +1341,7 @@ edges:
     to: EVT-REP-999
 
   - from: PROC-REP-290
-    to: EVT-REP-999
+    to: PROC-REP-270
 
   - from: PROC-REP-170
     to: PROC-REP-300

@@ -753,6 +753,127 @@ lista bajo "Features involucradas", calculada por
 `validate-references.ts` y `validate-scenarios.ts`, para que la semantica
 nunca diverja entre la CLI y el HTML).
 
+### Caminos sobre el Process Graph: Happy Path, Variant, Exception, Edge Case
+
+Vocabulario (todos son capas sobre el Process Graph, nunca copias de el):
+
+- **Process Graph**: los nodes/edges de `repair-management-v1.3.yaml`. Es
+  la unica fuente de verdad de la topologia, de las descripciones, actores,
+  Business Rules y outputs de cada nodo.
+- **Happy Path**: recorrido E2E CANONICO del proceso.
+- **Variant**: desviacion o condicion alternativa sobre uno o mas puntos de
+  un recorrido (por ejemplo una garantia).
+- **Exception**: algo que falla o interrumpe el flujo esperado.
+- **Edge Case**: combinacion o condicion limite poco frecuente.
+
+> Un Happy Path representa un recorrido E2E canonico del proceso. Una
+> Variant representa una desviacion o condicion alternativa sobre uno o
+> mas puntos de ese recorrido. No se crean nuevos Happy Paths para cada
+> combinacion de Variants.
+
+Modelo: **Happy Path base + Variants atomicas + Exceptions + Edge Cases**.
+Una ejecucion futura podra combinar varias Variants; nunca se enumeran las
+combinaciones (Cliente + Garantia + Pago anticipado + Falta de stock ...),
+que crecerian de forma explosiva.
+
+```text
+Process Graph  +  Happy Path (steps sobre edges reales)  =  Recorrido E2E
+```
+
+Hoy existen dos Happy Paths (`business/scenarios/repair-management-scenarios-v1.3.yaml`):
+
+| Happy Path | Origen | Recorrido distintivo |
+|---|---|---|
+| **HP-REP-001** Cliente externo | CLIENTE_EXTERNO | registra cliente/equipo, comprobante de recepcion, cobro (Saldo), notificacion, comprobante final y entrega al cliente |
+| **HP-REP-002** Equipo RT | RT_INTERNO | recibe contexto del equipo RT (PROC-REP-020), sin comprobante de recepcion; tras REPARACION_LISTA informa el resultado a Gestion RT (PROC-REP-290) y RECIEN DESPUES registra la entrega/devolucion del equipo a Gestion RT (PROC-REP-270), luego fin |
+
+HP-REP-002 es un Happy Path propio (y no una Variant) porque el origen
+cambia estructuralmente el recorrido E2E. NO tiene pago/anticipo de
+cliente, validacion de saldo, cortesia comercial, notificacion de retiro
+ni entrega comercial a cliente: esos nodos (030, 060, 260, 265, 266, 280)
+se declaran en `skipped_nodes` con su motivo. La entrega/devolucion del
+equipo a Gestion RT SI ocurre (`PROC-REP-270`, ver abajo). Se conserva la trazabilidad con
+el equipo/origen RT y el resultado se informa a Gestion RT. El estado
+terminal definitivo de RT_INTERNO sigue pendiente (ver Pendientes).
+Orden final de HP-REP-002: `REPARACION_LISTA` (PROC-REP-240) -> `PROC-REP-250`
+(no requiere entrega a cliente) -> `PROC-REP-290` informar resultado a
+Gestion RT -> `PROC-REP-270` entrega/devolucion del equipo a Gestion RT ->
+fin (`EVT-REP-999`). Nunca se entrega primero y se informa despues. Para
+esto se reutilizo `PROC-REP-270` (no se creo un nodo) y el unico cambio de
+topologia fue reemplazar el edge `PROC-REP-290 -> EVT-REP-999` por
+`PROC-REP-290 -> PROC-REP-270` (`270 -> EVT-REP-999` ya existia); el camino
+de cliente (`265 -> 280 -> 270`) no cambia. Para RT_INTERNO, `270` es una
+devolucion a Gestion RT, no una entrega comercial: no usa Saldo ni Pagos y
+NO define el estado terminal de la Orden (sigue `PENDIENTE_DE_DEFINIR`; no
+se asume ENTREGADA ni un estado nuevo). No existe un nodo "Cerrar Orden"
+aparte: el cierre es el fin `EVT-REP-999`.
+
+**Feature activa no significa "todos sus comportamientos aplican".** Una
+Feature esta activa en un Happy Path si PARTE de su comportamiento
+funcional participa en ese recorrido; no implica que todos sus nodos,
+reglas o comportamientos se ejecuten. FEAT-REP-007 esta activa tanto en
+HP-REP-001 como en HP-REP-002, y es correcto, pero con comportamientos
+distintos: en HP-REP-001 recorre pago, saldo y cierre comercial
+(PROC-REP-265/266/280); en HP-REP-002 no hay pago, ni validacion de saldo,
+ni cortesia comercial, ni notificacion de retiro. Su participacion hoy
+derivada en HP-REP-002 es el registro del precio snapshot de cada Detalle
+(PROC-REP-070, binding ALWAYS). Precio registrado no es pago requerido:
+todo Detalle, de cualquier origen, puede tener precio snapshot, y luego la
+condicion comercial (RT_INTERNO = NO_COBRABLE_AL_CLIENTE) determina si se
+cobra; NO_COBRABLE tampoco significa "sin precio de referencia". La
+derivacion (`deriveScenarioFeatures`) ahora devuelve `activationReasons`:
+por que esta activa cada Feature (nodo propio, nodo compartido ALWAYS/
+CONTEXTUAL o accion funcional), para no atribuir la activacion a una unica
+causa; el viewer la muestra como "Activa por". Nota de modelo: la
+entrega/devolucion (PROC-REP-270) y el informe a Gestion RT (PROC-REP-290)
+pertenecen hoy a FEAT-REP-008, no a FEAT-REP-007; no se movieron Features
+en esta iteracion.
+
+**included / skipped / conditional.** *included* = nodo atravesado por
+`steps[]` (se deriva, no se repite); *skipped* = nodo listado en
+`skipped_nodes[]` con `reason` (documental; el validador exige que exista y
+que el mismo Scenario no lo atraviese); *conditional* es un concepto de las
+Variants (su `trigger`/condicion de activacion), no de un Happy Path, que
+es determinista. Se eligio `steps[]` sobre edges (from + condition + to) en
+vez de un mapa nodo->estado porque tambien dice QUE transicion se tomo en
+nodos con varias entradas (por ejemplo PROC-REP-211) y se valida con
+continuidad.
+
+**Arquitectura preparada para Variants** (ninguna real declarada todavia).
+Un Scenario de tipo VARIANT/EXCEPTION/EDGE_CASE puede indicar, todos
+opcionales: `feature` (Feature donde se origina), `applies_to` (Happy Paths
+a los que aplica), `trigger` (node/edge y condicion de activacion),
+`affected_nodes`, `rules` (Business Rules) y `dependencies`
+(`requires`/`enables`/`implies`/`excludes` hacia otros Scenarios). Solo se
+valida la forma y la integridad referencial; como se combinan esas
+relaciones al ejecutar NO esta implementado. Una Variant se define UNA vez
+y puede impactar nodos de varias Features (`affected_nodes`), sin
+duplicarse por Feature. Steps/facts/expected solo son obligatorios para un
+HAPPY_PATH.
+
+**Variants futuras ya identificadas sobre HP-REP-001** (documentadas, no
+implementadas):
+
+- *Garantia de Venta RT* (RT_GARANTIA_VENTA): hay cliente y el equipo vuelve
+  a el; debe existir referencia/trazabilidad con la venta RT; la reparacion
+  es NO_COBRABLE, sin pago del cliente ni bloqueo de entrega por saldo; sigue
+  existiendo notificacion y entrega al cliente.
+- *Garantia de reparacion RMA* (RMA_GARANTIA_REPARACION): el cliente vuelve
+  por una reparacion anterior; debe identificarse la reparacion RMA original
+  y relacionarse la nueva Orden con ella; es NO_COBRABLE; sigue existiendo
+  entrega al cliente. **Pendiente, no resuelto**: si la vinculacion es a la
+  Orden original o al Detalle especifico que fallo (ver Pendientes de V1.3).
+
+**Viewer.** El selector "Happy Path" ofrece "Proceso completo",
+HP-REP-001 y HP-REP-002: resalta los nodes y los edges exactos del camino
+(no elimina los demas del DOM, los atenua) y muestra los `skipped_nodes`
+con su motivo. Ademas, el diagrama ahora se muestra a su tamano real y
+legible (100% = tamano natural de Mermaid): antes el SVG se colapsaba a ~16%
+de su tamano (`width="100%"` dentro de un contenedor `max-content`) antes de
+aplicar cualquier zoom. Zoom de 15% a 800% con paso multiplicativo,
+Ctrl/Cmd+rueda (o pellizco) con zoom sobre el cursor, y arrastre del fondo
+para desplazarse; el diagrama completo es siempre alcanzable por scroll.
+
 ## Pendientes especificos de V1.3
 
 Ademas de todos los pendientes de V1.2 listados arriba (que siguen

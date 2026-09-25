@@ -325,9 +325,12 @@ rules:
       Saldo = 0, o cuando corresponde cortesia total de Orden, o
       condicion no-cobrable por origen; no existe override para entregar
       con deuda en V1.3. No modelar los pagos como si ocurrieran
-      unicamente al final (A es transversal), ni la entrega sin el gate
-      final de Saldo (B es secuencial y obligatorio antes de
-      PROC-REP-270). El comprobante final (PROC-REP-280) se genera
+      unicamente al final (A es transversal), ni la entrega a cliente sin el
+      gate final de Saldo (B es secuencial y obligatorio antes de
+      PROC-REP-270 para los origenes con entrega a cliente). RT_INTERNO
+      (NO_COBRABLE_AL_CLIENTE) no pasa por (B): tras informar el resultado
+      a Gestion RT (PROC-REP-290) llega a PROC-REP-270 solo como
+      entrega/devolucion del equipo a Gestion RT, sin Saldo ni Pagos. El comprobante final (PROC-REP-280) se genera
       recien despues de que PROC-REP-265 aprueba la condicion de entrega,
       nunca antes: asi refleja siempre el Saldo definitivo al momento de
       la entrega, y no queda desactualizado si luego se registra un pago

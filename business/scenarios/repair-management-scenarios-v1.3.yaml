@@ -9,19 +9,45 @@
 # FEAT-REP-007/BR-REP-017): nunca agrega una linea nueva al diagrama.
 #
 # Jerarquia conceptual:
-#   Business Process
+#   Business Process (Process Graph)
 #     |- Business Rules
 #     |- Features
 #     `- Scenarios
-#          `- HP-REP-001
+#          |- HP-REP-001  Happy Path - cliente externo
+#          `- HP-REP-002  Happy Path - equipo RT (RT_INTERNO)
+#
+# Un Happy Path es un recorrido E2E CANONICO del proceso. Una Variant es
+# una desviacion o condicion alternativa sobre uno o mas puntos de ese
+# recorrido. NO se crea un Happy Path nuevo por cada combinacion de
+# Variants: el modelo es Happy Path base + Variants atomicas + Exceptions +
+# Edge Cases, y una ejecucion futura podra combinar varias Variants.
+# HP-REP-002 SI es un Happy Path propio (y no una Variant de HP-REP-001)
+# porque el origen RT_INTERNO cambia estructuralmente el recorrido E2E:
+# omite el registro de cliente, el comprobante de recepcion y todo el
+# cierre comercial/entrega al cliente (skipped_nodes lo documenta).
+#
+# Variants FUTURAS ya identificadas (NO implementadas todavia, a proposito;
+# se declararan con los campos opcionales feature/applies_to/trigger/
+# affected_nodes/rules/dependencies del schema, sobre HP-REP-001)
+#   - Garantia de Venta RT (origen RT_GARANTIA_VENTA). Parte del camino de
+#     cliente externo pero con referencia/trazabilidad a la venta RT,
+#     condicion NO_COBRABLE, sin pago del cliente ni bloqueo de entrega por
+#     saldo; sigue existiendo notificacion y entrega al cliente.
+#   - Garantia de reparacion RMA (origen RMA_GARANTIA_REPARACION). El
+#     cliente vuelve por una reparacion anterior: debe identificarse la
+#     reparacion RMA original y relacionarse la nueva Orden con ella; es
+#     NO_COBRABLE; sigue existiendo entrega al cliente. PENDIENTE (no se
+#     resuelve aqui): si la vinculacion es a la Orden original o al Detalle
+#     especifico que fallo (ver docs/discovery/README.md, Pendientes de V1.3).
 #
 # Por ahora solo existe type: HAPPY_PATH y scope: E2E. El modelo
 # (scenario.schema.json, scripts/lib/scenario-model.ts) ya admite
-# VARIANT/EXCEPTION/EDGE_CASE y scope FEATURE/RULE en el enum, pero su
-# comportamiento (por ejemplo Variants como overrides de facts sobre este
-# baseline) no esta implementado ni validado todavia. No hay Coverage
-# Analyzer, generador automatico de escenarios, ni User Stories en esta
-# iteracion.
+# VARIANT/EXCEPTION/EDGE_CASE y scope FEATURE/RULE en el enum, mas los
+# campos opcionales de Variant, pero su comportamiento (por ejemplo
+# Variants como overrides de facts sobre un baseline, o como se combinan
+# requires/enables/implies/excludes) no esta implementado ni validado
+# todavia. No hay Coverage Analyzer, generador automatico de escenarios,
+# ni User Stories en esta iteracion.
 #
 # No existe un Scenario equivalente para V1.2: esta capa nace junto con
 # V1.3.
@@ -278,3 +304,258 @@ scenarios:
       - key: repair_warranty_generated
         label: Garantia de reparacion generada
         value: true
+
+  # Nota sobre active_features: una Feature esta activa en un Happy Path si
+  # PARTE de su comportamiento funcional participa en ese recorrido; eso no
+  # implica que todos sus nodos, reglas o comportamientos se ejecuten.
+  # FEAT-REP-007 (Comercial/Pagos) esta activa aqui, y es correcto, pero con
+  # comportamiento distinto al de HP-REP-001: sin pago, sin validacion de
+  # saldo, sin cortesia comercial, sin notificacion de retiro (PROC-REP-265/
+  # 266/280/260, en skipped_nodes). Su participacion derivada hoy es por el
+  # registro del price snapshot de cada Detalle (PROC-REP-070, binding
+  # ALWAYS): el precio registrado NO implica pago requerido, y un origen
+  # NO_COBRABLE_AL_CLIENTE sigue teniendo precio de referencia. La entrega/
+  # devolucion del equipo (PROC-REP-270) y el informe a Gestion RT
+  # (PROC-REP-290) pertenecen hoy a FEAT-REP-008 en el modelo de Features.
+  - id: HP-REP-002
+    name: Reparacion estandar de equipo RT
+    type: HAPPY_PATH
+    scope: E2E
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.3"
+
+    description: >
+      Camino de referencia para una Orden de origen RT_INTERNO (equipo de
+      Rosario Tecno gestionado en Gestion RT) con un unico Detalle conocido
+      desde el ingreso, sin desvios operativos ni tecnicos. Es un Happy
+      Path distinto de HP-REP-001 porque el origen cambia estructuralmente
+      el recorrido E2E: se recibe el contexto/referencia del equipo RT en
+      vez de registrar un cliente, no se genera comprobante de recepcion, y
+      tras la reparacion lista el resultado se informa a Gestion RT en vez
+      de notificar, cobrar y entregar a un cliente. Tras REPARACION_LISTA se
+      informa el resultado a Gestion RT (PROC-REP-290) y RECIEN DESPUES se
+      registra la entrega/devolucion del equipo a Gestion RT (PROC-REP-270,
+      reutilizado: aqui no es una entrega comercial), y se llega al fin. Se
+      conserva la trazabilidad con el equipo/origen RT. El estado terminal
+      definitivo de una Orden RT_INTERNO sigue pendiente de definicion
+      funcional (no se asume ENTREGADA ni un estado nuevo).
+
+    facts:
+      - key: origin
+        label: Origen
+        value: RT_INTERNO
+      - key: origin_billing_condition
+        label: Condicion comercial por origen
+        value: NO_COBRABLE_AL_CLIENTE
+      - key: detail_count
+        label: Cantidad de Detalles
+        value: 1
+      - key: details_known_at_intake
+        label: Reparacion conocida desde el ingreso
+        value: true
+      - key: receipt_required
+        label: Comprobante de recepcion requerido
+        value: false
+      - key: resources_available
+        label: Recursos disponibles
+        value: true
+      - key: station_valid
+        label: Sesion y Estacion validas
+        value: true
+      - key: station_compatible
+        label: Estacion compatible con el Detalle
+        value: true
+      - key: reservation_success
+        label: Reserva de insumos
+        value: true
+      - key: execution_result
+        label: Resultado de la Ejecucion
+        value: COMPLETADO
+      - key: technical_control
+        label: Control tecnico
+        value: APROBADO
+      - key: client_delivery_required
+        label: Entrega a cliente requerida
+        value: false
+      - key: equipment_return_to_rt_required
+        label: Entrega/devolucion del equipo a Gestion RT
+        value: true
+      - key: price_snapshot_registered
+        label: Precio snapshot registrado en el Detalle
+        value: true
+      - key: payment_required
+        label: Pago requerido
+        value: false
+
+    skipped_nodes:
+      - node: PROC-REP-030
+        reason: Registro de cliente y equipo propio del origen CLIENTE_EXTERNO. En RT_INTERNO el equipo y su contexto provienen de Gestion RT (PROC-REP-020).
+      - node: PROC-REP-060
+        reason: Un equipo RT_INTERNO no requiere comprobante de recepcion (PROC-REP-050 rama No).
+      - node: PROC-REP-260
+        reason: No hay cliente a quien notificar el retiro.
+      - node: PROC-REP-265
+        reason: No existe validacion de saldo ni cobro para entregar, el origen es NO_COBRABLE_AL_CLIENTE.
+      - node: PROC-REP-266
+        reason: No existe saldo pendiente ni registro de pago de cliente.
+      - node: PROC-REP-280
+        reason: No se genera el comprobante final comercial ni la garantia de reparacion al cliente.
+
+    steps:
+      - kind: PROCESS_EDGE
+        from: EVT-REP-001
+        to: PROC-REP-010
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-010
+        to: PROC-REP-020
+        condition: RT_INTERNO
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-020
+        to: PROC-REP-040
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-040
+        to: PROC-REP-045
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-045
+        to: PROC-REP-070
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-070
+        to: PROC-REP-050
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-050
+        to: PROC-REP-080
+        condition: No - Detalles definidos
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-080
+        to: PROC-REP-090
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-090
+        to: PROC-REP-140
+        condition: Existe Detalle trabajable
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-140
+        to: PROC-REP-150
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-150
+        to: PROC-REP-170
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-170
+        to: PROC-REP-172
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-172
+        to: PROC-REP-180
+        condition: Valida y compatible
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-180
+        to: PROC-REP-181
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-181
+        to: PROC-REP-174
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-174
+        to: PROC-REP-185
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-185
+        to: PROC-REP-190
+        condition: Reserva exitosa
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-190
+        to: PROC-REP-200
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-200
+        to: PROC-REP-210
+        condition: Completado
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-210
+        to: PROC-REP-211
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-211
+        to: PROC-REP-220
+        condition: Todos terminales, existe completo
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-220
+        to: PROC-REP-230
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-230
+        to: PROC-REP-245
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-245
+        to: PROC-REP-240
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-240
+        to: PROC-REP-250
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-250
+        to: PROC-REP-290
+        condition: No
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-290
+        to: PROC-REP-270
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-270
+        to: EVT-REP-999
+
+    expected:
+      - key: technical_aggregate
+        label: Agregado tecnico de la Orden
+        value: COMPLETA
+      - key: workflow_state
+        label: Estado de workflow al informar el resultado
+        value: REPARACION_LISTA
+      - key: terminal_state
+        label: Estado terminal definitivo de la Orden RT_INTERNO
+        value: PENDIENTE_DE_DEFINIR
+      - key: active_execution
+        label: Ejecucion activa
+        value: false
+      - key: active_order_take
+        label: Toma/participacion activa
+        value: false
+      - key: active_reservations
+        label: Reservas activas de inventario
+        value: false
+      - key: result_informed_to_rt
+        label: Resultado informado a Gestion RT
+        value: true
+      - key: equipment_returned_to_rt
+        label: Equipo entregado/devuelto a Gestion RT
+        value: true
+      - key: client_notified
+        label: Cliente notificado
+        value: false
+      - key: final_receipt_generated
+        label: Comprobante final generado
+        value: false
