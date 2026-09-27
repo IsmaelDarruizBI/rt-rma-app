@@ -29,14 +29,9 @@
  *   Coverage Analyzer (aggregating across many Scenarios) - never conflate
  *   it with "a Scenario happened to pass through this Feature once".
  */
-import type { ProcessModel } from "./process-model";
+import { edgeKey, type ProcessModel } from "./process-model";
 import type { FeatureModel, SharedNodeBinding } from "./feature-model";
 import { isFunctionalActionStep, isProcessEdgeStep, type Scenario } from "./scenario-model";
-
-/** Identifies a process edge by from + condition + to, never by from/to alone (an edge without a condition never matches one that has one). */
-function edgeKey(from: string, condition: string | undefined, to: string): string {
-  return `${from}::${condition ?? ""}::${to}`;
-}
 
 /**
  * Reverse index: process_node id -> Set of Feature ids that declare it in

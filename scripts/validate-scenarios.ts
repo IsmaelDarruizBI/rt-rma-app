@@ -43,7 +43,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import Ajv from "ajv";
 import { parse } from "yaml";
-import { loadYaml, type ProcessModel } from "./lib/process-model";
+import { edgeKey, loadYaml, type ProcessModel } from "./lib/process-model";
 import type { FeatureModel } from "./lib/feature-model";
 import { deriveScenarioFeatures } from "./lib/feature-scenario-mapping";
 import {
@@ -71,11 +71,6 @@ export function findDuplicateIds(scenarios: Scenario[]): string[] {
     seen.add(scenario.id);
   }
   return [...duplicates];
-}
-
-/** Identifies a process edge by from + condition + to, never by from/to alone. */
-function edgeKey(from: string, condition: string | undefined, to: string): string {
-  return `${from}::${condition ?? ""}::${to}`;
 }
 
 export function validateScenario(

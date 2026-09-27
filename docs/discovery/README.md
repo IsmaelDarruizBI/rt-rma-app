@@ -933,6 +933,83 @@ aplicar cualquier zoom. Zoom de 15% a 800% con paso multiplicativo,
 Ctrl/Cmd+rueda (o pellizco) con zoom sobre el cursor, y arrastre del fondo
 para desplazarse; el diagrama completo es siempre alcanzable por scroll.
 
+### Scenario Candidate Discovery
+
+Herramienta de descubrimiento **estructural y deterministico** de caminos
+alternativos. Compara el Process Graph con cada Happy Path y detecta donde
+el grafo ofrece una transicion distinta de la que el Happy Path eligio:
+
+```text
+Process Graph + Happy Paths
+        |
+discover-scenario-candidates.ts
+        |
+Candidate Scenario Inventory   (generated/scenarios/repair-management-candidates-v1.3.yaml)
+        |
+LLM / analisis funcional
+        |
+Human confirmation
+        |
+VARIANT / EXCEPTION / EDGE_CASE
+```
+
+> **Un Candidate Scenario no es un Scenario aprobado.** Es solo una
+> diferencia topologica entre el grafo y un Happy Path. No se clasifica
+> (no dice si es Variant, Exception o Edge Case), no se nombra, no se
+> prioriza y no se agrega a `repair-management-scenarios-v1.3.yaml`. El
+> archivo generado esta marcado como GENERATED / NOT SOURCE OF TRUTH / NOT
+> CONFIRMED BUSINESS SCENARIOS y nunca se edita a mano.
+
+Uso: `npm run discover:scenarios:v1.3` (genera el inventario y muestra un
+resumen; es generacion, por eso NO forma parte de `validate:v1.3`) y
+`npm run test:scenario-discovery` (tests del algoritmo; estos si estan en
+`validate:v1.3`). Codigo: `scripts/lib/scenario-discovery.ts` (funciones
+puras) y `scripts/discover-scenario-candidates.ts` (CLI).
+
+**Algoritmo.**
+
+1. Por cada `PROCESS_EDGE` de un Happy Path (en orden), se toman todos los
+   outgoing edges reales de su nodo `from`; los que no son el edge elegido
+   en ese paso son alternativos. Un edge se identifica por
+   `from + condition + to` (`edgeKey`, compartido), nunca por from/to.
+2. Cada alternativa inicia una BFS acotada que corta cada rama en el primer
+   desenlace estructural: `END` (llega a un nodo `end`; tiene precedencia
+   porque el fin esta en todo Happy Path), `REJOIN_FORWARD` (vuelve a un
+   nodo del Happy Path ubicado DESPUES del punto de divergencia),
+   `LOOP_TO_BASELINE` (vuelve a un nodo del Happy Path ANTES o EN el punto
+   de divergencia: reintentos/revalidaciones), `CYCLE` (revisita un nodo de
+   su propio recorrido sin haber tocado el Happy Path), `MAX_DEPTH` (limite
+   de seguridad, `DEFAULT_MAX_DEPTH = 30` centralizado) y `DEAD_END`
+   (nodo sin salidas que no es `end`; red de seguridad, no ocurre en el
+   grafo validado).
+3. No hay explosion combinatoria: cada nodo se expande una sola vez por
+   desviacion (`visited`), las ramas que reconvergen en un nodo ya explorado
+   se podan y se cuentan, y los loops nunca se despliegan. Una desviacion
+   que se ramifica produce un candidato por desenlace distinto.
+4. Los candidatos se deduplican entre Happy Paths por una firma
+   deterministica: edge baseline + edge alternativo + recorrido explorado +
+   tipo y nodo de terminacion, SIN el id del Happy Path. Un candidato
+   deduplicado acumula `applies_to` y `occurrences` (Happy Path y paso donde
+   ocurre). Los ids `CAND-REP-NNN` se asignan tras ordenar por nodo de
+   divergencia, edge alternativo, baseline y terminacion, asi que dos
+   ejecuciones sin cambios producen exactamente el mismo archivo.
+
+**Limitaciones conocidas (V1).**
+
+- Solo encuentra alternativas que **salen de un nodo del Happy Path**. Las
+  capacidades no secuenciales quedan para una futura Pass 2: cancelacion
+  transversal, pago anticipado y acciones disponibles desde muchos estados.
+- Cycle detection es BFS + `visited` (revisita en el recorrido propio); no
+  usa Tarjan/SCC, que puede incorporarse despues si hace falta analisis de
+  ciclos mas fino.
+- Un candidato es un recorrido hasta el primer desenlace, no un escenario
+  completo: no se explora que pasa despues de reincorporarse, ni se combinan
+  desviaciones entre si.
+- La poda por `visited` implica que, cuando dos ramas de una misma
+  desviacion convergen, solo se reporta el recorrido mas corto.
+- Los `FUNCTIONAL_ACTION` de los Happy Paths se ignoran (no son edges) y
+  no se interpreta ningun nombre, descripcion ni condicion del negocio.
+
 ## Pendientes especificos de V1.3
 
 Ademas de todos los pendientes de V1.2 listados arriba (que siguen
