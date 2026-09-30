@@ -322,7 +322,16 @@ rules:
       medios de pago- registrados en cualquier momento desde que la Orden
       existe, no solo al final. Cada Pago registra importe, medio de
       pago, fecha/hora, usuario y referencia/comprobante cuando
-      corresponda; todos quedan asociados a la misma Orden. (B) Completar
+      corresponda; todos quedan asociados a la misma Orden. Autorizacion
+      para Registrar Pago (corrige un bug funcional detectado en el MVP
+      actual, donde cualquier usuario activo podia registrarlo sin
+      restriccion): puede registrar un Pago todo usuario OPERATIVO ACTIVO
+      EXCEPTO Tecnico (ACT_TECH) -es decir, ACT_ADMIN, ACT_RECEP y
+      ACT_COORD, mientras esten activos-; un Tecnico nunca puede registrar
+      un Pago. No es una decision de frontend: el backend debe hacer
+      cumplir esta autorizacion (usuario activo AND rol != TECNICO), del
+      mismo modo que ya hace cumplir la autorizacion de otros overrides de
+      esta capa (BR-REP-003, BR-REP-011). (B) Completar
       Cobro es una FASE SECUENCIAL del cierre: una vez aprobado el
       control tecnico (REPARACION_LISTA), se determina el Total Cobrable
       (Base Comercial de los Detalles finales, ver BR-REP-015/BR-REP-016)

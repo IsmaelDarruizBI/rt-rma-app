@@ -1152,6 +1152,62 @@ limitations:
     transversal, pago anticipado y otras capacidades no secuenciales siguen
     sin analizarse (Pass 2 futura).
   - >
-    No se ejecuto ningun Coverage Analyzer ni se crearon Scenarios reales;
-    los "candidatos" que quedaron NEEDS_REVIEW o NEEDS_BUSINESS_DECISION
-    solo estan documentados, no resueltos.
+    No se ejecuto ningun Coverage Analyzer; los "candidatos" que quedaron
+    NEEDS_REVIEW o NEEDS_BUSINESS_DECISION siguen solo documentados, no
+    resueltos (ver mvp_v2_confirmations mas abajo para lo que SI se
+    confirmo).
+
+# =====================================================================
+# MVP v2 CONFIRMATIONS - addendum derivado, agregado DESPUES del analisis
+# original de arriba. NO reclasifica ningun candidate (sus valores de
+# feasibility/scenario_worthiness/suggested_type de arriba se mantienen
+# intactos, tal como se calcularon): solo registra que, para el cierre
+# funcional de MVP v2, negocio decidio promover un subconjunto de
+# candidatos SCENARIO_CANDIDATE a Scenarios reales en
+# business/scenarios/repair-management-scenarios-v1.3.yaml. Este bloque
+# sigue siendo GENERATED/ANALYSIS, no fuente de verdad: la fuente de
+# verdad de cada Scenario confirmado es el YAML de scenarios; aqui solo se
+# anota la trazabilidad inversa (Candidate -> Scenario confirmado).
+# =====================================================================
+mvp_v2_confirmations:
+  - candidates: [CAND-REP-007, CAND-REP-016]
+    confirmed_as: VAR-REP-001
+  - candidates: [CAND-REP-007, CAND-REP-009]
+    confirmed_as: VAR-REP-002
+  - candidates: [CAND-REP-027]
+    confirmed_as: VAR-REP-003
+  - candidates: [CAND-REP-018]
+    confirmed_as: EXC-REP-001
+  - candidates: [CAND-REP-019]
+    confirmed_as: EXC-REP-002
+  - candidates: [CAND-REP-026]
+    confirmed_as: EXC-REP-003
+  - candidates: [CAND-REP-032]
+    confirmed_as: EXC-REP-004
+  - candidates: [CAND-REP-034]
+    confirmed_as: EXC-REP-005
+  - candidates: [CAND-REP-010, CAND-REP-017]
+    confirmed_as: null
+    status: DEFERRED
+    reason: >
+      SIN_REPARACION tras EN_REVISION; pendiente decision de negocio sobre
+      aviso/documentacion/cierre adicional.
+  - candidates: [CAND-REP-020, CAND-REP-021, CAND-REP-033]
+    confirmed_as: null
+    status: DEFERRED
+    reason: >
+      Cancelacion (FG-REP-005); BR-REP-014 no define todavia quien esta
+      autorizado a cancelar.
+  - candidates: [CAND-REP-004, CAND-REP-005]
+    confirmed_as: null
+    status: OUT_OF_SCOPE
+    reason: >
+      RT_GARANTIA_VENTA (FG-REP-002); requiere un modelo de dominio nuevo
+      (OrdenRevision, tipo_revision=GARANTIA) todavia no suficientemente
+      disenado. No se crea Scenario ni se modifica el Process Graph.
+  - candidates: [CAND-REP-028, CAND-REP-029, CAND-REP-030]
+    confirmed_as: null
+    status: REMAINS_MECHANISM_ONLY
+    reason: >
+      Mecanica multi-Detalle; sigue sin convertirse en Scenario real
+      (verificado por test en scripts/test-scenarios.ts).

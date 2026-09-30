@@ -443,6 +443,18 @@ Son dos conceptos distintos que no deben confundirse (BR-REP-017):
 No modelar todos los pagos como si ocurrieran unicamente al final de la
 Orden, y no modelar la entrega sin este gate final de Saldo.
 
+**Correccion funcional (MVP v2): autorizacion para Registrar Pago.** El
+MVP actual dejaba registrar un Pago a cualquier usuario activo, sin
+restriccion de rol; es un bug funcional. BR-REP-017 ahora define
+explicitamente que puede registrar un Pago todo usuario OPERATIVO ACTIVO
+EXCEPTO Tecnico (`ACT_ADMIN`, `ACT_RECEP`, `ACT_COORD` si estan activos;
+`ACT_TECH` nunca). No es una decision de frontend: el backend debe hacer
+cumplir `usuario activo AND rol != TECNICO`, trazable hacia
+Business Rule (BR-REP-017) -> Technical Requirement -> autorizacion en el
+backend -> test de API -> accion disponible en el frontend. No se
+implementa el fix en Python en esta etapa: este repositorio cierra
+primero el contrato funcional.
+
 ### Comprobante final despues del cobro
 
 Corregido en este borrador: el comprobante final (PROC-REP-280) se
@@ -1009,6 +1021,84 @@ puras) y `scripts/discover-scenario-candidates.ts` (CLI).
   desviacion convergen, solo se reporta el recorrido mas corto.
 - Los `FUNCTIONAL_ACTION` de los Happy Paths se ignoran (no son edges) y
   no se interpreta ningun nombre, descripcion ni condicion del negocio.
+
+## MVP v2 - Scope funcional cerrado
+
+Cierra el alcance funcional del MVP v2, antes de integrar con el
+repositorio productivo `rt-rma-mvp`. Base: los tres Happy Paths
+(`HP-REP-001/002/003`) mas 3 `VARIANT` y 5 `EXCEPTION` REALES y
+CONFIRMADOS en `business/scenarios/repair-management-scenarios-v1.3.yaml`
+(ya no solo entries de analisis). Son los primeros Scenarios que usan de
+verdad los campos `feature`/`trigger`/`applies_to`/`affected_nodes`/
+`rules` que el schema admitia desde HP-REP-003 pero nadie habia poblado
+todavia.
+
+**Trazabilidad Candidate -> Scenario** (no se amplio el schema con un
+campo `source_candidate`: la relacion queda documentada aqui y en la
+`description` de cada Scenario, que cita sus Candidate IDs de origen):
+
+| Scenario | Tipo | Candidate(s) origen | applies_to |
+|---|---|---|---|
+| `VAR-REP-001` Ingreso sin diagnostico, con comprobante | VARIANT | CAND-REP-007, CAND-REP-016 | HP-REP-001, HP-REP-003 |
+| `VAR-REP-002` Ingreso sin diagnostico, sin comprobante (RT) | VARIANT | CAND-REP-007, CAND-REP-009 | HP-REP-002 |
+| `VAR-REP-003` Ejecucion interrumpida | VARIANT | CAND-REP-027 | HP-REP-001/002/003 |
+| `EXC-REP-001` Recursos insuficientes, en espera | EXCEPTION | CAND-REP-018 | HP-REP-001/002/003 |
+| `EXC-REP-002` Recursos insuficientes, con override | EXCEPTION | CAND-REP-019 | HP-REP-001/002/003 |
+| `EXC-REP-003` Reserva de insumos fallida al iniciar | EXCEPTION | CAND-REP-026 | HP-REP-001/002/003 |
+| `EXC-REP-004` Requiere revision tecnica posterior | EXCEPTION | CAND-REP-032 | HP-REP-001/002/003 |
+| `EXC-REP-005` Rechazo de control tecnico / retrabajo | EXCEPTION | CAND-REP-034 | HP-REP-001/002/003 |
+
+**Por que VAR-REP-001/002 son dos Scenarios y no uno.** El business case
+("al ingreso no se conoce el Detalle") es el mismo (CAND-REP-007), pero
+`steps[]` exige una secuencia LITERAL de edges reales: los origenes con
+comprobante (CLIENTE_EXTERNO/RMA_GARANTIA_REPARACION) pasan por
+PROC-REP-060 y los sin comprobante (RT_INTERNO) van directo de
+PROC-REP-050 a PROC-REP-065; no pueden expresarse en un unico `steps[]`.
+No se fusiono el desenlace SIN_REPARACION (CAND-REP-010/017): sigue fuera
+de MVP v2 (ver mas abajo).
+
+**Por que Recursos insuficientes son 2 Scenarios (EXC-REP-001/002) y no
+uno.** Mismo motivo estructural: `PROC-REP-110` bifurca en dos edges
+reales distintos (`No` -> espera/PENDIENTE_RECURSOS, `Si` -> override
+BR-REP-003), cada uno con su propio `steps[]` y `expected`. El schema no
+admite dos recorridos alternativos dentro de un mismo Scenario, y forzar
+uno solo habria ocultado que la resolucion por override es una decision
+de autorizacion (BR-REP-003), no un detalle menor de redaccion. No se
+crea ninguna Business Rule nueva de autorizacion: EXC-REP-002 cita
+BR-REP-002 y BR-REP-003, ya existentes.
+
+**Mecanica multi-Detalle (CAND-REP-028/029/030): NO son Scenarios.**
+Siguen `MECHANISM_ONLY` (ver
+`generated/scenarios/repair-management-candidate-analysis-v1.3.yaml`):
+que una Orden tenga 1..N Detalles y que, al terminar uno, el tecnico
+pueda continuar con la misma toma o liberar la Orden, es comportamiento
+normal del proceso (BR-REP-018), no una desviacion que necesite su
+propio Scenario. `scripts/test-scenarios.ts` verifica explicitamente que
+ningun Scenario real declare esos edges como propios.
+
+**Explicitamente diferido de MVP v2 (`OUT_OF_SCOPE`):**
+
+- **`RT_GARANTIA_VENTA`**: no se formaliza ningun Scenario. Informacion
+  funcional nueva indica que necesita un modelo de dominio distinto - una
+  entidad generica `OrdenRevision` con `tipo_revision = GARANTIA`, cuya
+  revision resuelve en `REPARACION` / `CAMBIO_DIRECTO` /
+  `NO_APLICA_GARANTIA`, y solo algunas resoluciones derivan en una
+  `OrdenReparacion` - todavia no suficientemente diseñado. El Process
+  Graph V1.3 NO se modifica para anticipar ese modelo en esta iteracion;
+  `RT_GARANTIA_VENTA` permanece como se documenta en `FG-REP-002` del
+  candidate analysis (candidate a Variant de HP-REP-001, sujeto a
+  revision humana), sin decidir todavia si sera una Variant o un Happy
+  Path propio.
+- **`SIN_REPARACION` tras un ingreso `EN_REVISION`** (CAND-REP-010/017):
+  pendiente la decision de negocio sobre aviso/documentacion/cierre
+  adicional (ver Pendientes especificos de V1.3).
+- **Cancelacion** (CAND-REP-020/021/033, grupo `FG-REP-005`): BR-REP-014
+  todavia no define quien esta autorizado a cancelar un Detalle o una
+  Orden; sin esa definicion no se redacta el Scenario real.
+
+**SOURCE_MODEL_CONFLICT durante esta formalizacion: ninguno.** Los 8
+Scenarios de MVP v2 se representan integramente con el Process Graph
+V1.3 existente, sin modificar nodos ni edges.
 
 ## Pendientes especificos de V1.3
 

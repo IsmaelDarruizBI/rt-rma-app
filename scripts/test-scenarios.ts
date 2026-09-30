@@ -486,7 +486,7 @@ check("skipped_nodes: duplicado", () => {
   expectError(s, "node duplicado");
 });
 
-console.log("\nArquitectura preparada para Variants (sin instanciar ninguna real)\n");
+console.log("\nArquitectura de Variant/Exception (forma generica, con datos sinteticos)\n");
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validateSchema = ajv.compile(JSON.parse(readFileSync(SCHEMA_FILE, "utf8")));
@@ -550,12 +550,124 @@ check("Variant: referencias rotas se detectan (feature, trigger, applies_to, dep
   }
 });
 
-check("no hay Variants reales todavia (sin explosion combinatoria)", () => {
-  assert.deepEqual(
-    scenariosModel.scenarios.filter((s) => s.type !== "HAPPY_PATH").map((s) => s.id),
-    []
+console.log("\nMVP v2 - Scenarios reales (VARIANT/EXCEPTION), confirmados desde el discovery\n");
+
+const MVP_V2_VARIANT_IDS = ["VAR-REP-001", "VAR-REP-002", "VAR-REP-003"];
+const MVP_V2_EXCEPTION_IDS = [
+  "EXC-REP-001",
+  "EXC-REP-002",
+  "EXC-REP-003",
+  "EXC-REP-004",
+  "EXC-REP-005",
+];
+const MVP_V2_HAPPY_PATH_IDS = ["HP-REP-001", "HP-REP-002", "HP-REP-003"];
+
+check("el scope de MVP v2 es exactamente 3 HAPPY_PATH + 3 VARIANT + 5 EXCEPTION, sin EDGE_CASE", () => {
+  const byType = (type: Scenario["type"]): string[] =>
+    scenariosModel.scenarios.filter((s) => s.type === type).map((s) => s.id).sort();
+  assert.deepEqual(byType("HAPPY_PATH"), [...MVP_V2_HAPPY_PATH_IDS].sort());
+  assert.deepEqual(byType("VARIANT"), [...MVP_V2_VARIANT_IDS].sort());
+  assert.deepEqual(byType("EXCEPTION"), [...MVP_V2_EXCEPTION_IDS].sort());
+  assert.deepEqual(byType("EDGE_CASE"), []);
+  assert.equal(scenariosModel.scenarios.length, 11);
+});
+
+check("todos los IDs de Scenario son unicos", () => {
+  assert.deepEqual(findDuplicateIds(scenariosModel.scenarios), []);
+});
+
+for (const id of [...MVP_V2_VARIANT_IDS, ...MVP_V2_EXCEPTION_IDS]) {
+  check(`${id}: valida sin errores, applies_to solo referencia Happy Paths reales`, () => {
+    const scenario = real(id);
+    assert.deepEqual(errorsOf(scenario), []);
+    assert.ok((scenario.applies_to ?? []).length > 0, `${id} debe declarar applies_to`);
+    for (const target of scenario.applies_to ?? []) {
+      assert.ok(MVP_V2_HAPPY_PATH_IDS.includes(target), `${id}: applies_to "${target}" no es uno de los 3 Happy Paths de MVP v2`);
+    }
+  });
+
+  check(`${id}: nodos/edges de steps[] y trigger existen en el Process Graph real`, () => {
+    const scenario = real(id);
+    assert.ok((scenario.steps ?? []).length > 0, `${id} debe declarar steps[]`);
+    const nodeIds = new Set(processModel.nodes.map((node) => node.id));
+    for (const step of scenario.steps ?? []) {
+      if (isProcessEdgeStep(step)) {
+        assert.ok(nodeIds.has(step.from), `${id}: from inexistente ${step.from}`);
+        assert.ok(nodeIds.has(step.to), `${id}: to inexistente ${step.to}`);
+      }
+    }
+    assert.ok(scenario.trigger, `${id} debe declarar trigger`);
+    assert.ok(nodeIds.has(scenario.trigger!.node), `${id}: trigger.node inexistente`);
+  });
+
+  check(`${id}: rules[] y feature declarados existen`, () => {
+    const scenario = real(id);
+    const ruleIds = new Set(rulesModel.rules.map((rule) => rule.id));
+    for (const ruleId of scenario.rules ?? []) assert.ok(ruleIds.has(ruleId), `${id}: BR inexistente ${ruleId}`);
+    if (scenario.feature) assert.ok(featureIds.has(scenario.feature), `${id}: Feature inexistente ${scenario.feature}`);
+  });
+}
+
+check("tipo correcto: los 3 VARIANT son type=VARIANT, las 5 EXCEPTION son type=EXCEPTION", () => {
+  for (const id of MVP_V2_VARIANT_IDS) assert.equal(real(id).type, "VARIANT", id);
+  for (const id of MVP_V2_EXCEPTION_IDS) assert.equal(real(id).type, "EXCEPTION", id);
+});
+
+check("VAR-REP-001/002 son la misma trayectoria de negocio (EN_REVISION al ingreso) con y sin comprobante", () => {
+  assert.equal(real("VAR-REP-001").trigger?.node, "PROC-REP-045");
+  assert.equal(real("VAR-REP-002").trigger?.node, "PROC-REP-045");
+  assert.ok(traversedNodes(real("VAR-REP-001")).has("PROC-REP-060"), "con comprobante pasa por 060");
+  assert.ok(!traversedNodes(real("VAR-REP-002")).has("PROC-REP-060"), "sin comprobante (RT_INTERNO) no pasa por 060");
+  assert.deepEqual(real("VAR-REP-001").applies_to, ["HP-REP-001", "HP-REP-003"]);
+  assert.deepEqual(real("VAR-REP-002").applies_to, ["HP-REP-002"]);
+});
+
+check("SIN_REPARACION tras EN_REVISION (CAND-REP-010/017) NO esta en el scope de MVP v2", () => {
+  for (const id of [...MVP_V2_VARIANT_IDS, ...MVP_V2_EXCEPTION_IDS]) {
+    assert.ok(!traversedNodes(real(id)).has("PROC-REP-069"), `${id} no deberia llegar a PROC-REP-069 (SIN_REPARACION)`);
+  }
+});
+
+check("Recursos insuficientes es DELIBERADAMENTE 2 Scenarios (espera vs. override), no fusionados", () => {
+  const wait = real("EXC-REP-001");
+  const override = real("EXC-REP-002");
+  assert.deepEqual(wait.trigger, override.trigger, "comparten el mismo punto de divergencia (090)");
+  assert.notDeepEqual(
+    (wait.steps ?? []).map((s) => JSON.stringify(s)),
+    (override.steps ?? []).map((s) => JSON.stringify(s)),
+    "pero sus steps[] literales son distintos: el schema no permite dos recorridos en un solo steps[]"
   );
-  assert.equal(scenariosModel.scenarios.filter((s) => s.type === "HAPPY_PATH").length, 3);
+  assert.equal(override.rules?.includes("BR-REP-003"), true, "el override cita BR-REP-003 (ya existente, sin regla nueva)");
+});
+
+check("mecanica multi-Detalle (CAND-REP-028/029/030) sigue sin convertirse en Scenario real", () => {
+  const mechanismEdges = new Set([
+    "PROC-REP-211::Existe Detalle trabajable, sin toma activa::PROC-REP-170",
+    "PROC-REP-211::Existe Detalle trabajable, toma activa::PROC-REP-212",
+    "PROC-REP-212::Si::PROC-REP-181",
+    "PROC-REP-212::No::PROC-REP-213",
+  ]);
+  for (const scenario of scenariosModel.scenarios) {
+    for (const step of scenario.steps ?? []) {
+      if (!isProcessEdgeStep(step)) continue;
+      const key = `${step.from}::${step.condition ?? ""}::${step.to}`;
+      assert.ok(!mechanismEdges.has(key), `${scenario.id} no deberia declarar el mecanismo ${key} como Scenario propio`);
+    }
+  }
+});
+
+check("RT_GARANTIA_VENTA sigue OUT_OF_SCOPE de MVP v2: ningun Scenario lo menciona", () => {
+  for (const scenario of scenariosModel.scenarios) {
+    const text = JSON.stringify(scenario);
+    assert.ok(!text.includes("RT_GARANTIA_VENTA"), `${scenario.id} no deberia mencionar RT_GARANTIA_VENTA`);
+  }
+});
+
+check("los 3 Happy Paths de MVP v2 no fueron alterados por los nuevos Scenarios", () => {
+  for (const id of MVP_V2_HAPPY_PATH_IDS) assert.deepEqual(errorsOf(real(id)), []);
+  assert.deepEqual(orderOf(real("HP-REP-001")).slice(0, 2), ["EVT-REP-001", "PROC-REP-010"]);
+  assert.deepEqual(orderOf(real("HP-REP-002")).slice(0, 2), ["EVT-REP-001", "PROC-REP-010"]);
+  assert.deepEqual(orderOf(real("HP-REP-003")).slice(0, 2), ["EVT-REP-002", "PROC-REP-035"]);
 });
 
 console.log("");
