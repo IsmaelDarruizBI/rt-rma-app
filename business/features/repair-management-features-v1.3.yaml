@@ -269,7 +269,9 @@ features:
           sea trabajable por recursos
         - Revalidar factibilidad ante un evento de cambio de
           disponibilidad
-        - Permitir un override autorizado sobre un Detalle especifico
+        - Permitir un override autorizado sobre un Detalle especifico (que
+          habilita continuar con disponibilidad insuficiente y el posterior
+          uso del insumo aun con stock negativo, BR-REP-003)
         - Registrar usuario, fecha, Detalle, motivo y validacion ignorada
           del override
         - Habilitar la Orden cuando exista al menos un Detalle trabajable

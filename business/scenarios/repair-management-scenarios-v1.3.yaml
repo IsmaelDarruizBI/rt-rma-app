@@ -1245,8 +1245,16 @@ scenarios:
       igualmente como trabajable el Detalle bloqueado (PROC-REP-110 = Si,
       BR-REP-003): el override se registra sobre ese Detalle especifico
       (PROC-REP-130) y la Orden continua el flujo normal hacia
-      PROC-REP-140, igual que si el recurso hubiera estado disponible.
-      Origen: analisis estructural CAND-REP-019, confirmado como Scenario
+      PROC-REP-140. La falta de stock es conocida durante la factibilidad
+      y Coordinacion la acepta conscientemente: el Detalle overrideado
+      queda habilitado para continuar y, como consecuencia posterior de
+      esa autorizacion (BR-REP-003), su reserva real (PROC-REP-185) puede
+      exceder el stock disponible y su consumo (PROC-REP-210) puede dejar
+      el stock fisico negativo. PROC-REP-130 solo registra la
+      autorizacion: no reserva ni consume, y 185/210 no forman parte de la
+      trayectoria de esta excepcion. A diferencia de EXC-REP-003 (falta no
+      autorizada detectada recien al reservar), aqui la falta es conocida y
+      autorizada. Origen: analisis estructural CAND-REP-019, confirmado como Scenario
       real en generated/scenarios/repair-management-candidate-analysis-v1.3.yaml.
 
     trigger:
@@ -1295,8 +1303,14 @@ scenarios:
         to: PROC-REP-140
 
     expected:
+      - key: override_scope
+        label: Alcance de la autorizacion
+        value: DETALLE_ESPECIFICO
       - key: detail_workable_after_override
         label: Detalle trabajable tras el override
+        value: true
+      - key: later_reservation_may_exceed_stock
+        label: La reserva/consumo posterior del Detalle puede dejar stock negativo
         value: true
       - key: order_continues_normal_flow
         label: La Orden continua el flujo normal (PROC-REP-140)

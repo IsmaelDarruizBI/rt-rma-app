@@ -39,6 +39,19 @@ rules:
       fecha, el Detalle especifico, la validacion ignorada y el motivo.
       El override se aplica puntualmente sobre ese Detalle, no sobre la
       Orden en abstracto.
+      Override de factibilidad por falta de recursos (decision de negocio
+      confirmada): autoriza que ESE Detalle continue aunque la
+      disponibilidad sea insuficiente. La autorizacion tiene como
+      consecuencia posterior que la reserva real de sus insumos
+      (PROC-REP-185, BR-REP-006) pueda exceder el stock disponible, y que
+      el consumo efectivo (PROC-REP-210, BR-REP-005) pueda dejar el stock
+      fisico negativo. La autorizacion: aplica unicamente al Detalle
+      overrideado y no se extiende a otros Detalles de la Orden; no
+      reserva ni consume nada por si misma (PROC-REP-130 solo registra la
+      autorizacion; reservar es PROC-REP-185 y consumir es PROC-REP-210); y
+      habilita el comportamiento posterior de reserva/consumo de ese
+      Detalle. Sin override, una falta de stock detectada al reservar
+      sigue siendo una reserva fallida (BR-REP-006).
     status: draft
 
   - id: BR-REP-004
@@ -73,7 +86,9 @@ rules:
       Ejecucion NO se inicia, el Detalle permanece PENDIENTE con
       condicion BLOQUEADO_POR_RECURSOS, y el estado de la Orden se
       recalcula. Reemplaza a la version V1.2, que reservaba una unica vez
-      "al tomar la Orden".
+      "al tomar la Orden". Excepcion: si el Detalle tiene un override de
+      recursos autorizado (BR-REP-003), la reserva puede exceder el stock
+      disponible y no cuenta como falla por falta de stock.
     status: draft
 
   - id: BR-REP-007
