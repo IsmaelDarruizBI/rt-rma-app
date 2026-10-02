@@ -119,6 +119,7 @@ flowchart TD
     PROC-REP-190 --> PROC-REP-200
     PROC-REP-200 -->|Completado| PROC-REP-210
     PROC-REP-200 -->|Interrumpido| PROC-REP-210
+    PROC-REP-200 -->|Requiere redefinicion| PROC-REP-210
     PROC-REP-210 --> PROC-REP-211
     PROC-REP-211 -->|Existe Detalle trabajable, toma activa| PROC-REP-212
     PROC-REP-211 -->|Existe Detalle trabajable, sin toma activa| PROC-REP-170
