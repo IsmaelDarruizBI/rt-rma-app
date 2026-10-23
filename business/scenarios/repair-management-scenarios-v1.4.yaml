@@ -317,7 +317,12 @@ scenarios:
 
       - kind: PROCESS_EDGE
         from: PROC-REP-180
+        to: PROC-REP-212
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-212
         to: PROC-REP-181
+        condition: Si
 
       - kind: PROCESS_EDGE
         from: PROC-REP-181
@@ -627,7 +632,12 @@ scenarios:
 
       - kind: PROCESS_EDGE
         from: PROC-REP-180
+        to: PROC-REP-212
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-212
         to: PROC-REP-181
+        condition: Si
 
       - kind: PROCESS_EDGE
         from: PROC-REP-181
@@ -954,7 +964,12 @@ scenarios:
 
       - kind: PROCESS_EDGE
         from: PROC-REP-180
+        to: PROC-REP-212
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-212
         to: PROC-REP-181
+        condition: Si
 
       - kind: PROCESS_EDGE
         from: PROC-REP-181
@@ -5956,4 +5971,133 @@ scenarios:
         value: false
       - key: reception_receipt_regenerated
         label: Comprobante de recepcion regenerado
+        value: false
+
+  - id: VAR-REP-037
+    name: Otro tecnico libera una Orden tomada con una Ejecucion en curso
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-004
+
+    applies_to:
+      - HP-REP-001
+      - HP-REP-002
+      - HP-REP-003
+
+    description: >
+      Consolidacion V1.4 (DC04, decision del 23/10/2026 y UAT, iteracion 1). El
+      tecnico TEC-A tiene la Orden tomada y una Ejecucion en curso sobre DET-001,
+      pero no puede continuarla. Otro tecnico, TEC-B (o Coordinacion), libera la
+      Orden: el sistema advierte que la Orden esta tomada por TEC-A, pide
+      confirmacion explicita y motivo obligatorio. Como hay una Ejecucion en
+      curso, primero se interrumpe con la logica existente (PROC-REP-200,
+      resultado Interrumpido; PROC-REP-210 consume lo utilizado y libera lo
+      reservado sin usar) y DET-001 vuelve a DEFINIDO con su definicion vigente.
+      El resolver encuentra un Detalle trabajable con la toma todavia activa
+      (PROC-REP-211 -> 212) y la decision es liberar (PROC-REP-212 = No ->
+      PROC-REP-213): se cierra la toma de TEC-A, queda auditada la liberacion
+      (titular, quien libera, fecha/hora, estacion, motivo y estado de la Orden
+      y de sus Detalles) y la Orden vuelve a la cola. No quedan Ejecuciones
+      activas ni reservas inconsistentes y se conserva la trazabilidad de la
+      toma original. El permiso es de Tecnico y Coordinacion por defecto,
+      configurable desde Administracion (BR-REP-039). Es la unica variante que
+      declara 211 -> 212 -> 213: la mecanica generica de continuar o liberar
+      sigue sin ser un Scenario propio.
+
+    trigger:
+      node: PROC-REP-213
+      edge:
+        from: PROC-REP-212
+        to: PROC-REP-213
+        condition: "No"
+      condition: Liberacion de una Orden tomada por otro tecnico
+
+    affected_nodes:
+      - PROC-REP-190
+      - PROC-REP-200
+      - PROC-REP-210
+      - PROC-REP-211
+      - PROC-REP-212
+      - PROC-REP-213
+      - PROC-REP-170
+
+    rules:
+      - BR-REP-018
+      - BR-REP-039
+      - BR-REP-004
+      - BR-REP-005
+      - BR-REP-007
+
+    facts:
+      - key: order_taken_by_other_technician
+        label: La Orden esta tomada por otro tecnico (TEC-A)
+        value: true
+      - key: released_by
+        label: Quien libera
+        value: TEC-B
+      - key: active_execution_at_release
+        label: Hay una Ejecucion en curso al liberar
+        value: true
+      - key: warning_confirmed
+        label: Se mostro la advertencia y se confirmo la liberacion
+        value: true
+      - key: release_reason_registered
+        label: Motivo de liberacion registrado
+        value: true
+
+    steps:
+      - kind: PROCESS_EDGE
+        from: PROC-REP-190
+        to: PROC-REP-200
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-200
+        to: PROC-REP-210
+        condition: Interrumpido
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-210
+        to: PROC-REP-211
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-211
+        to: PROC-REP-212
+        condition: Existe Detalle trabajable, toma activa
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-212
+        to: PROC-REP-213
+        condition: "No"
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-213
+        to: PROC-REP-170
+
+    expected:
+      - key: execution_interrupted_before_release
+        label: La Ejecucion en curso se interrumpe antes de liberar
+        value: true
+      - key: used_supplies_consumed_and_unused_released
+        label: Lo utilizado se consume y lo reservado sin usar se libera
+        value: true
+      - key: detail_state_after_release
+        label: Estado de DET-001 despues de liberar
+        value: DEFINIDO
+      - key: original_take_closed_and_preserved
+        label: La toma de TEC-A se cierra y se conserva en el historial
+        value: true
+      - key: release_audited
+        label: Liberacion auditada (titular, quien libera, fecha/hora, estacion, motivo y estado)
+        value: true
+      - key: order_back_in_queue
+        label: La Orden vuelve a la cola
+        value: true
+      - key: simultaneous_takes
+        label: Quedan dos tomas activas simultaneas
         value: false

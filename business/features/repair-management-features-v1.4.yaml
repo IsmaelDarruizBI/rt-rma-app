@@ -543,7 +543,14 @@ features:
       de la Orden COMPLETA por parte de un tecnico como participacion
       activa propia, distinta de la Ejecucion de un Detalle en
       particular. Reemplaza a la Feature V1.2 basada parcialmente en los
-      modos EXCLUSIVA/ABIERTA: esos modos no existen en V1.3.
+      modos EXCLUSIVA/ABIERTA: esos modos no existen en V1.3. Consolidacion
+      V1.4: priorizan Coordinacion o Recepcion (DC03) y cambian la prioridad
+      Tecnico, Recepcion y Coordinacion; la Orden puede liberarse antes del
+      primer Detalle (DC04) y una Orden tomada por otro tecnico puede liberarla
+      un Tecnico o Coordinacion con advertencia, motivo y auditoria; la
+      prioridad predeterminada es 4 - Normal y el ingreso inicial de
+      CLIENTE_EXTERNO entra solo a la cola (UAT). Todos esos responsables son
+      predeterminados y configurables (BR-REP-039).
 
     inputs:
       - Orden de Reparacion HABILITADA
@@ -561,6 +568,8 @@ features:
         fecha/hora de fin
       - Orden de vuelta en EN_COLA cuando se libera y sigue trabajable
       - Historial de participaciones conservado
+      - Cambio de prioridad registrado (usuario, fecha/hora y valores anterior y nuevo)
+      - Liberacion de una Orden tomada por otro tecnico auditada (titular, quien libera, motivo y estado)
 
     process_nodes:
       - PROC-REP-150
@@ -573,11 +582,21 @@ features:
     business_rules:
       - BR-REP-011
       - BR-REP-018
+      - BR-REP-034
+      - BR-REP-039
 
     scope:
       includes:
-        - Definir prioridad de ejecucion
+        - Definir prioridad de ejecucion (ACT-COORD o ACT-RECEP, ver
+          PROC-REP-150 actores_alternativos), con 4 - Normal como valor
+          predeterminado
         - Ingresar la Orden a EN_COLA
+        - Ingresar automaticamente a la cola, con prioridad 4 - Normal, la
+          Orden del ingreso inicial simplificado de CLIENTE_EXTERNO (BR-REP-046),
+          sin duplicar entradas
+        - Cambiar la prioridad de una Orden en cola o en reparacion (Tecnico,
+          Recepcion y Coordinacion por defecto), con usuario, fecha/hora y
+          valores anterior y nuevo, sin volver a encolarla (BR-REP-034)
         - Validar sesion activa del tecnico
         - Validar Estacion de Trabajo asociada, configurada y OPERATIVA
         - Validar que exista al menos un Detalle trabajable compatible
@@ -594,7 +613,12 @@ features:
           (BR-REP-037)
         - Preguntar explicitamente si el tecnico desea continuar o
           liberar la Orden cuando corresponda
-        - Liberar la Orden explicitamente y cerrar la participacion
+        - Liberar la Orden explicitamente y cerrar la participacion, tambien
+          antes de iniciar el primer Detalle (PROC-REP-180 -> PROC-REP-212)
+        - Liberar una Orden tomada por otro tecnico (Tecnico o Coordinacion por
+          defecto) con advertencia de quien la tiene, confirmacion, motivo y
+          auditoria, interrumpiendo antes una Ejecucion en curso con la logica
+          existente (BR-REP-018)
         - Conservar el historial completo de participaciones
 
       excludes:
@@ -608,7 +632,12 @@ features:
       - >
         Definir durante etapas posteriores la administracion funcional
         de prioridad, incluyendo el catalogo definitivo de prioridades
-        (pendiente heredado de V1.2, sin cambios en V1.3).
+        (pendiente heredado de V1.2, sin cambios en V1.3). Hoy rigen los
+        niveles 1 a 4 con 4 - Normal como predeterminado.
+      - >
+        Ingreso automatico a la cola: hoy aplica al ingreso inicial
+        simplificado de CLIENTE_EXTERNO (UAT); extenderlo a RT_INTERNO y a la
+        garantia RMA es una decision pendiente.
       - >
         Reporting por tecnico (OR tomadas, trabajadas, liberadas,
         Detalles completados, trabajos pendientes) queda fuera de
@@ -771,7 +800,7 @@ features:
       Validar tecnicamente el resultado de los Detalles de una Orden una
       vez que todos son terminales y existe al menos uno COMPLETO,
       aprobando o rechazando Detalle por Detalle, reabriendo unicamente
-      los rechazados y calculando el puntaje de los aprobados. Actualiza
+      los rechazados y consolidando el puntaje de los aprobados. Actualiza
       la Feature homonima de V1.2: el rechazo ya no se hardcodea a
       EN_COLA, sino que reabre el Detalle y deja que el resolver
       determine la situacion de la Orden.
@@ -784,7 +813,8 @@ features:
       - Detalle(s) rechazado(s) reabiertos, conservando su historial de
         Ejecuciones y del propio rechazo
       - Situacion tecnica de la Orden recalculada mediante el resolver
-      - Puntaje por Detalle aprobado calculado
+      - Puntaje por Detalle aprobado, desde su aprobacion, y puntaje total
+        de la Orden consolidado como suma derivada (DC05)
       - Orden en estado REPARACION_LISTA luego del control aprobado
 
     process_nodes:
@@ -820,7 +850,8 @@ features:
           DEFINIDO), preservando Ejecuciones y controles anteriores
         - Recalcular la situacion de la Orden mediante el resolver
           (PROC-REP-211) en vez de asumir que vuelve a EN_COLA
-        - Calcular el puntaje de cada Detalle aprobado
+        - Asignar el puntaje de cada Detalle aprobado y consolidar el puntaje
+          total de la Orden como suma derivada (PROC-REP-245, DC05)
         - Marcar la Orden REPARACION_LISTA cuando corresponde
 
       excludes:
@@ -998,6 +1029,7 @@ features:
     business_rules:
       - BR-REP-033
       - BR-REP-038
+      - BR-REP-039
 
     scope:
       includes:
@@ -1016,7 +1048,9 @@ features:
         - Incluir garantia de reparacion cuando corresponda
         - Evitar generar garantia cuando el resultado sea SIN_REPARACION
         - Entregar el equipo, una vez superada la validacion de
-          condicion de entrega
+          condicion de entrega (ACT-ADMIN o ACT-RECEP, ver PROC-REP-270
+          actores_alternativos; la condicion comercial no cambia por el
+          actor)
         - Registrar estado ENTREGADA para los flujos correspondientes
         - Informar el resultado a Gestion RT para equipos internos
 
@@ -1193,3 +1227,82 @@ features:
         Consecuencias comerciales/reembolsos de la cancelacion, fuera de
         alcance de V1.3.
       - Reglas futuras adicionales de cancelacion.
+
+  - id: FEAT-REP-011
+    name: Seguridad, roles y permisos
+    kind: TRANSVERSAL
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    purpose: >
+      Feature TRANSVERSAL de la consolidacion V1.4 (DC08, DC27A y DC27B). No
+      posee nodos del proceso: gobierna QUIEN puede ejecutar cada accion y QUE
+      puede consultar cada usuario. Los responsables declarados en el proceso
+      son los predeterminados y Administracion puede modificarlos, delegarlos o
+      restringirlos; un usuario puede tener varios roles y sus permisos
+      efectivos son la union de los de sus roles, siempre sujeta a las
+      restricciones de contexto de cada regla (BR-REP-039).
+
+    inputs:
+      - Usuarios y roles
+      - Responsables predeterminados declarados en el proceso (actor y actores_alternativos)
+
+    outputs:
+      - Permisos efectivos por usuario, accion y contexto
+      - Permisos de consulta de Ordenes, Clientes, fotografias, documentos, pagos y reportes
+      - Cambios de permisos auditados (BR-REP-040)
+
+    process_nodes: []
+
+    governed_nodes:
+      - PROC-REP-046
+      - PROC-REP-075
+      - PROC-REP-127
+      - PROC-REP-128
+      - PROC-REP-130
+      - PROC-REP-150
+      - PROC-REP-179
+      - PROC-REP-183
+      - PROC-REP-213
+      - PROC-REP-267
+      - PROC-REP-270
+      - PROC-REP-271
+      - PROC-REP-300
+      - PROC-REP-305
+      - PROC-REP-306
+
+    business_rules:
+      - BR-REP-039
+
+    scope:
+      includes:
+        - Mantener permisos por accion y contexto, con los responsables del
+          proceso como predeterminados
+        - Asignar varios roles a un usuario y calcular sus permisos como union,
+          sujeta a las restricciones de contexto
+        - Configurar permisos de consulta (Ordenes, Clientes, fotografias,
+          documentos, pagos y reportes)
+        - Distinguir el permiso de cancelacion administrativa, descarte tecnico
+          y desistimiento solicitado por el cliente
+        - Auditar todo cambio de permisos (BR-REP-040)
+      excludes:
+        - Autenticacion y almacenamiento de usuarios, roles y permisos
+          (decision de arquitectura DC27C, fuera de las Features)
+        - Habilitar acciones que una regla de negocio impide, cualquiera sea el
+          permiso
+        - Implementar la configuracion antes de la migracion a PostgreSQL
+
+    open_questions:
+      - >
+        Responsables predeterminados de cada evento de custodia (BR-REP-033):
+        pendiente de decision.
+      - >
+        Permisos iniciales por tipo de Ajuste Comercial (BR-REP-016): pendiente
+        de decision.
+      - >
+        Predeterminados provisionales tomados de la implementacion
+        (inventario, catalogo de equipos, ajuste de garantia, fotografias):
+        a validar con Rosario Tecno.

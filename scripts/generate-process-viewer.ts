@@ -125,6 +125,7 @@ interface ResolvedNode {
   name: string;
   description?: string;
   actor?: ResolvedActor;
+  actoresAlternativos?: ResolvedActor[];
   inputs?: string[];
   outputs?: string[];
   rules?: ResolvedRule[];
@@ -161,6 +162,7 @@ function resolveNode(
     name: node.name,
     description: node.description,
     actor: node.actor ? resolveActor(node.actor, actorsById) : undefined,
+    actoresAlternativos: node.actores_alternativos?.map((actorId) => resolveActor(actorId, actorsById)),
     inputs: node.inputs,
     outputs: node.outputs,
     rules: node.rules ? resolveRules(node.rules, rulesById) : undefined,
@@ -832,6 +834,18 @@ const CLIENT_SCRIPT = `
       '<div class="field-sub">' + escapeHtml(actor.id) + "</div></div>";
   }
 
+  function renderActoresAlternativos(actores) {
+    if (!actores || actores.length === 0) return "";
+    var items = actores.map(function (actor) {
+      if (actor.missing) {
+        return '<div class="warning">Actor no encontrado: ' + escapeHtml(actor.id) + "</div>";
+      }
+      return '<div class="field-value">' + escapeHtml(actor.name) + "</div>" +
+        '<div class="field-sub">' + escapeHtml(actor.id) + "</div>";
+    }).join("");
+    return '<div class="field"><div class="field-label">Tambien autorizado</div>' + items + "</div>";
+  }
+
   function renderRules(rules) {
     if (!rules || rules.length === 0) return "";
     var cards = rules.map(function (rule) {
@@ -1166,6 +1180,7 @@ const CLIENT_SCRIPT = `
       '<div class="field"><div class="field-label">ID</div><div class="field-value">' + escapeHtml(node.id) + "</div></div>" +
       '<hr class="divider">' +
       renderActor(node.actor) +
+      renderActoresAlternativos(node.actoresAlternativos) +
       (node.description ? '<div class="field"><div class="field-label">Descripcion</div><div class="field-value">' + escapeHtml(node.description) + "</div></div>" : "") +
       '<hr class="divider">' +
       navigation +

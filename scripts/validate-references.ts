@@ -122,6 +122,16 @@ export function validateProcessIntegrity(
     if (node.actor && !actorsById.has(node.actor)) {
       report.errors.push(`[process] ${node.id}: actor inexistente "${node.actor}"`);
     }
+    for (const actorId of node.actores_alternativos ?? []) {
+      if (!actorsById.has(actorId)) {
+        report.errors.push(`[process] ${node.id}: actor alternativo inexistente "${actorId}"`);
+      }
+      if (actorId === node.actor) {
+        report.errors.push(
+          `[process] ${node.id}: "${actorId}" ya es el actor principal, no corresponde repetirlo como alternativo`
+        );
+      }
+    }
     for (const ruleId of node.rules ?? []) {
       if (!rulesById.has(ruleId)) {
         report.errors.push(`[process] ${node.id}: business rule inexistente "${ruleId}"`);
@@ -170,6 +180,11 @@ export function validateFeaturesAgainstProcess(
         report.errors.push(`[features] ${feature.id}: process_node inexistente "${nodeId}"`);
       }
     }
+    for (const nodeId of feature.governed_nodes ?? []) {
+      if (!nodeIds.has(nodeId)) {
+        report.errors.push(`[features] ${feature.id}: governed_node inexistente "${nodeId}"`);
+      }
+    }
     for (const ruleId of feature.business_rules) {
       if (!rulesById.has(ruleId)) {
         report.errors.push(`[features] ${feature.id}: business rule inexistente "${ruleId}"`);
@@ -195,8 +210,10 @@ export function validateFeatureRuleNodeConsistency(
   report: Report
 ): void {
   for (const feature of featuresModel.features) {
+    // A TRANSVERSAL Feature owns no node: its rules are backed by the nodes it governs.
+    const backingNodes = feature.kind === "TRANSVERSAL" ? feature.governed_nodes ?? [] : feature.process_nodes;
     for (const ruleId of feature.business_rules) {
-      const backedByNode = feature.process_nodes.some((nodeId) =>
+      const backedByNode = backingNodes.some((nodeId) =>
         (nodesById.get(nodeId)?.rules ?? []).includes(ruleId)
       );
       if (!backedByNode) {

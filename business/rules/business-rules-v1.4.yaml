@@ -68,7 +68,7 @@ rules:
       vigente la definicion tecnica sobre la que fue autorizado. Es valido el
       override cuya autorizacion ocurrio DESPUES del ultimo PROC-REP-127 del
       mismo Detalle; cualquier PROC-REP-127 invalida los overrides anteriores,
-      incluso si Recepcion vuelve a elegir el mismo Tipo de Reparacion (es una
+      incluso si el tecnico vuelve a elegir el mismo Tipo de Reparacion (es una
       nueva confirmacion de la definicion y una nueva factibilidad en
       PROC-REP-080: si hace falta forzar de nuevo, debe existir una nueva
       autorizacion consciente). Alcance (MVP v2): la autorizacion de override
@@ -163,13 +163,22 @@ rules:
   - id: BR-REP-009
     name: Puntaje por Detalle
     description: >
-      El puntaje se calcula por Detalle aprobado, segun la ponderacion
-      configurada de su Tipo de Reparacion, en el momento de su propia
-      aprobacion (no se espera a que el resto de los Detalles de la Orden
-      tambien esten aprobados). El puntaje total de la Orden es la suma
-      de los puntajes de sus Detalles. La distribucion/acreditacion entre
-      distintos tecnicos que participaron de un mismo Detalle sigue
-      pendiente de definicion funcional.
+      Cada Detalle aprobado aporta su puntaje desde el momento de su
+      propia aprobacion durante el control tecnico (PROC-REP-220), segun
+      la ponderacion configurada de su Tipo de Reparacion: no se espera
+      a que el resto de los Detalles de la Orden tambien esten
+      aprobados. El puntaje_total de la Orden es siempre derivable como
+      la suma de los puntajes de sus Detalles aprobados -es un valor
+      calculado, no algo que un paso del proceso "cree" en un momento
+      puntual-. PROC-REP-230 se evalua a nivel Orden una vez finalizado
+      el control de todos los Detalles; PROC-REP-245 no calcula el
+      puntaje de cada Detalle por primera vez: consolida/registra el
+      puntaje total de la Orden recien cuando ese control completo
+      termina satisfactoriamente (todos los Detalles aprobados). La
+      distribucion/acreditacion entre distintos tecnicos que
+      participaron de un mismo Detalle sigue pendiente de definicion
+      funcional. Consolidacion V1.4 (DC05): texto del MVP confirmado; cada
+      Ejecucion conserva su tecnico, base de cualquier reparto futuro.
     status: draft
 
   - id: BR-REP-010
@@ -549,29 +558,47 @@ rules:
   - id: BR-REP-018
     name: Toma y liberacion de Orden (participacion activa)
     description: >
-      Cuando un tecnico toma una Orden de Reparacion (PROC-REP-180), toma
-      la Orden completa, no solo un Detalle: queda registrada una
-      toma/participacion activa (Orden + tecnico + estacion + fecha/hora
-      de inicio). Como maximo puede existir UNA toma/participacion activa
-      por Orden en simultaneo -distinto pero complementario de BR-REP-007
-      (maximo una Ejecucion activa por Orden)-. Mientras la toma este
-      activa, el tecnico puede seleccionar y trabajar distintos Detalles
-      trabajables de la misma Orden sin volver a tomarla (PROC-REP-181 ->
-      ... -> PROC-REP-211 -> PROC-REP-212). Terminado o interrumpido un
-      Detalle, si el resolver determina que sigue existiendo al menos un
-      Detalle trabajable, la decision de continuar trabajando esa Orden o
-      liberarla es una accion explicita del tecnico (PROC-REP-212): no se
+      Una toma activa representa la participacion actual del tecnico
+      sobre la Orden. Se abre completa, no sobre un Detalle (PROC-REP-180:
+      Orden + tecnico + estacion + fecha/hora de inicio). Como maximo
+      puede existir UNA toma/participacion activa por Orden en simultaneo
+      -distinto pero complementario de BR-REP-007 (maximo una Ejecucion
+      activa por Orden)-.
+      Mientras exista una toma activa y NO exista una Ejecucion activa,
+      el tecnico debe decidir si desea iniciar un Detalle de reparacion
+      o liberar la Orden (PROC-REP-212). Esta decision aplica tanto
+      inmediatamente despues de tomar la Orden como despues de finalizar
+      una Ejecucion cuando el resolver determina que todavia existe al
+      menos un Detalle trabajable (PROC-REP-211 -> PROC-REP-212): no se
       libera automaticamente una Orden trabajable solo porque termino un
-      Detalle. Si el tecnico decide liberar (PROC-REP-212 = No ->
+      Detalle.
+      Si el tecnico decide iniciar un Detalle (PROC-REP-212 = Si),
+      continua con la misma toma sin volver a tomarla (PROC-REP-181 ->
+      ... -> PROC-REP-211 -> PROC-REP-212, tantas veces como Detalles
+      trabajables queden). Si decide liberar (PROC-REP-212 = No ->
       PROC-REP-213), o si el resolver determina que ya no queda ningun
       Detalle trabajable (la Orden paso a COMPLETA, PENDIENTE_RECURSOS,
-      REQUIERE_REVISION o TODO_CANCELADO), la participacion activa se
-      cierra -explicitamente o automaticamente segun corresponda-
-      registrando fecha/hora de cierre, y la Orden vuelve a EN_COLA cuando
-      corresponde (si sigue habiendo algun Detalle trabajable disponible
-      para otro tecnico). El historial completo de participaciones
-      (quien tomo, cuando, desde que estacion, cuando la libero) se
-      conserva siempre; nunca se sobrescribe.
+      REQUIERE_REVISION, PENDIENTE_AUTORIZACION o TODO_CANCELADO), la
+      participacion activa se cierra -explicitamente o automaticamente segun
+      corresponda- registrando fecha/hora de cierre, y la Orden vuelve a
+      EN_COLA cuando corresponde (si sigue habiendo algun Detalle trabajable
+      disponible para otro tecnico). El historial completo de
+      participaciones (quien tomo, cuando, desde que estacion, cuando la
+      libero) se conserva siempre; nunca se sobrescribe.
+      Consolidacion V1.4. El texto anterior proviene del MVP (liberar antes del
+      primer Detalle y PROC-REP-180 -> PROC-REP-212), confirmado por DC04;
+      PENDIENTE_AUTORIZACION se agrega a las causas de cierre automatico por
+      coherencia con BR-REP-034 y BR-REP-037. Liberacion de una Orden tomada
+      por otro tecnico (DC04, decision del 23/10/2026 y UAT, iteracion 1):
+      permitida por defecto a Tecnico y Coordinacion, con permiso configurable
+      desde Administracion (BR-REP-039); requiere una advertencia que indique
+      quien tiene la Orden, confirmacion explicita, motivo obligatorio y
+      auditoria (titular, quien libera, fecha/hora, estacion, motivo y estado
+      de la Orden y de sus Detalles), y conserva la trazabilidad de la toma
+      original y de su liberacion. Si hay una Ejecucion en curso, primero se
+      interrumpe con la logica existente (PROC-REP-200 y PROC-REP-210) y luego
+      se libera (PROC-REP-213); no se libera una Orden cerrada o entregada ni
+      se admiten dos tomas simultaneas.
     status: draft
 
   - id: BR-REP-019
@@ -1055,6 +1082,16 @@ rules:
       con trazabilidad (usuario, fecha/hora y valores anterior y nuevo), que
       reutiliza la capacidad de PROC-REP-150 sin crear un nuevo proceso de
       priorizacion; ninguna reevaluacion reenvia la Orden a PROC-REP-150.
+      Consolidacion V1.4: la prioridad inicial la definen Coordinacion o
+      Recepcion (DC03) y cambiarla despues corresponde por defecto a Tecnico,
+      Recepcion y Coordinacion (decision del 23/10/2026), en ambos casos con
+      permiso configurable desde Administracion (BR-REP-039). Toda Orden toma
+      la prioridad 4 - Normal si nadie elige otra, y en el ingreso inicial
+      simplificado de CLIENTE_EXTERNO PROC-REP-150 se registra automaticamente
+      con esa prioridad y la Orden entra a la cola sin una accion adicional de
+      Recepcion (UAT, iteracion 1; BR-REP-046), sin duplicar la entrada a la
+      cola. Extender ese ingreso automatico a RT_INTERNO y a la garantia RMA
+      queda pendiente de decision.
       Toma activa: agregar un Detalle (PROC-REP-128) o volver a evaluar (080 ->
       090 -> 211) no libera la toma activa del tecnico, no sobrescribe su
       historial, no interrumpe la Ejecucion de otro Detalle (BR-REP-007) ni
@@ -1318,4 +1355,50 @@ rules:
       de una cancelacion (por ejemplo penalidades) siguen pendientes. Pendiente:
       plazo o abandono si el cliente no retira el dinero y devoluciones
       posteriores a ENTREGADA.
+    status: draft
+
+  - id: BR-REP-039
+    name: Permisos configurables por accion y contexto
+    description: >
+      Consolidacion V1.4 (DC08, DC27A y DC27B). Cada accion del proceso -un
+      nodo con actor o una capacidad transversal- se habilita mediante un
+      permiso. Los responsables declarados en el proceso (actor y
+      actores_alternativos de cada nodo, y los de cada capacidad transversal)
+      son los responsables PREDETERMINADOS; Administracion puede modificarlos,
+      delegarlos o restringirlos, y todo cambio queda auditado (BR-REP-040).
+      Un permiso es necesario pero no suficiente: se conservan las
+      restricciones de contexto de cada regla (por ejemplo, el titular de la
+      toma, el tecnico de la Ejecucion en curso, el estado de la Orden o su
+      origen) y ningun permiso habilita a saltear una regla de negocio (por
+      ejemplo, entregar con saldo distinto de cero). Un usuario puede tener
+      varios roles: sus permisos efectivos son la union de los permisos de sus
+      roles, siempre sujeta a esas restricciones de contexto (DC27A). Tambien
+      son configurables los permisos de consulta de Ordenes, Clientes,
+      fotografias, documentos, pagos y reportes (DC27B). La cancelacion se
+      distingue en tres tipos con permiso propio (DC08): cancelacion
+      administrativa (predeterminado: Recepcion y Coordinacion, los
+      responsables vigentes), descarte tecnico (Tecnico, PROC-REP-183) y
+      desistimiento solicitado por el cliente, que registra Recepcion
+      (PROC-REP-046/047 y 056). Predeterminados confirmados: definir prioridad
+      (PROC-REP-150) Coordinacion o Recepcion (DC03); cambiar la prioridad
+      Tecnico, Recepcion y Coordinacion; liberar la Orden tomada por otro
+      tecnico Tecnico y Coordinacion; entregar (PROC-REP-270) Administracion o
+      Recepcion (DC03); anular pagos Administracion, delegable (DC10, BR-REP-017);
+      registrar devoluciones de dinero Administracion o Recepcion (DC12C,
+      BR-REP-038); definir y redefinir Detalles el Tecnico y gestionar las
+      autorizaciones del cliente Recepcion (DC06); registrar el check-in
+      Recepcion o Administracion (UAT-009, BR-REP-045); registrar pagos todo
+      usuario activo salvo Tecnico (BR-REP-017); override de recursos y de
+      estacion Coordinacion (BR-REP-003, PROC-REP-179). Predeterminados
+      provisionales, tomados de la implementacion y a validar con Rosario
+      Tecno: consultar el inventario todos los roles operativos; ingresos,
+      ajustes de stock y revalidacion masiva Administracion y Coordinacion
+      (BR-REP-049); sincronizar el catalogo de equipos Administracion y
+      Coordinacion (BR-REP-048); ajustar la garantia de un Detalle Recepcion y
+      Coordinacion (BR-REP-041); cargar fotografias Recepcion, Tecnico,
+      Coordinacion y Administracion (BR-REP-024). Pendientes, sin
+      predeterminado definido: los responsables de cada evento de custodia
+      (BR-REP-033) y los permisos iniciales por tipo de Ajuste Comercial
+      (BR-REP-016). La autenticacion y el almacenamiento de usuarios, roles y
+      permisos son una decision de arquitectura (DC27C), no de esta regla.
     status: draft

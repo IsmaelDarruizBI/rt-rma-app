@@ -52,12 +52,12 @@ flowchart TD
     PROC-REP-200["Registrar ejecucion real del Detalle<br/>[Tecnico]"]
     PROC-REP-210["Generar movimientos de inventario<br/>[Sistema]"]
     PROC-REP-211{"Evaluar situacion de la Orden"}
-    PROC-REP-212{"Tecnico desea continuar trabajando esta Orden"}
+    PROC-REP-212{"¿Iniciar un Detalle de reparacion?"}
     PROC-REP-213["Liberar Orden de Reparacion<br/>[Tecnico]"]
     PROC-REP-220["Realizar control tecnico<br/>[Recepcion]"]
     PROC-REP-230{"Todos los Detalles fueron aprobados"}
     PROC-REP-235["Identificar Detalle(s) a retrabajar<br/>[Recepcion]"]
-    PROC-REP-245["Calcular puntaje de la reparacion<br/>[Sistema]"]
+    PROC-REP-245["Consolidar puntaje de la reparacion<br/>[Sistema]"]
     PROC-REP-240["Marcar reparacion lista<br/>[Sistema]"]
     PROC-REP-250{"Requiere entrega a cliente"}
     PROC-REP-260["Notificar cliente<br/>[Recepcion]"]
@@ -129,7 +129,7 @@ flowchart TD
     PROC-REP-172 -->|Valida y compatible| PROC-REP-180
     PROC-REP-172 -->|Sesion o estacion invalida| PROC-REP-170
     PROC-REP-172 -->|Sin Detalle compatible| PROC-REP-170
-    PROC-REP-180 --> PROC-REP-181
+    PROC-REP-180 --> PROC-REP-212
     PROC-REP-181 --> PROC-REP-182
     PROC-REP-182 -->|No requiere evaluacion tecnica| PROC-REP-174
     PROC-REP-182 -->|Requiere evaluacion tecnica| PROC-REP-183

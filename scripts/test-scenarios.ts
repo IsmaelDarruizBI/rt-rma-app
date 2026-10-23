@@ -619,6 +619,8 @@ const MVP_V2_VARIANT_IDS =
         "VAR-REP-035",
         // iteracion 10: autorizacion parcial en una Orden ya habilitada sin omitir la factibilidad (AUD-V14-003)
         "VAR-REP-036",
+        // consolidacion del 23/10/2026: decisiones confirmadas (ver business/decisions/decision-log-v1.4.yaml)
+        "VAR-REP-037",
       ]
     : ["VAR-REP-001", "VAR-REP-002", "VAR-REP-003"];
 const MVP_V2_EXCEPTION_IDS = [
@@ -637,7 +639,7 @@ check("el scope es exactamente los HAPPY_PATH + VARIANT + 5 EXCEPTION esperados 
   assert.deepEqual(byType("VARIANT"), [...MVP_V2_VARIANT_IDS].sort());
   assert.deepEqual(byType("EXCEPTION"), [...MVP_V2_EXCEPTION_IDS].sort());
   assert.deepEqual(byType("EDGE_CASE"), []);
-  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 44 : 11);
+  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 45 : 11);
 });
 
 check("todos los IDs de Scenario son unicos", () => {
@@ -717,13 +719,18 @@ check("Recursos insuficientes es DELIBERADAMENTE 2 Scenarios (espera vs. overrid
 });
 
 check("mecanica multi-Detalle (CAND-REP-028/029/030) sigue sin convertirse en Scenario real", () => {
+  // PROC-REP-212 ("¿Iniciar un Detalle de reparacion?") es parte del recorrido base de todo Happy Path
+  // en V1.4 (cambio del MVP, DC04): se alcanza desde PROC-REP-180, asi que 212::Si::181 ya no es un
+  // mecanismo exclusivo de Multi-Detalle. Sigue siendo mecanico llegar a 212 DESDE 211 y decidir liberar
+  // (212::No::213); la unica excepcion declarada es VAR-REP-037 (liberacion de una toma ajena, DC04).
   const mechanismEdges = new Set([
     "PROC-REP-211::Existe Detalle trabajable, sin toma activa::PROC-REP-170",
     "PROC-REP-211::Existe Detalle trabajable, toma activa::PROC-REP-212",
-    "PROC-REP-212::Si::PROC-REP-181",
+    ...(V14 ? [] : ["PROC-REP-212::Si::PROC-REP-181"]),
     "PROC-REP-212::No::PROC-REP-213",
   ]);
-  for (const scenario of scenariosModel.scenarios) {
+  const CROSS_RELEASE = V14 ? ["VAR-REP-037"] : [];
+  for (const scenario of scenariosModel.scenarios.filter((s) => !CROSS_RELEASE.includes(s.id))) {
     for (const step of scenario.steps ?? []) {
       if (!isProcessEdgeStep(step)) continue;
       const key = `${step.from}::${step.condition ?? ""}::${step.to}`;
@@ -844,6 +851,7 @@ if (REVISION === "v1.4") {
       "PROC-REP-090::Existe Detalle trabajable::PROC-REP-140",
       "PROC-REP-090::Ninguno trabajable::PROC-REP-100",
       "PROC-REP-127::::PROC-REP-080",
+      "PROC-REP-180::::PROC-REP-181",
       "PROC-REP-181::::PROC-REP-174",
       "PROC-REP-211::Todos cancelados::EVT-REP-999",
       "PROC-REP-265::No::PROC-REP-266",
@@ -906,6 +914,8 @@ if (REVISION === "v1.4") {
         "PROC-REP-270::::PROC-REP-268",
         "PROC-REP-211::Todos cancelados, custodia sin confirmar::PROC-REP-271",
         "PROC-REP-181::::PROC-REP-182",
+        // consolidacion: la toma conduce a la decision de iniciar un Detalle o liberar (cambio del MVP, DC04)
+        "PROC-REP-180::::PROC-REP-212",
         "PROC-REP-182::No requiere evaluacion tecnica::PROC-REP-174",
         "PROC-REP-182::Requiere evaluacion tecnica::PROC-REP-183",
         "PROC-REP-183::CONFIRMADO::PROC-REP-184",
@@ -928,7 +938,11 @@ if (REVISION === "v1.4") {
     // 010, 069, 120, 125, 130, 140, 170 and the rest stay untouched.
     assert.deepEqual(
       changed.sort(),
-      ["PROC-REP-030", "PROC-REP-040", "PROC-REP-045", "PROC-REP-050", "PROC-REP-060", "PROC-REP-070", "PROC-REP-075", "PROC-REP-080", "PROC-REP-090", "PROC-REP-127", "PROC-REP-150", "PROC-REP-172", "PROC-REP-174", "PROC-REP-181", "PROC-REP-185", "PROC-REP-190", "PROC-REP-211", "PROC-REP-265", "PROC-REP-266", "PROC-REP-270", "PROC-REP-280", "PROC-REP-300", "PROC-REP-305"].sort()
+      [
+        "PROC-REP-030", "PROC-REP-040", "PROC-REP-045", "PROC-REP-050", "PROC-REP-060", "PROC-REP-070", "PROC-REP-075", "PROC-REP-080", "PROC-REP-090", "PROC-REP-127", "PROC-REP-150", "PROC-REP-172", "PROC-REP-174", "PROC-REP-181", "PROC-REP-185", "PROC-REP-190", "PROC-REP-211", "PROC-REP-265", "PROC-REP-266", "PROC-REP-270", "PROC-REP-280", "PROC-REP-300", "PROC-REP-305",
+        // consolidacion del 23/10/2026: cambios del MVP y decisiones DC03 a DC05
+        "PROC-REP-180", "PROC-REP-212", "PROC-REP-213", "PROC-REP-245",
+      ].sort()
     );
   });
 
@@ -1093,10 +1107,14 @@ if (REVISION === "v1.4") {
 
   // Reglas de V1.3 que V1.4 cambia, cada una con su motivo: las iteraciones V1.4 (012, 017, 019) y las
   // decisiones de la consolidacion del 23/10/2026 (DCxx). Todas las demas deben seguir identicas a V1.3.
+  // Reglas nuevas de la consolidacion del 23/10/2026, en orden.
+  const CONSOLIDATION_RULES = ["BR-REP-039"];
   const V13_RULES_CHANGED_IN_V14: Record<string, string> = {
     "BR-REP-003": "DC06: el tecnico redefine (PROC-REP-127); redaccion del estado DEFINIDO (DC17)",
+    "BR-REP-009": "DC05: puntaje total derivado, PROC-REP-245 consolida (texto del MVP)",
     "BR-REP-012": "parrafo V1.4 (autorizacion y bloqueos) y estados del Detalle (DC17)",
     "BR-REP-017": "parrafo V1.4 de saldo a favor (BR-REP-038)",
+    "BR-REP-018": "DC04: liberar antes del primer Detalle (texto del MVP) y liberacion de una toma ajena",
     "BR-REP-019": "responsable de PROC-REP-075",
   };
   check(`reglas: BR-REP-001 a 019 identicas a V1.3 salvo las declaradas (${Object.keys(V13_RULES_CHANGED_IN_V14).join(", ")}); +19 nuevas (020 a 038)`, () => {
@@ -1117,7 +1135,9 @@ if (REVISION === "v1.4") {
     const norm = (t: string | undefined): string => (t ?? "").replace(/\s+/g, " ");
     assert.equal(norm(r19?.description).replace("el tecnico define y registra uno o mas Detalles nuevos", "Recepcion define uno o mas Detalles nuevos"), norm(v19?.description));
     assert.deepEqual({ ...r19, description: "" }, { ...v19, description: "" });
-    assert.equal(rulesModel.rules.length, v13Rules.rules.length + 19);
+    // +19 de las iteraciones V1.4 (020 a 038) y las nuevas de la consolidacion desde BR-REP-039
+    assert.equal(rulesModel.rules.length, v13Rules.rules.length + 19 + CONSOLIDATION_RULES.length);
+    assert.deepEqual(rulesModel.rules.slice(v13Rules.rules.length + 19).map((r) => r.id), CONSOLIDATION_RULES);
     const declared = (f: string): string[] => featuresModel.features.find((x) => x.id === f)?.business_rules ?? [];
     for (let n = 20; n <= 26; n++) assert.ok(declared("FEAT-REP-001").includes(`BR-REP-0${n}`), `FEAT-REP-001 declara BR-REP-0${n}`);
     for (const id of ["BR-REP-027", "BR-REP-028", "BR-REP-029", "BR-REP-030", "BR-REP-031", "BR-REP-032", "BR-REP-033"]) assert.ok(declared("FEAT-REP-002").includes(id), `FEAT-REP-002 declara ${id}`);
@@ -1319,7 +1339,7 @@ if (REVISION === "v1.4") {
     for (const v13 of v13Scenarios.scenarios.filter((s) => !changedIds.has(s.id))) {
       assert.deepEqual(strip(real(v13.id)), strip(v13), v13.id);
     }
-    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 33);
+    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 34);
   });
 
   // ---------------------------------------------------------------- iteracion 5
