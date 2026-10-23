@@ -917,8 +917,8 @@ HP-REP-003: OR origen finalizada -> iniciar garantia (1..N Detalles origen)
   origen y a los 1..N Detalles origen seleccionados (una unica Orden por
   inicio, no una por Detalle). **Revision obligatoria (MVP v2)**: la Orden
   nueva nace sin Detalles y EN_REVISION (`PROC-REP-045` = No -> 055 -> 050
-  -> 060), el tecnico la revisa (065) y Recepcion define los Detalles de
-  garantia (068 Si -> 075), cada uno vinculado a uno de los Detalles
+  -> 060), el tecnico la revisa (065) y define y registra los Detalles de
+  garantia (068 Si -> 075, ACT-TECH desde la iteracion 8), cada uno vinculado a uno de los Detalles
   origen sin relacion 1:1; si la revision no permite definir reparacion,
   concluye SIN_REPARACION (068 No -> 069). Ya no existe el camino que
   copiaba directamente el Tipo del Detalle origen (045 Si -> 070). La
@@ -1136,6 +1136,880 @@ ningun Scenario real declare esos edges como propios.
 **SOURCE_MODEL_CONFLICT durante esta formalizacion: ninguno.** Los 8
 Scenarios de MVP v2 se representan integramente con el Process Graph
 V1.3 existente, sin modificar nodos ni edges.
+
+## V1.4 (draft) - Ingreso de CLIENTE_EXTERNO, decision del cliente por Detalle y desistimiento
+
+V1.4 evoluciona V1.3 con decisiones confirmadas con Recepcion. Es
+documentacion funcional: no hay backend, frontend, scraping ni base de
+datos. Sigue en draft (no existe V1.5). Archivos (V1.2 y V1.3 intactos):
+`business/processes/repair-management-v1.4.yaml`,
+`business/rules/business-rules-v1.4.yaml`,
+`business/features/repair-management-features-v1.4.yaml` y
+`business/scenarios/repair-management-scenarios-v1.4.yaml`. Comandos:
+`validate:process:v1.4`, `validate:features:v1.4`,
+`validate:references:v1.4`, `validate:scenarios:v1.4`,
+`test:feature-scenario-mapping:v1.4`, `test:scenarios:v1.4`,
+`validate:v1.4`, `generate:mermaid:v1.4`, `generate:viewer:v1.4`,
+`generate:v1.4` y `discover:scenarios:v1.4` (generacion, no validacion).
+Son los mismos scripts que V1.3, parametrizados por ruta; los dos tests
+reciben la revision como argumento (default v1.3).
+
+**Principio.** La unidad de definicion, autorizacion, ejecucion y
+cancelacion de trabajos es ReparacionDetail. Se distinguen tres cosas que
+no se mezclan: (1) el estado operativo del Detalle, (2) la decision del
+cliente sobre su definicion vigente y (3) el estado agregado de la Orden,
+que sigue derivandose con el resolver (BR-REP-012). Excepcion preservada: la
+Orden con cero Detalles (BR-REP-013) no usa el resolver y se cancela con la
+transicion explicita de PROC-REP-306.
+
+### Frontera FEAT-REP-001 / FEAT-REP-002 / FEAT-REP-009
+
+```text
+FEAT-REP-001  010 -> 030 -> 040 -> 032 -------------------------------> 045
+              (captura de informacion y creacion de la Orden; termina en 032)
+
+FEAT-REP-002  045 -> 070 | 055 -> 046 -> 047 -> 050 -> 060 -> ...  (definicion,
+              decision del cliente por Detalle, comprobante de recepcion)
+
+FEAT-REP-009  047 -> 300 | 305 | 306   (ejecuta las cancelaciones)
+```
+
+- **FEAT-REP-001** captura informacion y crea la Orden. Ya NO define
+  Detalles, autoriza trabajos, decide desistimientos, genera el comprobante
+  ni ejecuta cancelaciones (las aristas y nodos se movieron: 033 desaparece,
+  050/060 pasan a FEAT-REP-002).
+  - `PROC-REP-030`: Cliente (DNI/telefono, consulta opcional a cuitonline.com
+    por DNI -scraping, no Renaper-, datos editables, carga manual) y Equipo
+    (IMEI, historial, medio alternativo si no hay IMEI); BR-REP-020 a 022.
+  - `PROC-REP-040` (compartido): crea la Orden (REQUERIMIENTO, cero
+    Detalles, BR-REP-013) y bifurca por origen igual que 010.
+  - `PROC-REP-032`: sobre la Orden ya creada registra diagnostico inicial y
+    observaciones (texto libre), checklist y fotografias opcionales (camara
+    del celular o galeria en web movil), guardable y recuperable sin cambiar
+    el estado de la Orden (BR-REP-023/024). Al intentar avanzar evalua la
+    advertencia NO bloqueante por fotografias/observaciones faltantes, con
+    "volver a completar" (se queda en 032) o "continuar igualmente"
+    (confirmacion registrada); sin advertencia por checklist ni diagnostico
+    inicial (BR-REP-025).
+  - Diagnostico inicial (problemas: "no carga") NO es reparacion diagnosticada
+    (trabajo: "cambio de bateria", ReparacionDetail de FEAT-REP-002).
+    La estandarizacion futura del diagnostico complementa al texto libre; no
+    hay entidad DiagnosticoInicial.
+- **FEAT-REP-002** define los Detalles (045/070/075 sin rediseño; el origen del
+  diagnostico queda RECEPCION en 070 y REVISION_TECNICA en 075, BR-REP-026;
+  desde la iteracion 8 Recepcion define en 070 y el tecnico en 075),
+  registra la decision del cliente (046/047) y emite el comprobante (050/060).
+- **FEAT-REP-009** ejecuta las cancelaciones reutilizando 300, 305 y 306.
+
+### Modelo funcional de la decision del cliente por Detalle
+
+Un solo par de nodos reutilizado desde cuatro puntos, solo para
+CLIENTE_EXTERNO (los demas origenes conservan su arista anterior mediante la
+condicion "Origen distinto de CLIENTE_EXTERNO"):
+
+| Punto de entrada | Contexto | Si acepta |
+|---|---|---|
+| `070 -> 046` | Detalles conocidos al ingreso | `047 -> 211 -> 050` (comprobante) |
+| ~~`055 -> 046`~~ | (iteracion 10) sin Detalles ya NO se consulta por Detalle: `055 -> 056` | `056 -> 050` (continua con la revision) o `056 -> 306` (desiste) |
+| `075 -> 046` | Detalles hallados en la revision | `047 -> 211 -> 080` |
+| `127 -> 046` | Detalle redefinido | `047 -> 211 -> 080` |
+
+- `PROC-REP-046` (ACT-RECEP) registra, por Detalle Y definicion vigente, si el
+  cliente autoriza o rechaza; fecha/hora, usuario, alcance, resultado y
+  evidencia de consentimiento (el canal -firma, WhatsApp, presencial- NO se
+  define). `PROC-REP-047` (decision) enruta el resultado comercial en tres
+  decisiones (ver "Decision del cliente simplificada", iteracion 10).
+- La autorizacion es una dimension PROPIA (pendiente de decision / autorizado /
+  rechazado), no un estado del ciclo operativo del Detalle ni de la Orden; un
+  rechazo se ejecuta cancelando el Detalle. En CLIENTE_EXTERNO, para
+  es_trabajable (BR-REP-012) un Detalle requiere ademas autorizacion vigente
+  (BR-REP-028), sin tocar la prioridad del resolver.
+- El cliente no esta obligado a aceptar todos los Detalles. Aceptar la
+  revision tecnica sin trabajos NO autoriza reparaciones posteriores.
+- Revalidacion (BR-REP-029): un Detalle nuevo o redefinido requiere decision
+  nueva; uno que no cambia conserva la suya. Toda 127 genera una nueva
+  definicion y requiere decision nueva (coherente con BR-REP-003/015).
+
+### Desistimiento
+
+- **Individual** (`047 -> 300` "Rechaza algunos Detalles"): cancela solo ese
+  Detalle, conserva los demas y recalcula con el resolver.
+- **Todo** (`047 -> 305` "Rechaza todos los trabajos"): es una
+  opcion de UI/UX, no un estado ni una entidad; aplica a cada Detalle las
+  reglas de la cancelacion individual, no cancela los COMPLETO, respeta
+  ejecuciones activas y conciliacion de insumos, y el resolver decide el
+  estado de la Orden.
+- **Sin Detalles** (`056 -> 306`, iteracion 10): transicion explicita a CANCELADA, sin
+  resolver ni Detalles ficticios; la devolucion fisica depende de la
+  custodia (BR-REP-033): `306 -> 270 [Equipo bajo custodia]` solo si el comprobante
+  ya se entrego, y `306 -> fin [Equipo no recibido]` si no (caso de
+  VAR-REP-004). Sin pasar a ENTREGADA. No es SIN_REPARACION (069).
+- **Orden aun sin habilitar:** 211 llevaria a la cola (170) y la Orden nunca
+  paso por 140, por eso 211 tiene salidas precisas por hito, hacia 050
+  ("Antes del comprobante de recepcion") u 080 ("Comprobante emitido,
+  factibilidad pendiente"); ver "Resolver y enrutamiento" mas abajo.
+  BR-REP-014, 069, 300 y 305 conservan sus precondiciones; 300/305 solo ganan
+  un origen mas.
+- Requerimientos funcionales de UI (en PROC-REP-046, sin desarrollar): mostrar
+  Detalles con tipo y estado, cuales estan autorizados / pendientes /
+  rechazados; seleccion individual y "Desistir de todos los trabajos
+  pendientes"; motivo y confirmacion; informar que se mantiene y que se
+  cancela; impedir seleccionar lo no cancelable; conservar el historial.
+
+### Comprobante de recepcion
+
+Pertenece a FEAT-REP-002 (050/060, BR-REP-031). En CLIENTE_EXTERNO se emite
+una sola vez DESPUES de la decision inicial: refleja los trabajos autorizados
+y su definicion vigente, o "pendiente de diagnostico" si no hay Detalles; no
+se emite si el cliente desiste antes de aceptar el ingreso ni se regenera por
+cambios posteriores (075/127). RT_INTERNO, RT_GARANTIA_VENTA y
+RMA_GARANTIA_REPARACION conservan su comportamiento y no reciben la decision
+de cliente externo.
+
+### Escenarios
+
+Distincion: tienen recorrido propio (Scenarios) vs. se resuelven dentro de un
+mismo nodo (casos de prueba).
+
+| # | Caso pedido | Cobertura |
+|---|---|---|
+| 1 | Cliente acepta todos los Detalles iniciales | HP-REP-001 |
+| 2 | Rechaza uno y acepta los demas | VAR-REP-005 |
+| 3 | Desiste de todos antes de ejecutar | VAR-REP-006 |
+| 4 | Sin Detalles, acepta revision y acepta lo diagnosticado | VAR-REP-001 |
+| 5 | Sin Detalles, acepta revision y luego desiste | VAR-REP-007 |
+| 6 | Nuevo Detalle descubierto y aceptado | VAR-REP-001 (tras la revision, 075) y VAR-REP-010 (agregado por el tecnico, 128) |
+| 7 | Nuevo Detalle descubierto y rechazado | VAR-REP-007 (075) y VAR-REP-011 (128) |
+| 8 | Se modifica un Detalle y se requiere nueva autorizacion | VAR-REP-008 |
+| 9 | Se rechaza un Detalle nuevo conservando uno completado | VAR-REP-009 |
+| 10 | OR sin Detalles cancelada por desistimiento | VAR-REP-004 |
+| 11 | Comprobante despues de la aceptacion inicial | HP-REP-001 / VAR-REP-001 (orden verificado por test) |
+| 12 | Otros origenes preservados | HP-REP-002/003 + tests de regresion |
+
+Casos dentro de un mismo nodo (sin Scenario propio): creacion de la OR con
+cero Detalles; cliente nuevo/existente (DNI, telefono); equipo nuevo/existente
+(IMEI) o sin IMEI; consulta externa exitosa, fallida o sin resultados;
+diagnostico y observaciones completos o vacios; fotografias (camara/galeria)
+presentes o ausentes; checklist presente, incompleto o ausente; guardado
+parcial y recuperacion; advertencia por faltante de fotografias, observaciones
+o ambas, volver a completar o continuar igualmente con confirmacion.
+HP-REP-002/003, VAR-REP-002 y EXC-REP-004 solo explicitan la condicion de
+origen; EXC-REP-004 queda acotado a los origenes sin decision de cliente (su
+contraparte de CLIENTE_EXTERNO es VAR-REP-008).
+
+### Autorizacion por Detalle, altas del tecnico, resolver y devolucion (iteracion 4)
+
+**Tres dimensiones independientes** (BR-REP-028): estado operativo del
+Detalle, autorizacion del cliente sobre su definicion vigente y
+factibilidad/recursos. `PENDIENTE_AUTORIZACION` (con `AUTORIZADO` y
+`RECHAZADO`) es una condicion derivada de la autorizacion, NO un estado
+operativo. Un Detalle pendiente de autorizacion no se ejecuta, no se evalua
+su factibilidad, no reserva ni consume insumos y no es candidato de estacion,
+pero NO bloquea a los demas Detalles. No hay una autorizacion general de la
+Orden. Un rechazo se ejecuta cancelando el Detalle (FEAT-REP-009).
+
+**Alta de Detalles por el tecnico** (`PROC-REP-128`, ACT-TECH, BR-REP-032,
+BR-REP-037). Entrada `190 -> 128 [Detecta reparacion adicional]` (simplificacion
+del diagrama: puede ocurrir en cualquier momento de la participacion). El Detalle
+nuevo queda con origen REVISION_TECNICA, Tipo y precio snapshot, usuario y
+fecha. En CLIENTE_EXTERNO el alta solo CREA la solicitud de autorizacion
+(Detalle PENDIENTE_AUTORIZACION) y el flujo tecnico vuelve directamente a `190`
+(`128 -> 190`): la resolucion la hace Recepcion despues por su carril
+(`EVT-REP-003 -> 046 -> 047`) y el tecnico no la espera; los demas origenes van
+directo a factibilidad (`128 -> 080`, evaluacion del sistema). La Ejecucion
+activa NO se interrumpe ni se toca la toma. Cuando Recepcion obtiene la
+autorizacion: `047 -> 211 -> 080` (factibilidad, enrutada por el resolver) y, como la
+Orden ya estaba habilitada, `090 -> 211 [Orden ya habilitada]` (sin volver a 140/150/170) y
+`211 -> 190 [Ejecucion activa vigente]` (sin iniciar una segunda ejecucion).
+Si se rechaza: `047 -> 300`. Si el cliente no responde: `046 -> 211 [Solicitud sin
+resolver, Detalles siguen pendientes de autorizacion]` (iteracion 10). No reutiliza `PROC-REP-075` (definicion posterior a una revision inicial).
+`PROC-REP-129` es la espera de autorizacion, analoga a 120 (recursos) y 125
+(revision): `211 -> 129 [PENDIENTE_AUTORIZACION] -> 046`.
+
+### Resolver y enrutamiento (BR-REP-012 V1.4 y BR-REP-034)
+
+El resolver sigue siendo centralizado, determinista y parametrizable; la
+politica admite la extension sin reescribirse. Se agrega la propiedad
+derivada `pendiente_autorizacion`, `es_trabajable` exige ademas que no este
+pendiente de autorizacion, y se inserta una prioridad:
+
+| Prioridad | Condicion | Resultado |
+|---|---|---|
+| 0 | cantidad_detalles = 0 | SIN_DETALLES |
+| 1 | todos terminales y todos CANCELADO | TODO_CANCELADO |
+| 2 | todos terminales y existe >=1 COMPLETO | COMPLETA |
+| 3 | existe una Ejecucion activa | EN_EJECUCION |
+| 4 | existe >=1 Detalle trabajable | ABIERTA_TRABAJABLE |
+| 5 | ninguno trabajable y existe requiere_revision | REQUIERE_REVISION |
+| **6 (nueva)** | ninguno trabajable y existe pendiente de autorizacion | PENDIENTE_AUTORIZACION |
+| 7 (antes 6) | ninguno trabajable y existe bloqueado_por_recursos | PENDIENTE_RECURSOS |
+| fail-safe | ninguna aplica | CONTEXTO_INCONSISTENTE (no es un estado de negocio) |
+
+Ademas el resolver devuelve el conjunto de **bloqueos** (causas presentes entre
+los Detalles no terminales y no en ejecucion), sin crear estados combinados
+(formato ilustrativo, no contrato de datos). Ejemplos:
+
+| Caso | situacion | bloqueos |
+|---|---|---|
+| A. autorizado ejecutable + pendiente | ABIERTA_TRABAJABLE | PENDIENTE_AUTORIZACION |
+| B. todos los no terminales pendientes | PENDIENTE_AUTORIZACION | PENDIENTE_AUTORIZACION |
+| C. COMPLETO + pendiente | PENDIENTE_AUTORIZACION (no hay control final) | PENDIENTE_AUTORIZACION |
+| D. COMPLETO + el resto CANCELADO | COMPLETA | - |
+| E. todos CANCELADO | TODO_CANCELADO | - |
+| F. autorizado sin stock + pendiente | PENDIENTE_AUTORIZACION | PENDIENTE_AUTORIZACION, PENDIENTE_RECURSOS |
+| G. requiere revision + pendiente | REQUIERE_REVISION | REQUIERE_REVISION, PENDIENTE_AUTORIZACION |
+| H. uno en ejecucion + otro pendiente | EN_EJECUCION | PENDIENTE_AUTORIZACION |
+
+La precedencia entre las tres causas es una **decision de negocio aprobada**
+(REQUIERE_REVISION > PENDIENTE_AUTORIZACION > PENDIENTE_RECURSOS). Aplica solo
+cuando ningun Detalle es ejecutable y define **unicamente la situacion
+principal y la ruta de espera inicial** (125, 129 o 120); no descarta las demas
+causas, que permanecen todas en los bloqueos. Caso I: DET-001 requiere
+revision, DET-002 pendiente de autorizacion y DET-003 sin stock -> principal
+REQUIERE_REVISION, bloqueos [REQUIERE_REVISION, PENDIENTE_AUTORIZACION,
+PENDIENTE_RECURSOS]. Las causas se resuelven de forma independiente (tecnico,
+Recepcion con el cliente, abastecimiento), no hay estados combinados y el
+resolver se vuelve a evaluar tras cualquier cambio relevante de un Detalle
+(VAR-REP-014). Un Detalle ejecutable deja continuar a la Orden aunque otros
+sigan bloqueados; uno pendiente de autorizacion nunca es ejecutable. Se
+conservan SIN_DETALLES, TODO_CANCELADO, COMPLETA, EN_EJECUCION,
+ABIERTA_TRABAJABLE y el fail-safe CONTEXTO_INCONSISTENTE.
+
+**Enrutamiento** (el resolver no decide la estacion; la decide el workflow por
+situacion Y hitos: comprobante emitido, factibilidad, habilitacion, toma
+activa). Salidas de `PROC-REP-211`:
+
+| Situacion y hito | Destino |
+|---|---|
+| EN_EJECUCION | 190 (conserva la Ejecucion vigente) |
+| ABIERTA_TRABAJABLE, habilitada, toma activa | 212 (continuar o liberar) |
+| ABIERTA_TRABAJABLE, habilitada, sin toma | 170 (cola) |
+| ABIERTA_TRABAJABLE, sin habilitar, sin comprobante | 050 |
+| ABIERTA_TRABAJABLE, sin habilitar, comprobante emitido | 080 |
+| PENDIENTE_AUTORIZACION | 129 -> 046 |
+| REQUIERE_REVISION / PENDIENTE_RECURSOS | 125 / 120 |
+| COMPLETA | 220 (control tecnico) |
+| TODO_CANCELADO, equipo bajo custodia | 270 (devolucion) -> fin |
+| TODO_CANCELADO, sin equipo bajo custodia (nunca recibido o ya devuelto) | fin |
+| TODO_CANCELADO, custodia sin confirmar | 271 (regularizar custodia) -> 270 o fin |
+
+Las dos condiciones genericas "Orden sin habilitar, comprobante pendiente/ya
+emitido" se reemplazaron por hitos precisos. `PROC-REP-090` es el gate de
+habilitacion inicial.
+
+**Conservacion de hitos, prioridad y toma (iteracion 5, decisiones
+aprobadas).**
+
+- *Habilitacion.* "Orden ya habilitada" se determina por el **hito historico**
+  (140 cumplido alguna vez), no por el estado agregado actual. El circuito de
+  primera habilitacion (080, 090, 140, 150, 170) se ejecuta una sola vez. Al
+  agregar, modificar o autorizar un Detalle en una Orden ya habilitada solo se
+  evalua la factibilidad del Detalle afectado (080), se conserva el hito, no se
+  duplica la cola, no se pide prioridad, no se tocan las participaciones de
+  tecnicos y se re-ejecuta el resolver (`090 -> 211 [Orden ya habilitada]`).
+  Las salidas de 090 son mutuamente excluyentes y completas por el hito
+  historico, sin depender del orden de las aristas: "Orden ya habilitada" ->
+  211; "Primera habilitacion, existe Detalle trabajable" -> 140; "Primera
+  habilitacion, ninguno trabajable" -> 100 y su circuito de espera. Las dos
+  ultimas son las aristas de V1.3 con la condicion precisada (mismo origen,
+  destino y recorrido; los tests lo verifican).
+- *Prioridad.* La prioridad existente se mantiene; solo cambia por una accion
+  explicita y autorizada, con trazabilidad (usuario, fecha/hora, valor anterior
+  y nuevo), que reutiliza la capacidad de `PROC-REP-150`. No hay un proceso
+  nuevo y ninguna reevaluacion llega a 150 (la unica arista hacia 150 sigue
+  siendo `140 -> 150`).
+- *Toma activa.* `PROC-REP-128` y los retornos 080/090/211 no liberan, no
+  duplican ni sobrescriben la toma, y no interrumpen la Ejecucion de otro
+  Detalle; el Detalle nuevo no se inicia hasta estar autorizado y ser factible.
+  La toma solo se cierra automaticamente cuando 211 determina que no queda
+  ningun Detalle trabajable (BR-REP-018).
+- *Concurrencia.* La consulta al cliente por un Detalle nuevo (Recepcion) es
+  independiente de la ejecucion de otro (tecnico) y no es una espera del hilo
+  tecnico: DET-001 sigue EN_PROGRESO, DET-002 espera, autorizar o rechazar no
+  interrumpe a DET-001 y DET-002 pasa por factibilidad antes de iniciarse
+  (VAR-REP-010 y VAR-REP-011). El grafo es de un solo token: dibuja la resolucion
+  de Recepcion como una entrada propia (`EVT-REP-003 -> 046`) que vuelve al
+  resolver (`211 -> 190`); ninguna arista del hilo tecnico exige pasar por
+  `046/047` (ver "Independencia operativa entre Detalles", iteracion 9).
+
+### Custodia fisica y devolucion (BR-REP-033)
+
+El comprobante de recepcion es el documento que se intercambia por el equipo
+fisico, pero **generarlo (`060`) no confirma el intercambio**: la custodia
+comienza cuando se confirma que el comprobante se entrego y el equipo se
+recibio. La confirmacion registra fecha/hora, usuario responsable y referencia
+del comprobante (sin estados operativos de Detalle). La OR puede existir sin
+equipo recibido y un comprobante generado pero no entregado no activa la
+custodia. Tres situaciones que ningun nodo debe confundir: sin custodia,
+recepcion pendiente de confirmar y equipo recibido. Una Orden puede quedar
+CANCELADA, pero no finaliza operativamente mientras no este determinada la
+custodia. Cuatro situaciones: nunca recibido (sin devolucion), bajo custodia
+(devolucion por `270`), ya devuelto (no se duplica) y recepcion fisica sin
+confirmar (impide el fin y no se manda a devolucion automaticamente). Salidas de
+`211` y `306`, mutuamente excluyentes: "equipo bajo custodia" -> 270; "sin
+equipo bajo custodia" -> fin; "custodia sin confirmar" -> **`PROC-REP-271`**
+(nodo nuevo, ACT-RECEP), donde Recepcion resuelve la situacion dejando usuario,
+fecha/hora y evidencia o referencia, y desde donde se continua a 270 (equipo
+bajo custodia) o a fin (nunca recibido o ya devuelto). VAR-REP-015 lo recorre.
+No hay devolucion automatica ni se pasa a ENTREGADA.
+
+*Cambio minimo elegido:* se extiende `060` (descripcion, salidas y regla) en
+lugar de agregar un nodo posterior, porque un nodo de espera impondria al grafo
+secuencial un orden que el negocio no exige (el flujo sigue sin esperar el
+intercambio). No hay nodos ni aristas nuevos, y por eso tampoco un escenario
+nuevo: se cubre con tests de regla.
+
+Sin recepcion confirmada no hay devolucion (VAR-REP-004 y VAR-REP-006: el
+cliente desiste antes). Con custodia confirmada y equipo sin devolver, una
+Orden CANCELADA no finaliza sin la devolucion registrada (`PROC-REP-270`:
+fecha/hora, usuario que entrega y persona que recibe; no convierte CANCELADA
+en ENTREGADA ni pasa por control, cobro o entrega comercial):
+`211 -> 270 [Todos cancelados, equipo bajo custodia]` (VAR-REP-007) y
+`306 -> 270 [Equipo bajo custodia]`. Con algun Detalle COMPLETO no hay cancelacion
+de la Orden: el resolver da COMPLETA y siguen control, cierre comercial y
+entrega, sin omitir lo adeudado por trabajos realizados. `PROC-REP-270`
+queda con cuatro contextos (entrega al cliente, devolucion a Gestion RT,
+desistimiento sin Detalles y cancelacion total) sin romper los anteriores.
+Los demas origenes conservan su custodia sin definir.
+
+### Escenarios nuevos de esta iteracion
+
+VAR-REP-010 (el tecnico agrega un Detalle y se autoriza), 011 (se rechaza), 012
+(la ejecucion termina y queda un Detalle pendiente: espera de autorizacion),
+013 (cancelacion parcial tras el comprobante, antes de habilitar) y 014 (bloqueo
+mixto con la Orden habilitada). Adaptados: VAR-REP-004/006/007 (custodia) y
+las condiciones de 047/211 en HP-REP-001, VAR-REP-001/005/008. Cobertura de los
+17 casos pedidos: 1 y 2 -> VAR-REP-012 (C) y reglas del resolver (B); 3 ->
+VAR-REP-012; 4 -> VAR-REP-010; 5 -> VAR-REP-010 (autoriza) y 6 -> VAR-REP-011
+(rechaza); 7 -> VAR-REP-010/011; 8 y 9 (F y G) -> casos de la politica y
+VAR-REP-014 para F; 10 -> VAR-REP-005; 11 -> VAR-REP-013; 12 -> VAR-REP-014; 13
+-> VAR-REP-007; 14 -> VAR-REP-006; 15 -> VAR-REP-009; 16 -> VAR-REP-010; 17 ->
+HP-REP-002/003 y tests de regresion. Los casos 1, 2, 8 y 9 (A, B, F, G) son
+reglas del resolver, no recorridos propios, por eso se verifican como casos de
+la politica y no como Scenarios artificiales.
+
+### Evaluacion tecnica de Detalles diagnosticados por Recepcion (FEAT-REP-005)
+
+Decision aprobada: todo Detalle con origen del diagnostico RECEPCION requiere una
+**evaluacion tecnica vigente** antes de iniciar su primera Ejecucion. Es
+individual, la hace ACT-TECH con la OR ya tomada, ocurre despues de seleccionar
+el Detalle (`181`) y antes de las validaciones de estacion (`174`) y de la
+reserva (`185`), y se registra sobre la **definicion vigente** (Detalle,
+version evaluada, tecnico, fecha/hora, resultado, motivo, observaciones y efecto
+aplicado). Los Detalles de origen REVISION_TECNICA no requieren una segunda
+confirmacion (los diagnostico el propio tecnico en su revision), pero si
+autorizacion del cliente cuando corresponda y factibilidad. Es una dimension
+distinta de la autorizacion del cliente y de la ejecucion; no garantiza stock y
+no reserva ni consume insumos.
+
+**Responsabilidades (iteraciones 7 y 8).** El tecnico es responsable de definir y
+registrar las reparaciones derivadas de una revision o evaluacion tecnica;
+Recepcion conserva la comunicacion con el cliente.
+
+| Accion | Responsable |
+|---|---|
+| Diagnostico inicial y definicion preliminar de trabajos (`070`) | ACT-RECEP |
+| Revision tecnica inicial (`065`) | ACT-TECH |
+| Definicion de Detalles tras la revision tecnica inicial (`075`) | ACT-TECH |
+| Confirmacion o descarte tecnico (`183`) | ACT-TECH |
+| Redefinicion tecnica de un Detalle (`127`) | ACT-TECH |
+| Definicion de un Detalle nuevo detectado tecnicamente (`128`) | ACT-TECH |
+| Consulta al cliente (`046`) | ACT-RECEP |
+| Registro de autorizacion o desistimiento (`046/047`) | ACT-RECEP |
+
+`075` pasa de ACT-RECEP a ACT-TECH (iteracion 8): sigue siendo un solo nodo, con
+las mismas aristas hacia `046` (CLIENTE_EXTERNO) y `080` (otros origenes), las
+mismas reglas (BR-REP-001 y BR-REP-019, con el texto de BR-REP-019 ajustado) y los
+snapshots de siempre; ahora registra el tecnico que definio cada Detalle, la
+fecha/hora y la referencia a la revision inicial `065`. Los Detalles quedan con
+origen REVISION_TECNICA y no exigen segunda confirmacion. Definir tecnicamente no
+es autorizar: luego Recepcion gestiona la autorizacion o el desistimiento. `070`
+no cambia. `127` pasa de ACT-RECEP a ACT-TECH (iteracion 7); sus caminos entrantes
+son `126` y `183`, ambos tecnicos, y conserva identidad del Detalle, definiciones
+anteriores, historial, snapshots, vinculos de garantia, invalidacion de la
+autorizacion anterior y reevaluacion de factibilidad.
+
+**Resultado principal, aplicacion inmediata y reparaciones adicionales
+(iteracion 8).** La evaluacion registra **exactamente un** resultado principal
+(CONFIRMADO, DESCARTADO, REQUIERE_REDEFINICION) y su efecto se aplica **de
+inmediato** sobre el Detalle original, sin esperar a que se registren, consulten
+o evaluen las reparaciones adicionales. Detectar reparaciones adicionales (0..N)
+es una accion complementaria, no un resultado. Antes (iteracion 7) el recorrido
+del resultado se difería detras del alta y de la consulta al cliente de los
+Detalles nuevos (`183 -> 184 -> 128 -> 184 -> 046 -> ... -> 182 -> 300/127`); eso
+dejaba al Detalle descartado o con definicion invalidada PENDIENTE y elegible
+hasta terminar. Se corrigio.
+
+Grafo (modificacion minima):
+
+- `181 -> 182` (decision). `182` solo decide si hace falta evaluar:
+  "Requiere evaluacion tecnica" -> `183`; "No requiere evaluacion tecnica"
+  (REVISION_TECNICA o CONFIRMADO vigente) -> `174`. Se eliminaron las salidas de
+  retoma de la iteracion 7 (ya no hay efecto diferido).
+- `183` (ACT-TECH) registra UN resultado y lo aplica: `CONFIRMADO -> 184`,
+  `DESCARTADO -> 300`, `REQUIERE_REDEFINICION -> 127`.
+- `300` y `127` ganan una salida de contexto para no pasar por el resolver ni por la
+  consulta antes de registrar las altas: `300 -> 184` "Descarte durante la
+  evaluacion tecnica" (y `300 -> 211` "Cancelacion fuera de la evaluacion tecnica"
+  para el resto de los contextos); `127 -> 184` "Redefinicion durante la
+  evaluacion tecnica" (y las salidas anteriores a `046`/`080` pasan a
+  "Redefinicion posterior a una Ejecucion, ..."). No se duplica logica de
+  cancelacion ni de redefinicion.
+- `184` (decision, "Hay reparaciones adicionales detectadas por registrar"):
+  "Otra reparacion adicional por registrar" -> `128` (que vuelve a `184`: 0..N
+  altas); cuando no queda ninguna, el hilo tecnico continua sin pasar por la
+  consulta al cliente: "Hay Detalles pendientes de factibilidad (origen distinto
+  de CLIENTE_EXTERNO)" -> `080`; "Original CONFIRMADO, sin Detalles pendientes de
+  factibilidad" -> `182` (que lo enruta a `174`); "Original cancelado o
+  redefinido, sin Detalles pendientes de factibilidad" -> `211`. En iteracion 9
+  se elimino la salida `184 -> 046` (ver "Independencia operativa entre
+  Detalles").
+
+Efectos y momento exacto:
+
+| Resultado principal | Se aplica | Efecto |
+|---|---|---|
+| CONFIRMADO | al registrarlo (`183`) | Confirmacion sobre la definicion vigente; se conserva la autorizacion; sigue elegible y habilitado; las altas pendientes no lo bloquean ni invalidan su confirmacion |
+| DESCARTADO | al registrarlo (`183 -> 300`) | Motivo obligatorio; deja de ser elegible (no se selecciona, ejecuta ni reserva) y se cancela por `300` con motivo tecnico DIAGNOSTICO_DESCARTADO (no es desistimiento del cliente); no cancela otros Detalles ni la OR; el resolver recien interviene tras registrar las altas |
+| REQUIERE_REDEFINICION | al registrarlo (`183 -> 127`) | La definicion anterior queda invalidada y no ejecutable; el tecnico registra la nueva por `127` (mismo Detalle e historial); autorizacion anterior invalidada y nueva decision en `046/047`; nueva factibilidad en `080`; sin insumos reservados |
+
+Casos: A (CONFIRMADO + adicional) `VAR-REP-020` y `VAR-REP-022` (varios);
+B (DESCARTADO + adicional) `VAR-REP-023` (otro origen) y `VAR-REP-024` (CLIENTE_EXTERNO,
+el Detalle descartado era el unico: la OR **no** pasa a TODO_CANCELADO ni inicia
+custodia antes de registrar y encaminar el adicional, porque `300` vuelve a `184`
+y no a `211`); C (REQUIERE_REDEFINICION + otro trabajo) `VAR-REP-025`.
+
+*Resolver.* "Trabajable" (BR-REP-012) sigue significando **elegible para ser
+seleccionado y evaluado**. Refinamiento minimo de `es_trabajable`, sin nuevos
+estados: un Detalle tampoco es trabajable para ejecutar desde que se registra un
+resultado tecnico que lo impide (descarte, o definicion invalidada). Como el
+efecto se aplica en el mismo recorrido, no hay ventana en la que el resolver lo
+trate como trabajable. La precedencia (REQUIERE_REVISION > PENDIENTE_AUTORIZACION >
+PENDIENTE_RECURSOS), las causas de bloqueo, el hito historico de habilitacion, la
+prioridad, la toma y el maximo de una ejecucion no cambian.
+
+*Idempotencia.* El efecto se aplica una sola vez. Tras la factibilidad (o la
+resolucion de Recepcion) el flujo vuelve al resolver (`211`) y, al reseleccionar
+el Detalle,
+`182` lo enruta a `174` por su evaluacion vigente: no se evalua de nuevo, no se
+cancela ni redefine de nuevo y no se duplican altas (cada alta es un Detalle
+distinto). Esa vuelta usa el mecanismo ya existente (`211 -> 212 -> 181`), que no
+se dibuja en Scenarios.
+
+*Trazabilidad.* Evaluacion del Detalle original: Detalle, version evaluada,
+tecnico, fecha/hora, resultado, motivo/observaciones y efecto aplicado. Detalles
+adicionales: IDs independientes, tecnico que los detecto y registro, fecha/hora,
+definicion y snapshots, evaluacion de origen, y autorizacion y factibilidad
+propias; no se mezcla con el historial de la evaluacion del original.
+
+*Por que `127` y no `125/126`.* `125/126` estan pensados para un Detalle
+REQUIERE_DEFINICION tras una Ejecucion interrumpida con la OR sin Detalles
+trabajables (espera dirigida por el resolver). Aqui el tecnico ya tiene la OR
+tomada y evalua el Detalle; reutilizar la espera bloquearia la OR para la propia
+persona que debe evaluar. Una definicion que nace de una evaluacion o revision
+tecnica queda tecnicamente validada por ese mismo acto.
+
+*Elegible vs. habilitado.* Un Detalle sin evaluar sigue siendo trabajable, por lo
+que la OR puede tomarse (FEAT-REP-004 no cambia) y no se genera REQUIERE_REVISION.
+Queda **habilitado para iniciar la Ejecucion** solo tras `182/183`.
+
+Escenarios: VAR-REP-016 (confirma sin adicionales), 017 (descarta, los demas
+continuan), 018 (descartan todos, custodia y devolucion), 019 (redefine), 020
+(caso A), 021 (REVISION_TECNICA no requiere segunda confirmacion), 022 (varias
+adicionales), 023 y 024 (caso B), 025 (caso C). HP-REP-001 y HP-REP-002 (origen
+RECEPCION) pasan por `183 -> 184 -> 182 -> 174`; HP-REP-003 (REVISION_TECNICA,
+definido por el tecnico en `075`) por `182 -> 174`.
+
+### Independencia operativa entre Detalles y autorizacion diferida (BR-REP-037)
+
+Decision aprobada (iteracion 9): si un Detalle tiene su diagnostico tecnico
+confirmado cuando corresponde, esta autorizado y cumple las condiciones de
+ejecucion, el tecnico puede continuar trabajando sobre el independientemente de
+la situacion de los demas Detalles (pendientes de autorizacion, de revision, de
+recursos o de resolucion comercial). La trabajabilidad y la posibilidad de
+ejecutar se evaluan **por Detalle**: (1) definicion vigente valida; (2)
+autorizacion vigente del cliente, cuando corresponda; (3) confirmacion tecnica
+vigente, si es exigible; (4) compatibilidad con la estacion; (5) factibilidad y
+posibilidad de reservar insumos; (6) ausencia de una restriccion operativa de la
+OR, como otra Ejecucion activa. El estado de los otros Detalles no es, por si
+mismo, una restriccion; ellos conservan sus bloqueos individuales y no se
+desbloquean automaticamente.
+
+**Autorizacion diferida.** Se separa la **creacion** de la solicitud (el tecnico
+registra el alta con `128`; el Detalle nace PENDIENTE_AUTORIZACION) de su
+**resolucion** (Recepcion consulta al cliente y registra autorizacion, rechazo o
+falta de respuesta con `046/047`). La resolucion puede hacerse despues, sin
+respuesta inmediata del cliente; la ausencia de respuesta no equivale a
+autorizacion ni a rechazo. Una consulta pendiente no bloquea al tecnico.
+
+**Problema corregido.** Hasta la iteracion 8 el grafo obligaba a pasar por la
+consulta antes de seguir: `184 -> 046` (evaluacion) y `128 -> 046` (ejecucion)
+llevaban a `046/047 -> 080 -> 090 -> 211` antes de poder retomar el trabajo. Eso
+dejaba una dependencia funcional que contradice la regla aprobada.
+
+| Cambio | Antes | Ahora |
+|---|---|---|
+| Alta durante la ejecucion en CLIENTE_EXTERNO | `128 -> 046` | `128 -> 190` (la ejecucion continua) |
+| Fin de las altas en la evaluacion | `184 -> 046` / `184 -> 080` | `184 -> 182` (original CONFIRMADO) / `184 -> 211` (cancelado o redefinido) / `184 -> 080` solo si hay pendientes de factibilidad de otro origen (evaluacion del sistema) |
+| Gestion de la solicitud por Recepcion | dentro del hilo tecnico | entrada propia `EVT-REP-003 -> 046` (y `129 -> 046` cuando ningun Detalle es trabajable) |
+| Falta de respuesta | no modelada | `046 -> 211 [Solicitud sin resolver, Detalles siguen pendientes de autorizacion]` (antes `047 -> 211 [Sin respuesta ...]`) |
+
+Nodos y aristas nuevos: el evento `EVT-REP-003` (entrada independiente de
+Recepcion, como `EVT-REP-002` lo es de la garantia RMA) y las aristas
+`EVT-REP-003 -> 046` y `046 -> 211 [Solicitud sin resolver ...]`; ademas se
+modifican `128 -> 190` y las salidas de `184`. No se agregan estados operativos,
+no se toca la precedencia del resolver ni su politica; BR-REP-012 suma los casos
+J, K y L y la distincion entre Detalle elegible, habilitado para ejecutar y
+terminal.
+
+**Hilo tecnico y carril de Recepcion.** El hilo tecnico (`181 -> 182 -> 174 ->
+185 -> 190 -> 200 -> 210 -> 211`) no pasa por `046/047`. El carril de Recepcion
+(`EVT-REP-003 -> 046 -> 047 -> 080 | 300 | 305 | 306 | 211`) vuelve al resolver, que
+se reevalua cuando cambia una condicion relevante: con una Ejecucion activa
+devuelve EN_EJECUCION (`211 -> 190`) sin iniciar una segunda; sin Detalles
+trabajables sigue la precedencia REQUIERE_REVISION > PENDIENTE_AUTORIZACION >
+PENDIENTE_RECURSOS conservando todas las causas.
+
+**Toma, prioridad y control final.** Una consulta pendiente no cierra ni libera
+la toma: solo se cierra cuando el resolver determina que no queda ningun Detalle
+trabajable (BR-REP-018). Se conservan la prioridad, el hito historico de
+habilitacion (sin 140/150) y el maximo de una Ejecucion activa. La OR no pasa al
+control final, cobro ni entrega con Detalles pendientes de autorizacion, revision,
+recursos o ejecucion; recien con todos terminales (`211 -> 220`).
+
+| Caso | Cobertura |
+|---|---|
+| A. Original confirmado y adicional pendiente (sin respuesta) | VAR-REP-020 (y 022 con varias altas); VAR-REP-027 (sin respuesta) |
+| B. Otro Detalle sin stock | VAR-REP-028 |
+| C. Otro Detalle requiere redefinicion o revision | VAR-REP-029 |
+| D. Todos los Detalles bloqueados | VAR-REP-014 (recursos + autorizacion), VAR-REP-024/025 (espera de autorizacion) y BR-REP-012 casos I y K |
+| E. Se autoriza un adicional durante la ejecucion | VAR-REP-010 |
+| F. Ultimo ejecutable completado, otro pendiente | VAR-REP-026 |
+| G. Adicional rechazado | VAR-REP-011 |
+
+Pendiente de negocio: cuanto tiempo puede permanecer sin respuesta una
+solicitud (hoy sin plazo) y como se escala; si el original CONFIRMADO debe
+ofrecerse al tecnico automaticamente tras un desvio por factibilidad de otro
+origen (hoy se reselecciona por `211 -> 212 -> 181`).
+
+### Saldo a favor del cliente y devolucion de dinero (BR-REP-038)
+
+Corrige el hallazgo **AUD-V14-001** de la auditoria transversal
+(`docs/audits/repair-management-v1.4-transversal-audit.md`): una Orden de
+`CLIENTE_EXTERNO` con dinero a favor del cliente (anticipo mayor al Total final,
+por ejemplo una revision `SIN_REPARACION` con sena, o trabajos cancelados) quedaba
+sin salida entre `PROC-REP-265` y `266`, y las cancelaciones finalizaban sin
+verificar el saldo. Decision aprobada: si la OR tiene dinero a favor del cliente,
+es **obligatorio** registrar la devolucion de dinero antes de permitir la entrega o
+el cierre comercial; haber identificado el saldo a favor no habilita ninguna de
+las dos cosas.
+
+**Formula funcional:** `Saldo = Total final de la OR - Pagos recibidos +
+Devoluciones realizadas`. Los tres terminos se mantienen separados: los Pagos
+originales no se borran ni se modifican, y una devolucion **no** es un pago de
+importe negativo sino un movimiento financiero distinto.
+
+| Saldo | Tratamiento | Nodo |
+|---|---|---|
+| > 0 | cobro pendiente (circuito de cobro, sin cambios) | `265 -> 266 -> 265` |
+| = 0 | continua si se cumplen las demas condiciones, sin movimientos nuevos | `265 -> 280` |
+| < 0 | registrar la devolucion de dinero; parcial: el remanente sigue pendiente; total: Saldo = 0 y se revalida la entrega | `265 -> 267 -> 265` |
+
+Ejemplo: Total $0, anticipo $5.000, devolucion $0 -> Saldo -5.000; tras devolver
+$3.000 -> -2.000 (no entregable); tras otros $2.000 -> 0 (puede continuar).
+
+**Cambios en el grafo (V1.4, `PROC-REP` pasa de 70 a 72 nodos y de 130 a 135
+aristas):**
+
+- `PROC-REP-267` (nuevo, ACT-RECEP, FEAT-REP-007): registra la devolucion de dinero
+  con identificador unico del movimiento, OR, importe positivo, medio de devolucion,
+  usuario responsable, fecha/hora, referencia de la operacion y motivo. Conserva el
+  historial completo de devoluciones parciales y totales, no admite una devolucion
+  superior al saldo a favor pendiente (sin una regla adicional aprobada) ni
+  computarla dos veces por reintentos, y distingue la devolucion realizada de la
+  mera intencion. Cada pasada exige un movimiento real: no hay ciclos automaticos.
+- `PROC-REP-268` (nuevo, decision, FEAT-REP-008): verificacion previa al fin. Es la
+  **unica** entrada a `EVT-REP-999`: la entrega comercial y la devolucion a Gestion
+  RT (`270`), el cierre `SIN_REPARACION` (que ya paso por `265`) y todas las
+  cancelaciones y desistimientos (`211`, `306`, `271`) pasan por ella.
+  "Sin saldo a favor pendiente" -> fin; "Saldo a favor del cliente pendiente de
+  devolver" -> `267`, que vuelve a `268` tras cada devolucion.
+- `PROC-REP-265` pasa de dos a tres salidas ("No, saldo pendiente de cobro" ->
+  `266`; "No, saldo a favor del cliente" -> `267`; "Si" -> `280`): el circuito de
+  cobro solo atiende Saldo > 0.
+- `267` queda compartido por la validacion de entrega y la verificacion previa al fin
+  con salidas rotuladas por contexto ("Devolucion registrada, validar entrega" ->
+  `265`; "... validar fin de Orden" -> `268`), el mismo idioma que usa `270`. Con un
+  grafo de un solo token, la alcanzabilidad topologica pura cruza contextos; los
+  tests usan un recorrido que respeta la salida rotulada.
+
+**Rutas verificadas:** (a) *revision sin reparacion con anticipo*: `068 [No] -> 069 ->
+250 -> 260 -> 265 -> 267 -> 265 -> 280 -> 270 -> 268 -> fin` (VAR-REP-030, el caso
+BLOCKER: Total $0, anticipo $5.000, devolucion $5.000, Saldo 0). (b) *cancelacion
+con anticipo*: con equipo en custodia `211 -> 270 -> 268 -> 267 -> 268 -> fin` (la
+devolucion fisica no sustituye a la de dinero, VAR-REP-032); sin equipo
+`211 -> 268 -> 267 -> 268 -> fin` (VAR-REP-033). (c) *varios Detalles COMPLETO y
+CANCELADO*: solo se devuelve el excedente, en devoluciones parciales (VAR-REP-031).
+(d) saldo cero sin devolucion (VAR-REP-034). (e) origenes sin circuito comercial:
+`265` aprueba por NO_COBRABLE y `268` siempre responde "sin saldo a favor", sin
+registrar pagos ni devoluciones (VAR-REP-035). Una cortesia total con Pagos ya
+recibidos deja Saldo < 0 y tambien se devuelve; no habilita la entrega por si sola.
+
+**Verificacion:** `npm run test:commercial-closure:v1.4` (incluido en
+`validate:v1.4`) comprueba los invariantes del grafo (unico acceso al fin, tres
+salidas excluyentes de `265`, sin ciclos sin accion financiera, las
+cancelaciones nunca alcanzan la entrega comercial), el texto de BR-REP-038 y
+reproduce los Scenarios con dinero recalculando el Saldo paso a paso con la
+formula aprobada.
+
+**Pendientes de negocio:** quien puede registrar devoluciones (por ejemplo solo
+ACT-ADMIN, como las cortesias) y el catalogo de medios de devolucion; plazo o
+abandono si el cliente no retira el dinero; devoluciones posteriores a ENTREGADA;
+tratamiento de un saldo a favor en origenes sin circuito comercial (hoy
+documentado como pendiente funcional, sin cobros ni devoluciones); aprobacion de
+una sobredevolucion (hoy no admitida). BR-REP-014 conserva su texto V1.3
+congelado; BR-REP-038 define el reembolso de pagos ya realizados que esa regla
+dejaba pendiente, y las demas consecuencias comerciales de una cancelacion (por
+ejemplo penalidades) siguen pendientes.
+
+### Viewer por origen: Cliente Externo V1.4
+
+Para revisar con negocio solo el subproceso de `CLIENTE_EXTERNO` existe una vista
+generada, independiente del viewer general (que no cambia):
+
+| Artefacto | Ruta |
+|---|---|
+| Viewer HTML (autocontenido, abre con doble clic, sin servidor ni red) | `generated/viewer/repair-management-cliente-externo-v1.4.html` |
+| Mermaid de la vista | `generated/mermaid/repair-management-cliente-externo-v1.4.mmd` |
+| Filtro reproducible | `scripts/lib/origin-filter.ts` |
+| Tests de la vista | `scripts/test-origin-view.ts` |
+
+Comandos: `npm run generate:cliente-externo:v1.4` (valida V1.4, genera Mermaid y HTML y
+corre los tests de la vista), o por separado
+`npm run generate:mermaid:cliente-externo:v1.4`,
+`npm run generate:viewer:cliente-externo:v1.4` y
+`npm run test:cliente-externo:v1.4`. Los mismos scripts generales aceptan
+`--origin=<ORIGEN>` (`CLIENTE_EXTERNO`, `RT_INTERNO`, `RMA_GARANTIA_REPARACION`,
+`RT_GARANTIA_VENTA`); sin el flag generan exactamente lo de siempre.
+
+La vista es un **subconjunto de nodos, aristas y Scenarios reales** de la V1.4
+(no agrega nada). Una arista se quita solo si (1) su condicion nombra otro origen
+o niega `CLIENTE_EXTERNO` ("Origen distinto de CLIENTE_EXTERNO", `RT_INTERNO`, ...),
+(2) su condicion es neutra pero SOLO la recorren Scenarios de otro origen (por
+ejemplo las salidas "No" de `050` y `250`, que el modelo no codifica por origen), o
+(3) queda inalcanzable desde los eventos de inicio que conservan salidas. No se usa
+la mera alcanzabilidad topologica. El panel "Proceso" del viewer lista todo lo
+excluido y por que, para que negocio lo confirme. Las aristas punteadas son el
+carril independiente de Recepcion (`EVT-REP-003 -> 046`): no son un paso del hilo
+tecnico. El actor se muestra en cada nodo y el boton "Ajustar a pantalla" encuadra
+el diagrama completo. Limites de la representacion (un solo token, capacidades
+transversales sin nodo, mecanismo continuar/liberar sin Scenario) en el mismo panel.
+
+### Explorador interactivo de recorridos V1.4
+
+Para **construir un recorrido del proceso paso a paso**, eligiendo en cada bifurcacion una
+de las alternativas que realmente existen, hay un viewer independiente (los viewers
+general y de Cliente Externo no cambian):
+
+| Artefacto | Ruta |
+|---|---|
+| Viewer HTML (autocontenido: doble clic, sin servidor, sin red, sin CDN) | `generated/viewer/repair-management-interactive-v1.4.html` |
+| Generador | `scripts/generate-interactive-viewer.ts` |
+| Motor de navegacion (replay determinista, logica pura) | `scripts/lib/explorer-engine.ts` |
+| Politica de origenes (reutiliza `origin-filter.ts`) | `scripts/lib/explorer-origin.ts` |
+| Anotaciones del viewer (tipo de decision, esperas, salidas por contexto) | `scripts/lib/explorer-annotations.ts` |
+| Datos, layout y exportaciones | `scripts/lib/explorer-data.ts`, `explorer-layout.ts`, `explorer-export.ts` |
+| Interfaz (HTML/JS/CSS del cliente) | `scripts/viewer/explorer-client.js`, `scripts/viewer/explorer.css` |
+| Tests | `scripts/test-explorer.ts` (logica), `test-explorer-output.ts` (diagrama, exportaciones, HTML), `test-explorer-browser.ts` (Chrome sin cabeza) |
+
+Comandos: `npm run generate:interactive:v1.4` (valida V1.4, genera el HTML y corre los
+tests), o por separado `npm run generate:viewer:interactive:v1.4` y
+`npm run test:interactive:v1.4`. Chrome es opcional para los tests (`CHROME_PATH`); sin
+Chrome la parte de navegador se omite.
+
+**Como funciona.** El viewer no muestra el grafo: muestra el evento inicial, avanza solo
+por los nodos que no requieren eleccion y se detiene en la primera bifurcacion. Al elegir
+una alternativa agrega solo esa rama y sigue hasta la proxima decision, espera o fin. El
+estado completo es la lista ordenada de acciones del usuario (elegir, confirmar un ciclo,
+marcar un evento externo, activar o cerrar un carril): el motor las **re-aplica** sobre el
+grafo real de PROC-REP, por lo que volver atras, cambiar una decision pasada o reiniciar es
+truncar esa lista y nada incompatible puede sobrevivir. El recorrido tambien viaja en la URL
+(`#r=...`), asi que se puede guardar o compartir.
+
+**Bifurcaciones.** Cada alternativa es una arista real, con su condicion textual. Se
+distingue la decision humana, la validacion del sistema, la condicion derivada de estados, el
+dato de la Orden (por ejemplo el origen), el evento externo y la alternativa de escenario
+(punto de entrada de una variante o excepcion). Esa clasificacion es del viewer, no del
+Source of Truth: cada una cita su fundamento (texto o actor del nodo) y dice si es
+documentada o inferida. Elegir una alternativa de una validacion del sistema es explorar un
+resultado, no forzarlo. Los nodos compartidos con salidas rotuladas por contexto (127, 128,
+267 y 300) ofrecen solo la salida que corresponde al nodo de procedencia, segun su texto.
+
+**Ciclos.** Un salto automatico nunca repite un nodo ya visitado: el motor se detiene y
+pide confirmar. Cada repeticion es una caja nueva ("visita 2 de 3"), de modo que se
+conserva el historial de cada visita (cobro 265 -> 266 -> 265, devolucion 265 -> 267 -> 265,
+ejecuciones multiples, continuar o liberar). Las esperas (129, 120, 125, 266) detienen el
+recorrido hasta que el usuario marca que el evento externo ocurrio.
+
+**Eventos independientes.** `EVT-REP-003` (autorizacion diferida de Recepcion) es un panel
+aparte: el usuario lo activa y se dibuja en una columna propia, unido por un conector que
+dice que **no es una arista del modelo**. No bloquea ni cambia el hilo tecnico (ambos pueden
+tener una decision pendiente a la vez) y regresa al recorrido principal al llegar al
+resolver (`211`) o a la factibilidad (`080`). Con el grafo de un solo token no se dibuja la
+concurrencia real ni se inventa ninguna sincronizacion.
+
+**Origenes.** La primera decision (`PROC-REP-010`) elige el origen y desde ahi se aplica la
+politica de `explorer-origin.ts`: las aristas de otro origen demostradas por el modelo (la
+condicion nombra otro origen) no se ofrecen; las bifurcaciones por origen que el modelo no
+codifica (`050` y `250`) siguen resolviendose con la evidencia de Scenarios, igual que en la
+vista de Cliente Externo. Lo que ningun Scenario del origen recorre pero el modelo tampoco
+prueba ajeno (por ejemplo `068 -> 069` o las salidas del resolver para RT_INTERNO) **no se
+excluye en silencio**: se ofrece marcado como hipotesis sin evidencia, y se puede ocultar
+desde Opciones. Lo que no se ofrece se lista con su motivo. RT_GARANTIA_VENTA (fuera de MVP
+v2, sin Scenarios) se recorre solo con las condiciones del modelo.
+
+**Varios Detalles.** El explorador no calcula ningun estado de negocio (Saldo, estado
+agregado, autorizaciones). Distingue, para cada nodo con evidencia en su texto, si la
+condicion es por Detalle, la situacion agregada de la OR (resolver `211`) o el cierre de
+todos los Detalles, y muestra un ejemplo ilustrativo de varios Detalles a la vez. Las
+alternativas se exploran como hipotesis.
+
+**Exportacion.** Mermaid (`.mmd`, con los helpers del generador), lista ordenada de nodos
+y decisiones (`.txt`), recorrido reproducible (`.json`) e imagen (`.svg` / `.png`). Solo
+contienen nodos y aristas reales; las visitas repetidas llevan sufijo `_vN` en su id Mermaid.
+
+**Observacion sobre el Source of Truth (no corregida).** `VAR-REP-023` se titula "origen
+distinto de CLIENTE_EXTERNO" y recorre `184 [... origen distinto de CLIENTE_EXTERNO] -> 080`,
+pero declara `applies_to: HP-REP-001`, por lo que `scenarioOrigins()` la lee como de Cliente
+Externo y la vista de ese origen la excluye. Ya figura en la auditoria transversal. El
+explorador ofrece esa arista solo a los otros origenes (correcto segun su condicion) y su test
+recorre ese Scenario con el origen que dice su titulo.
+
+### Decision del cliente simplificada: sin Detalles y tres decisiones (iteracion 10)
+
+Iteracion acotada, aprobada tras revisar el explorador interactivo. Reemplaza lo
+descrito arriba para PROC-REP-045/055/046/047 (esas secciones conservan el
+detalle de la capacidad de autorizacion; en caso de diferencia manda esta).
+
+**1. Sin Detalles conocidos, no se consulta por Detalle.** Si en `PROC-REP-045` todavia
+no se conocen las reparaciones, la OR queda EN_REVISION (`055`), se registra la
+recepcion y la custodia (`050/060`, comprobante "reparacion pendiente de
+diagnostico"), se espera la revision y el diagnostico de RT (`065/068`) y el
+tecnico define y registra los Detalles (`075`). **Recien entonces** Recepcion consulta al
+cliente por esos Detalles (`046/047`). Entre `055` y el comprobante hay un unico nodo
+nuevo, `PROC-REP-056` (ACT-RECEP, FEAT-REP-002): registra si el cliente continua con
+la revision tecnica ("Acepta la revision tecnica" -> `050`) o desiste ("Desiste sin
+Detalles" -> `306`, con su custodia, saldo y cierre). Es el desistimiento propio de esa
+etapa, separado de la autorizacion por Detalle, y no se inventa ningun Detalle ficticio.
+Si la revision concluye que no corresponde reparar, rige el circuito SIN_REPARACION
+(`068 [No] -> 069`). Con esto el recorrido que la auditoria marco en AUD-V14-002
+(`055 -> 046 -> 047 -> 211 [Sin respuesta]`, resolver con cero Detalles) deja de existir:
+`046` solo se invoca desde `070`, `075`, `127`, `129` y `EVT-REP-003`, es decir, con Detalles.
+
+**2. `PROC-REP-047` tiene exactamente tres decisiones de negocio.**
+
+| Decision | Condicion de la arista | Efecto |
+|---|---|---|
+| A. ACEPTA_TRABAJOS | `Acepta trabajos` -> `211` | autoriza cada Detalle sobre su definicion vigente; no genera una definicion nueva ni ejecuta nada |
+| B. RECHAZA_ALGUNOS_DETALLES | `Rechaza algunos Detalles` -> `300` -> `211` | registra cuales acepta y cuales rechaza; cancela solo los rechazados; los aceptados siguen a factibilidad |
+| C. RECHAZA_TODOS_LOS_TRABAJOS | `Rechaza todos los trabajos` -> `305` -> `211` | cancela los Detalles pendientes elegibles (no los COMPLETO ni ejecuciones activas); el desenlace incluye custodia, saldo y devolucion |
+
+Se retiraron de `047`: "Acepta, antes del comprobante" y "Acepta, requiere factibilidad" (eran
+condiciones internas), "Desiste sin Detalles" (ahora `056 -> 306`) y "Sin respuesta del
+cliente" (no es una decision).
+
+**3. El sistema resuelve lo interno, en `PROC-REP-211`.** Las tres decisiones vuelven al
+resolver, que ya elegia el siguiente paso por hitos: "Antes del comprobante de recepcion"
+-> `050` (emite el comprobante y sigue a `080`); "Comprobante emitido, factibilidad pendiente"
+-> `080`; el resto segun el resolver (BR-REP-012, sin cambios). Existencia del comprobante,
+habilitacion historica, factibilidad pendiente y estado de la OR **ya no son elecciones del
+cliente**. La factibilidad la evalua el sistema por Detalle (`080`, ACT-SYSTEM) despues de la
+autorizacion; no se traslada a Recepcion ni es una decision comercial. Una autorizacion
+posterior no regenera el comprobante: `047 -> 211 -> 080`, nunca `050/060`.
+
+**4. Sin respuesta.** No hay una decision que registrar: `046 -> 211 [Solicitud sin resolver,
+Detalles siguen pendientes de autorizacion]`. Los Detalles consultados siguen
+PENDIENTE_AUTORIZACION, el resolver los mantiene bloqueados individualmente (o abre la
+espera `129` si ninguno es trabajable), no se bloquea a los demas Detalles autorizados y
+`EVT-REP-003` / `129 -> 046` permiten reintentar. Si el cliente responde solo por algunos
+Detalles, esas respuestas se registran (A o B) y los demas quedan pendientes.
+
+**5. AUD-V14-003.** `211 -> 080 [Comprobante emitido, factibilidad pendiente]` aplica ahora tambien
+con la Orden ya habilitada, de modo que una autorizacion parcial (`047 -> 300 -> 211 -> 080 -> 090 ->
+211 -> 190`, VAR-REP-036) o una autorizacion diferida (`EVT-REP-003`, VAR-REP-010) nunca omiten la
+factibilidad ni bloquean la ejecucion vigente: `080` solo consulta disponibilidad (no reserva, no
+interrumpe, no libera la toma) y vuelve al resolver por `090 [Orden ya habilitada]`.
+
+**Grafo:** 73 nodos (+`056`) y 135 aristas (sin cambio neto: -4 en `047`, +1 `047 -> 211`, +1
+`046 -> 211`, +2 en `056`); 38 reglas (BR-REP-027/028/030/031/034/037 actualizadas, ninguna
+nueva); 44 Scenarios (+VAR-REP-036; VAR-REP-001/004/027 reescritos y los demas actualizados a
+las nuevas aristas). El explorador interactivo muestra las tres alternativas en `047`; `211` aparece
+como decision del sistema y la solicitud sin resolver de `046` como evento externo, sin logica
+especial en el HTML.
+
+**Pendientes de negocio (no resueltos aqui):** plazo y escalacion cuando el cliente no responde (en
+`046` o en `056`); canal de consentimiento (ya pendiente); si debe existir un nodo de enrutamiento
+dedicado en lugar de reutilizar `211` (hoy se reutiliza para no duplicar la politica del resolver);
+confirmar que "Acepta trabajos" cubre el caso "responde solo por algunos y el resto queda pendiente".
+
+### Pendientes y posibles conflictos de V1.4
+
+- **Evaluacion tecnica (BR-REP-035/036):** el modelo tecnico de versiones de la
+  definicion, el catalogo de motivos tecnicos (hoy DIAGNOSTICO_DESCARTADO o
+  equivalente) y quien puede cancelar siguen abiertos. Con un unico token en el
+  grafo, las altas y su consulta se dibujan como desvio que vuelve por `211`; el
+  Detalle original CONFIRMADO no depende de la decision sobre el adicional (sigue
+  trabajable para el resolver), pero su ejecucion en el grafo ocurre al
+  reseleccionarlo despues del desvio, por el mecanismo `211 -> 212 -> 181`
+  (continuar o liberar).
+- **Resuelto en la iteracion 8:** `PROC-REP-075` pasa al tecnico y el efecto del
+  resultado principal ya no se difiere. Pendiente de negocio: si la consulta de
+  los adicionales debe poder diferirse mas alla del desvio (hoy se hace antes de
+  reseleccionar el Detalle original).
+- **Rechazo parcial de adicionales (`047 -> 300`):** si el cliente autoriza
+  algunos Detalles y rechaza otros en la misma consulta, el rechazo cancela solo
+  los rechazados y los autorizados pasan por factibilidad: `300 -> 211 -> 080`
+  tambien con la OR ya habilitada (iteracion 10, AUD-V14-003; VAR-REP-036). Una
+  reserva fallida sigue cubierta por `186`.
+- **Precedencia entre causas de bloqueo** (REQUIERE_REVISION >
+  PENDIENTE_AUTORIZACION > PENDIENTE_RECURSOS): resuelta, decision de negocio
+  aprobada en la iteracion 5.
+- **Custodia pendiente de confirmar:** resuelta con PROC-REP-271. Queda sin
+  definir el plazo o la escalacion si Recepcion no la regulariza (la Orden
+  permanece CANCELADA sin fin operativo) y la evidencia aceptable (hoy "evidencia
+  o referencia", por ejemplo el comprobante).
+- **Custodia fuera de CLIENTE_EXTERNO:** RT_INTERNO no emite comprobante de
+  recepcion, por lo que su criterio de "equipo recibido" y la devolucion de una
+  Orden cancelada de ese origen (o de RMA/garantia de venta) no estan
+  definidos; hoy 211 (d) los trataria con el mismo criterio de comprobante.
+- **Equipo recibido con cantidad_detalles = 0:** la arista `306 -> 270` existe
+  pero ningun recorrido actual la alcanza (el comprobante se emite antes de la
+  revision y el desistimiento sin Detalles ocurre antes de emitirlo); queda
+  disponible si se agrega un punto de desistimiento durante la revision.
+- **Efecto sobre V1.3 de 090 -> 211:** aprobado; la prioridad no se vuelve a
+  pedir al revalidar con la Orden habilitada. Queda la ambiguedad de que las
+  aristas de 090 conservadas de V1.3 se solapan en el texto con "Orden ya
+  habilitada" (documentado como excluyente y evaluada primero).
+- **Concurrencia:** el grafo sigue siendo de un solo token. La concurrencia real
+  entre el hilo tecnico y la gestion de Recepcion se dibuja con una entrada
+  propia (`EVT-REP-003`, precedente de `EVT-REP-002`) y se documenta en
+  128/190/046/047, BR-REP-032, BR-REP-034 y BR-REP-037; no se dibuja un fork.
+- Canal de consentimiento del cliente; si una redefinicion que confirma el
+  mismo Tipo y precio debe requerir nueva autorizacion (por ahora si); que
+  ocurre si el cliente posterga su decision (el Detalle sigue pendiente).
+- Desistir de todo con una Ejecucion activa: 305 no cancela Detalles en
+  ejecucion (BR-REP-014); deben interrumpirse antes.
+- FEAT-REP-002: validacion tecnica de las reparaciones diagnosticadas y estados
+  PENDIENTE/CONFIRMADA/DESCARTADA (no definidos).
+- FEAT-REP-009: quien puede cancelar (tambien 306), catalogo de motivos de
+  desistimiento y cancelacion fuera de CLIENTE_EXTERNO. Las consecuencias
+  comerciales de un anticipo (saldo a favor) se resuelven con BR-REP-038
+  (devolucion de dinero obligatoria antes del fin); siguen pendientes las demas
+  consecuencias, como penalidades.
+- FEAT-REP-001: condiciones de uso/privacidad/disponibilidad de
+  cuitonline.com antes del scraping; identificacion alternativa sin IMEI;
+  estructura del checklist y estandarizacion del diagnostico; almacenamiento y
+  trazabilidad de fotografias y de la seleccion de reparaciones diagnosticadas.
 
 ## Pendientes especificos de V1.3
 
