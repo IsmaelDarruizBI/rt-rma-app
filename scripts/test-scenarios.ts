@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import Ajv from "ajv";
+import { legacyDetailStateUses, renameLegacyDetailStates } from "./lib/detail-states";
 import { loadYaml, type ProcessModel } from "./lib/process-model";
 import type { FeatureModel } from "./lib/feature-model";
 import { deriveScenarioFeatures } from "./lib/feature-scenario-mapping";
@@ -749,9 +750,12 @@ if (REVISION === "v1.4") {
   console.log("\nV1.4 - FEAT-REP-001/002/003/005/008/009: ingreso, autorizacion por Detalle, altas del tecnico, resolver, custodia y devolucion; sin regresiones\n");
 
   const OTHER = "Origen distinto de CLIENTE_EXTERNO";
-  const v13Process = loadYaml<ProcessModel>("business/processes/repair-management-v1.3.yaml");
-  const v13Rules = loadYaml<{ rules: { id: string; description?: string }[] }>("business/rules/business-rules-v1.3.yaml");
-  const v13Scenarios = loadYaml<ScenarioModel>("business/scenarios/repair-management-scenarios-v1.3.yaml");
+  // V1.3 se compara con los nombres de estado del Detalle de la consolidacion (DC17): el renombre
+  // PENDIENTE -> DEFINIDO / EN_PROCESO -> EN_PROGRESO no cuenta como diferencia.
+  const asConsolidated = <T>(model: T): T => JSON.parse(renameLegacyDetailStates(JSON.stringify(model))) as T;
+  const v13Process = asConsolidated(loadYaml<ProcessModel>("business/processes/repair-management-v1.3.yaml"));
+  const v13Rules = asConsolidated(loadYaml<{ rules: { id: string; description?: string }[] }>("business/rules/business-rules-v1.3.yaml"));
+  const v13Scenarios = asConsolidated(loadYaml<ScenarioModel>("business/scenarios/repair-management-scenarios-v1.3.yaml"));
   const key = (edge: { from: string; to: string; condition?: string }): string =>
     `${edge.from}::${edge.condition ?? ""}::${edge.to}`;
   const outgoing = (from: string): string[] =>
@@ -793,6 +797,15 @@ if (REVISION === "v1.4") {
   const featureNodes = (id: string): string[] => featuresModel.features.find((f) => f.id === id)?.process_nodes ?? [];
   const rule = (id: string): string => rulesModel.rules.find((r) => r.id === id)?.description ?? "";
   const nodeText = (id: string): string => nodeById.get(id)?.description ?? "";
+
+  check("DC17: V1.4 nombra los estados del Detalle DEFINIDO, EN_PROGRESO, COMPLETO y CANCELADO, sin nombres anteriores", () => {
+    for (const file of [PROCESS_FILE, FEATURES_FILE, SCENARIOS_FILE, `business/rules/business-rules-${REVISION}.yaml`]) {
+      assert.deepEqual(legacyDetailStateUses(readFileSync(file, "utf8")), [], file);
+    }
+    assert.match(rule("BR-REP-012"), /Estados operativos del Detalle:\s+DEFINIDO, EN_PROGRESO, COMPLETO y CANCELADO/);
+    assert.match(rule("BR-REP-012"), /DEFINIDO -> EN_PROGRESO al reservar e\s+iniciar la Ejecucion \(PROC-REP-185\)/);
+    assert.match(rule("BR-REP-012"), /un COMPLETO nunca pasa a CANCELADO/);
+  });
 
   check("integridad del grafo V1.4: sin nodos sin salida, sin nodos inalcanzables y sin IDs duplicados", () => {
     const ids = processModel.nodes.map((n) => n.id);
@@ -1078,9 +1091,17 @@ if (REVISION === "v1.4") {
     assert.match(rule("BR-REP-028"), /RT_INTERNO, RT_GARANTIA_VENTA y\s+RMA_GARANTIA_REPARACION\s+conservan su comportamiento anterior/);
   });
 
-  check("reglas: BR-REP-001 a 019 identicas a V1.3 salvo BR-REP-012 y BR-REP-017 (que solo agregan un parrafo V1.4) y BR-REP-019 (responsable de PROC-REP-075); +19 nuevas (020 a 038)", () => {
+  // Reglas de V1.3 que V1.4 cambia, cada una con su motivo: las iteraciones V1.4 (012, 017, 019) y las
+  // decisiones de la consolidacion del 23/10/2026 (DCxx). Todas las demas deben seguir identicas a V1.3.
+  const V13_RULES_CHANGED_IN_V14: Record<string, string> = {
+    "BR-REP-003": "DC06: el tecnico redefine (PROC-REP-127); redaccion del estado DEFINIDO (DC17)",
+    "BR-REP-012": "parrafo V1.4 (autorizacion y bloqueos) y estados del Detalle (DC17)",
+    "BR-REP-017": "parrafo V1.4 de saldo a favor (BR-REP-038)",
+    "BR-REP-019": "responsable de PROC-REP-075",
+  };
+  check(`reglas: BR-REP-001 a 019 identicas a V1.3 salvo las declaradas (${Object.keys(V13_RULES_CHANGED_IN_V14).join(", ")}); +19 nuevas (020 a 038)`, () => {
     const v13ById = new Map(v13Rules.rules.map((r) => [r.id, r]));
-    for (const r of rulesModel.rules.filter((x) => v13ById.has(x.id) && x.id !== "BR-REP-012" && x.id !== "BR-REP-017" && x.id !== "BR-REP-019")) {
+    for (const r of rulesModel.rules.filter((x) => v13ById.has(x.id) && !(x.id in V13_RULES_CHANGED_IN_V14))) {
       assert.deepEqual(r, v13ById.get(r.id), r.id);
     }
     // BR-REP-017 conserva el texto V1.3 y solo agrega el parrafo de saldo a favor (BR-REP-038)

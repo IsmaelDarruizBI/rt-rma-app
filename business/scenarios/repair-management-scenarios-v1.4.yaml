@@ -1345,7 +1345,7 @@ scenarios:
       (PROC-REP-200, resultado Interrumpido): PROC-REP-210 reconcilia los
       insumos igual que si hubiera Completado (CONSUMIDO/LIBERADO/
       DESPERDICIO segun lo efectivamente ocurrido), la Ejecucion queda
-      historizada sin sobrescribirse, y el Detalle vuelve a PENDIENTE,
+      historizada sin sobrescribirse, y el Detalle vuelve a DEFINIDO,
       disponible para que el mismo u otro tecnico lo continue mas
       adelante con una nueva Ejecucion. Reincorpora al mismo nodo
       (PROC-REP-210) que la baseline: PROC-REP-200 describe ambos
@@ -1383,7 +1383,7 @@ scenarios:
     expected:
       - key: detail_state_after_interruption
         label: Estado del Detalle tras la interrupcion
-        value: PENDIENTE
+        value: DEFINIDO
       - key: inventory_reconciled
         label: Insumos reconciliados (consumido/liberado/desperdicio)
         value: true
@@ -1615,7 +1615,7 @@ scenarios:
       seleccionado (PROC-REP-185) el insumo dejo de estar disponible (por
       ejemplo, otra Orden lo reservo/consumio en el intervalo): la reserva
       falla, la Ejecucion NO se inicia (PROC-REP-186), el Detalle
-      permanece PENDIENTE con condicion BLOQUEADO_POR_RECURSOS y el estado
+      permanece DEFINIDO con condicion BLOQUEADO_POR_RECURSOS y el estado
       de la Orden se recalcula (PROC-REP-211) reutilizando el mismo
       mecanismo que la factibilidad inicial. Origen: analisis estructural
       CAND-REP-026, confirmado como Scenario real en
@@ -1657,7 +1657,7 @@ scenarios:
         value: false
       - key: detail_state_after_failed_reservation
         label: Estado del Detalle tras la reserva fallida
-        value: PENDIENTE
+        value: DEFINIDO
       - key: detail_blocked_condition
         label: Condicion del Detalle bloqueado
         value: BLOQUEADO_POR_RECURSOS
@@ -1685,7 +1685,7 @@ scenarios:
       redefinicion" (la definicion actual del Detalle dejo de ser valida o
       suficiente): la Ejecucion se cierra como no completada (conserva
       tecnico, estacion, inicio/fin, trabajo, observaciones e insumos), el
-      Detalle queda PENDIENTE + REQUIERE_DEFINICION con motivo
+      Detalle queda DEFINIDO + REQUIERE_DEFINICION con motivo
       obligatorio, y PROC-REP-210 reconcilia el inventario (consumo de lo
       usado, liberacion de lo reservado no usado). Luego PROC-REP-211
       deriva ABIERTA_TRABAJABLE si otro Detalle sigue trabajable, y
@@ -1733,7 +1733,7 @@ scenarios:
         label: Ejecucion cerrada como no completada
         value: true
       - key: detail_requires_definition
-        label: Detalle PENDIENTE + REQUIERE_DEFINICION
+        label: Detalle DEFINIDO + REQUIERE_DEFINICION
         value: true
       - key: detail_requires_further_technical_review
         label: Detalle requiere nueva revision tecnica
@@ -1794,7 +1794,7 @@ scenarios:
       Al menos un Detalle es rechazado en el control tecnico
       (PROC-REP-230 = No): Recepcion identifica el/los Detalle(s)
       rechazados, registra fecha, usuario, observacion y resultado del
-      control (PROC-REP-235), y esos Detalles vuelven a PENDIENTE
+      control (PROC-REP-235), y esos Detalles vuelven a DEFINIDO
       (se reabren) conservando el historial de sus Ejecuciones anteriores
       y de este mismo rechazo. El estado de la Orden se recalcula
       mediante el resolver (PROC-REP-211), que puede devolverla a
@@ -1834,7 +1834,7 @@ scenarios:
 
     expected:
       - key: rejected_details_returned_to_pending
-        label: Detalle(s) rechazados vuelven a PENDIENTE
+        label: Detalle(s) rechazados vuelven a DEFINIDO
         value: true
       - key: control_history_preserved
         label: Historial del control tecnico y de Ejecuciones preservado
@@ -4676,8 +4676,8 @@ scenarios:
       - HP-REP-001
 
     description: >
-      Caso B. DET-001 esta EN_PROCESO y DET-002 (autorizado) pasa por
-      factibilidad (PROC-REP-080): no hay stock y queda PENDIENTE con
+      Caso B. DET-001 esta EN_PROGRESO y DET-002 (autorizado) pasa por
+      factibilidad (PROC-REP-080): no hay stock y queda DEFINIDO con
       BLOQUEADO_POR_RECURSOS. La Orden ya esta habilitada (PROC-REP-090 -> 211,
       sin repetir 140/150) y el resolver devuelve EN_EJECUCION con el bloqueo de
       DET-002 conservado: DET-001 continua normalmente ("Ejecucion activa
@@ -4782,7 +4782,7 @@ scenarios:
       - HP-REP-001
 
     description: >
-      Caso C. DET-001 esta EN_PROCESO y DET-002 requiere revision tecnica
+      Caso C. DET-001 esta EN_PROGRESO y DET-002 requiere revision tecnica
       (REQUIERE_DEFINICION). Mientras DET-001 sea ejecutable el resolver
       devuelve EN_EJECUCION (con el bloqueo de DET-002 conservado) y DET-001
       continua sin esperar la revision ("Ejecucion activa vigente"). El tecnico

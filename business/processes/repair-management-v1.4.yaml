@@ -812,7 +812,7 @@ nodes:
       de Reparacion). En este paso solo se CONSULTA disponibilidad: no se
       reserva todavia (la reserva real ocurre recien al iniciar la
       Ejecucion de un Detalle, ver PROC-REP-185/186). Un Detalle sin
-      recursos disponibles queda PENDIENTE con condicion
+      recursos disponibles queda DEFINIDO con condicion
       BLOQUEADO_POR_RECURSOS; esto no afecta a los demas Detalles de la
       misma Orden. V1.4: la factibilidad es una dimension distinta de la
       autorizacion del cliente -no se confunde stock disponible con
@@ -929,7 +929,7 @@ nodes:
       la espera. No cambia el workflow, no modifica el Detalle y no
       realiza la revision automaticamente. Se alcanza unicamente desde
       PROC-REP-211 con resultado REQUIERE_REVISION, es decir cuando ningun
-      Detalle es trabajable y existe al menos uno PENDIENTE con
+      Detalle es trabajable y existe al menos uno DEFINIDO con
       REQUIERE_DEFINICION (si otro Detalle sigue trabajable el resolver
       devuelve ABIERTA_TRABAJABLE y no se llega aqui todavia).
     rules:
@@ -1419,7 +1419,7 @@ nodes:
       del Detalle seleccionado recien en este momento (no en la
       factibilidad, que solo consulto disponibilidad). Si la reserva es
       exitosa, se generan las reservas trazadas a este Detalle, se crea
-      la Ejecucion y el Detalle pasa a EN_PROCESO (PROC-REP-190). Si la
+      la Ejecucion y el Detalle pasa a EN_PROGRESO (PROC-REP-190). Si la
       reserva falla -el insumo dejo de estar disponible entre la
       factibilidad original y este momento-, no se inicia la Ejecucion
       (PROC-REP-186). V1.4: solo se reserva para un Detalle trabajable, es
@@ -1441,7 +1441,7 @@ nodes:
       Nodo nuevo en V1.3, cierra el gap identificado entre la factibilidad
       (que solo consulta disponibilidad) y la reserva real. Cuando la
       reserva de insumos falla al intentar iniciar la Ejecucion, la
-      Ejecucion NO se inicia, el Detalle permanece PENDIENTE con
+      Ejecucion NO se inicia, el Detalle permanece DEFINIDO con
       condicion BLOQUEADO_POR_RECURSOS, y el estado de la Orden se
       recalcula (PROC-REP-211) reutilizando el mismo mecanismo que la
       factibilidad inicial: si existe otro Detalle trabajable la Orden
@@ -1485,13 +1485,13 @@ nodes:
       tecnico se retira sin terminar, la Ejecucion queda registrada como
       historia (tecnico, estacion, inicio/fin, trabajo realizado,
       observaciones, insumos ya ocurridos) y el Detalle vuelve a
-      PENDIENTE sin bloqueo -su definicion sigue siendo valida-,
+      DEFINIDO sin bloqueo -su definicion sigue siendo valida-,
       disponible para que el mismo u otro tecnico lo continue mas
       adelante con una nueva Ejecucion; (c) Requiere redefinicion: el
       tecnico descubre durante la Ejecucion que la definicion actual del
       Detalle ya no es valida o suficiente. NO completa el Detalle: cierra
       la Ejecucion como no completada (tecnicamente interrumpida), exige
-      un motivo obligatorio, y deja el Detalle PENDIENTE con condicion
+      un motivo obligatorio, y deja el Detalle DEFINIDO con condicion
       REQUIERE_DEFINICION (este resultado es quien ASIGNA esa condicion;
       no existe un nodo aparte que la produzca). Los tres resultados
       continuan a PROC-REP-210. La diferencia funcional entre (b) y (c):
@@ -1690,7 +1690,7 @@ nodes:
       toda la Orden a EN_COLA sin mirar el Detalle. En V1.3 se identifica
       el/los Detalle(s) especificos rechazados, se registra fecha,
       usuario, observacion y resultado del control, y esos Detalles
-      vuelven a PENDIENTE (se reabren), conservando el historial de sus
+      vuelven a DEFINIDO (se reabren), conservando el historial de sus
       Ejecuciones anteriores y de este mismo rechazo. El estado de la
       Orden no se fija aqui: se recalcula mediante el resolver
       (PROC-REP-211), que puede devolver la Orden a EN_COLA si algun
@@ -2001,12 +2001,12 @@ nodes:
     type: activity
     name: Cancelar Detalle
     description: >
-      Un Detalle no terminal (PENDIENTE, sin Ejecucion activa) puede
+      Un Detalle no terminal (DEFINIDO, sin Ejecucion activa) puede
       pasar a CANCELADO en cualquier momento en que la Orden este
       disponible, conservando su Tipo, precio snapshot y todo su
-      historial previo. Si el Detalle estuviera EN_PROCESO, primero debe
+      historial previo. Si el Detalle estuviera EN_PROGRESO, primero debe
       interrumpirse su Ejecucion (PROC-REP-200, resultado "Interrumpido"),
-      que lo devuelve a PENDIENTE, antes de poder cancelarlo -esa
+      que lo devuelve a DEFINIDO, antes de poder cancelarlo -esa
       interrupcion ya paso por PROC-REP-210, que reconcilio sus insumos
       (CONSUMIDO/LIBERADO/DESPERDICIO), por lo que el Detalle nunca llega
       a CANCELADO con reservas activas (BR-REP-014)-. QUIEN esta
@@ -2042,7 +2042,7 @@ nodes:
     type: activity
     name: Cancelar Orden / trabajos pendientes
     description: >
-      Cancela los Detalles NO TERMINALES de la Orden (PENDIENTE ->
+      Cancela los Detalles NO TERMINALES de la Orden (DEFINIDO ->
       CANCELADO); los Detalles ya COMPLETO permanecen COMPLETO, nunca se
       reescribe trabajo efectivamente realizado. No puede ejecutarse
       mientras exista una Ejecucion activa: primero debe cerrarse/

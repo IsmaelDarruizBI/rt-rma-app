@@ -645,7 +645,7 @@ features:
         validada, con override auditado cuando corresponda
       - Insumos reservados realmente al iniciar la Ejecucion, o falla de
         reserva registrada
-      - Ejecucion creada y Detalle en EN_PROCESO
+      - Ejecucion creada y Detalle en EN_PROGRESO
       - Ejecucion real registrada (trabajo realizado, repuestos,
         observaciones)
       - Resultado de Ejecucion Completada, Interrumpida o Requiere
@@ -728,14 +728,14 @@ features:
           auditado sobre ese Detalle
         - Intentar la reserva real de insumos al iniciar la Ejecucion
         - Manejar la falla de reserva sin iniciar la Ejecucion
-        - Crear la Ejecucion y pasar el Detalle a EN_PROCESO
+        - Crear la Ejecucion y pasar el Detalle a EN_PROGRESO
         - Garantizar como maximo una Ejecucion activa por Orden
         - Ejecutar el Detalle y registrar el trabajo real
         - Permitir que una Ejecucion finalice Completada, Interrumpida o
           Requiere redefinicion
         - Permitir que el tecnico indique, al cerrar una Ejecucion, que la
           definicion actual del Detalle requiere redefinicion
-        - Registrar el motivo y dejar el Detalle PENDIENTE +
+        - Registrar el motivo y dejar el Detalle DEFINIDO +
           REQUIERE_DEFINICION (FEAT-REP-005 produce la condicion;
           FEAT-REP-002 la resuelve)
         - Conservar multiples Ejecuciones historicas por Detalle
@@ -817,7 +817,7 @@ features:
         - Realizar el control tecnico sobre la Orden
         - Aprobar o rechazar el resultado Detalle por Detalle
         - Reabrir unicamente los Detalles rechazados (vuelven a
-          PENDIENTE), preservando Ejecuciones y controles anteriores
+          DEFINIDO), preservando Ejecuciones y controles anteriores
         - Recalcular la situacion de la Orden mediante el resolver
           (PROC-REP-211) en vez de asumir que vuelve a EN_COLA
         - Calcular el puntaje de cada Detalle aprobado
@@ -1062,7 +1062,7 @@ features:
       PROC-REP-211, sin duplicar logica.
 
     inputs:
-      - Detalle no terminal (PENDIENTE, sin Ejecucion activa)
+      - Detalle no terminal (DEFINIDO, sin Ejecucion activa)
       - Orden con Detalles no terminales pendientes de cancelar
       - Estado de reservas del Detalle verificado, sin reservas activas
         (si el Detalle tuvo Ejecuciones previas, sus movimientos ya
