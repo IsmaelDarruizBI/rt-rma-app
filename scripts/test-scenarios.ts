@@ -621,6 +621,8 @@ const MVP_V2_VARIANT_IDS =
         "VAR-REP-036",
         // consolidacion del 23/10/2026: decisiones confirmadas (ver business/decisions/decision-log-v1.4.yaml)
         "VAR-REP-037",
+        "VAR-REP-038",
+        "VAR-REP-039",
       ]
     : ["VAR-REP-001", "VAR-REP-002", "VAR-REP-003"];
 const MVP_V2_EXCEPTION_IDS = [
@@ -639,7 +641,7 @@ check("el scope es exactamente los HAPPY_PATH + VARIANT + 5 EXCEPTION esperados 
   assert.deepEqual(byType("VARIANT"), [...MVP_V2_VARIANT_IDS].sort());
   assert.deepEqual(byType("EXCEPTION"), [...MVP_V2_EXCEPTION_IDS].sort());
   assert.deepEqual(byType("EDGE_CASE"), []);
-  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 45 : 11);
+  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 47 : 11);
 });
 
 check("todos los IDs de Scenario son unicos", () => {
@@ -844,6 +846,7 @@ if (REVISION === "v1.4") {
     const v13Keys = new Set(v13Process.edges.map(key));
     const v14Keys = new Set(processModel.edges.map(key));
     assert.deepEqual([...v13Keys].filter((k) => !v14Keys.has(k)).sort(), [
+      "PROC-REP-035::::PROC-REP-040",
       "PROC-REP-040::::PROC-REP-045",
       "PROC-REP-055::::PROC-REP-050",
       "PROC-REP-070::::PROC-REP-050",
@@ -916,6 +919,11 @@ if (REVISION === "v1.4") {
         "PROC-REP-181::::PROC-REP-182",
         // consolidacion: la toma conduce a la decision de iniciar un Detalle o liberar (cambio del MVP, DC04)
         "PROC-REP-180::::PROC-REP-212",
+        // consolidacion: la garantia RMA valida la vigencia de origen antes de crear la Orden (DC15B)
+        "PROC-REP-035::::PROC-REP-036",
+        "PROC-REP-036::Vigente::PROC-REP-040",
+        "PROC-REP-036::Vencida, excepcion autorizada::PROC-REP-040",
+        "PROC-REP-036::Vencida, sin excepcion::EVT-REP-998",
         "PROC-REP-182::No requiere evaluacion tecnica::PROC-REP-174",
         "PROC-REP-182::Requiere evaluacion tecnica::PROC-REP-183",
         "PROC-REP-183::CONFIRMADO::PROC-REP-184",
@@ -930,18 +938,20 @@ if (REVISION === "v1.4") {
     const v13Ids = new Set(v13Process.nodes.map((n) => n.id));
     assert.deepEqual(
       processModel.nodes.map((n) => n.id).filter((id) => !v13Ids.has(id)),
-      ["PROC-REP-032", "PROC-REP-046", "PROC-REP-047", "PROC-REP-056", "PROC-REP-128", "PROC-REP-129", "PROC-REP-182", "PROC-REP-183", "PROC-REP-184", "PROC-REP-271", "PROC-REP-267", "PROC-REP-268", "PROC-REP-306", "EVT-REP-003"]
+      ["PROC-REP-032", "PROC-REP-036", "PROC-REP-046", "PROC-REP-047", "PROC-REP-056", "PROC-REP-128", "PROC-REP-129", "PROC-REP-182", "PROC-REP-183", "PROC-REP-184", "PROC-REP-271", "PROC-REP-267", "PROC-REP-268", "PROC-REP-306", "EVT-REP-003", "EVT-REP-998"]
     );
     const changed = v13Process.nodes
       .filter((n) => JSON.stringify(n) !== JSON.stringify(nodeById.get(n.id)))
       .map((n) => n.id);
-    // 010, 069, 120, 125, 130, 140, 170 and the rest stay untouched.
+    // 010, 069, 125, 130, 140, 170 and the rest stay untouched (120 gains the stock revalidation, BR-REP-049).
     assert.deepEqual(
       changed.sort(),
       [
         "PROC-REP-030", "PROC-REP-040", "PROC-REP-045", "PROC-REP-050", "PROC-REP-060", "PROC-REP-070", "PROC-REP-075", "PROC-REP-080", "PROC-REP-090", "PROC-REP-127", "PROC-REP-150", "PROC-REP-172", "PROC-REP-174", "PROC-REP-181", "PROC-REP-185", "PROC-REP-190", "PROC-REP-211", "PROC-REP-265", "PROC-REP-266", "PROC-REP-270", "PROC-REP-280", "PROC-REP-300", "PROC-REP-305",
         // consolidacion del 23/10/2026: cambios del MVP y decisiones DC03 a DC05
         "PROC-REP-180", "PROC-REP-212", "PROC-REP-213", "PROC-REP-245",
+        // DC15B, DC19, DC20 y UAT
+        "PROC-REP-035", "PROC-REP-120",
       ].sort()
     );
   });
@@ -1078,7 +1088,8 @@ if (REVISION === "v1.4") {
       assert.equal(edge.to, edge.condition === "CLIENTE_EXTERNO" ? "PROC-REP-032" : "PROC-REP-045", String(edge.condition));
     }
     const into040 = processModel.edges.filter((e) => e.to === "PROC-REP-040").map((e) => e.from).sort();
-    assert.deepEqual(into040, ["PROC-REP-020", "PROC-REP-025", "PROC-REP-030", "PROC-REP-035"]);
+    // la garantia RMA llega a 040 desde la validacion de vigencia (vigente o excepcion autorizada, DC15B)
+    assert.deepEqual(into040, ["PROC-REP-020", "PROC-REP-025", "PROC-REP-030", "PROC-REP-036", "PROC-REP-036"]);
   });
 
   check("regresion otros origenes: HP-REP-002 y HP-REP-003 no pasan por 032/046/047/128/129/306 y conservan su recorrido", () => {
@@ -1093,7 +1104,7 @@ if (REVISION === "v1.4") {
     const o2 = orderOf(real("HP-REP-002"));
     assert.deepEqual(o2.slice(o2.indexOf("PROC-REP-020"), o2.indexOf("PROC-REP-020") + 5), ["PROC-REP-020", "PROC-REP-040", "PROC-REP-045", "PROC-REP-070", "PROC-REP-050"]);
     const o3 = orderOf(real("HP-REP-003"));
-    assert.deepEqual(o3.slice(0, 8), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-040", "PROC-REP-045", "PROC-REP-055", "PROC-REP-050", "PROC-REP-060", "PROC-REP-065"]);
+    assert.deepEqual(o3.slice(0, 9), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-036", "PROC-REP-040", "PROC-REP-045", "PROC-REP-055", "PROC-REP-050", "PROC-REP-060", "PROC-REP-065"]);
     assert.ok(processModel.edges.some((e) => key(e) === "PROC-REP-040::RT_GARANTIA_VENTA::PROC-REP-045"));
     assert.deepEqual(outgoing("PROC-REP-010"), [
       "CLIENTE_EXTERNO->PROC-REP-030",
@@ -1108,14 +1119,16 @@ if (REVISION === "v1.4") {
   // Reglas de V1.3 que V1.4 cambia, cada una con su motivo: las iteraciones V1.4 (012, 017, 019) y las
   // decisiones de la consolidacion del 23/10/2026 (DCxx). Todas las demas deben seguir identicas a V1.3.
   // Reglas nuevas de la consolidacion del 23/10/2026, en orden.
-  const CONSOLIDATION_RULES = ["BR-REP-039"];
+  const CONSOLIDATION_RULES = ["BR-REP-039", "BR-REP-040", "BR-REP-041", "BR-REP-047", "BR-REP-048", "BR-REP-049"];
   const V13_RULES_CHANGED_IN_V14: Record<string, string> = {
     "BR-REP-003": "DC06: el tecnico redefine (PROC-REP-127); redaccion del estado DEFINIDO (DC17)",
     "BR-REP-009": "DC05: puntaje total derivado, PROC-REP-245 consolida (texto del MVP)",
+    "BR-REP-011": "Estacion = Mesa de trabajo; override con permiso configurable (DC08)",
+    "BR-REP-015": "DC23AUD: historial de precios auditado; precio manual de \"Otros\" (UAT)",
     "BR-REP-012": "parrafo V1.4 (autorizacion y bloqueos) y estados del Detalle (DC17)",
     "BR-REP-017": "parrafo V1.4 de saldo a favor (BR-REP-038)",
     "BR-REP-018": "DC04: liberar antes del primer Detalle (texto del MVP) y liberacion de una toma ajena",
-    "BR-REP-019": "responsable de PROC-REP-075",
+    "BR-REP-019": "responsable de PROC-REP-075; vigencia de la garantia de origen (DC15B)",
   };
   check(`reglas: BR-REP-001 a 019 identicas a V1.3 salvo las declaradas (${Object.keys(V13_RULES_CHANGED_IN_V14).join(", ")}); +19 nuevas (020 a 038)`, () => {
     const v13ById = new Map(v13Rules.rules.map((r) => [r.id, r]));
@@ -1133,7 +1146,12 @@ if (REVISION === "v1.4") {
     const r19 = rulesModel.rules.find((x) => x.id === "BR-REP-019");
     const v19 = v13ById.get("BR-REP-019");
     const norm = (t: string | undefined): string => (t ?? "").replace(/\s+/g, " ");
-    assert.equal(norm(r19?.description).replace("el tecnico define y registra uno o mas Detalles nuevos", "Recepcion define uno o mas Detalles nuevos"), norm(v19?.description));
+    // ademas, DC15B resuelve el pendiente de garantia vencida: el resto del texto V1.3 se conserva
+    const r19n = norm(r19?.description).replace("el tecnico define y registra uno o mas Detalles nuevos", "Recepcion define uno o mas Detalles nuevos");
+    const [v19Before, v19After] = norm(v19?.description).split(" Queda pendiente definir las reglas de garantia RMA configurable y de garantia vencida.");
+    assert.ok(v19After !== undefined, "V1.3 declaraba pendiente la garantia vencida");
+    assert.ok(r19n.startsWith(v19Before) && r19n.endsWith(v19After), "BR-REP-019 conserva el texto V1.3 salvo el pendiente que resuelve DC15B");
+    assert.match(r19n, /se advierte y se bloquea el ingreso en garantia, salvo una excepcion autorizada/);
     assert.deepEqual({ ...r19, description: "" }, { ...v19, description: "" });
     // +19 de las iteraciones V1.4 (020 a 038) y las nuevas de la consolidacion desde BR-REP-039
     assert.equal(rulesModel.rules.length, v13Rules.rules.length + 19 + CONSOLIDATION_RULES.length);
@@ -1155,7 +1173,8 @@ if (REVISION === "v1.4") {
     const text = rule("BR-REP-025");
     assert.match(text, /intenta AVANZAR/);
     assert.match(text, /nunca\s+bloquea/);
-    assert.match(text, /Si falta el checklist NO se\s+advierte/);
+    // DC12: tambien se advierte por verificaciones faltantes del checklist (antes no)
+    assert.match(text, /tambien\s+se advierte cuando faltan verificaciones del checklist/);
     assert.match(text, /decision del cliente sobre los trabajos \(BR-REP-028\)/);
     const save = rule("BR-REP-023");
     assert.match(save, /guardarse parcialmente y retomarse/);
@@ -1339,7 +1358,7 @@ if (REVISION === "v1.4") {
     for (const v13 of v13Scenarios.scenarios.filter((s) => !changedIds.has(s.id))) {
       assert.deepEqual(strip(real(v13.id)), strip(v13), v13.id);
     }
-    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 34);
+    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 36);
   });
 
   // ---------------------------------------------------------------- iteracion 5

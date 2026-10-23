@@ -265,33 +265,39 @@ nodes:
     description: >
       Origen CLIENTE_EXTERNO. Recepcion identifica o registra al cliente
       externo y al equipo recibido para reparacion. Existe una sola entidad
-      conceptual Cliente, clasificable como Minorista o Mayorista, y se
-      reutiliza la entidad Equipo existente (no se crean entidades
-      duplicadas). CLIENTE: primero se busca un cliente existente por DNI
-      y, cuando corresponda, por telefono; si existe se recuperan y
-      confirman sus datos, y si no se crea uno nuevo (BR-REP-020). Para un
-      cliente nuevo se contempla el autocompletado opcional consultando
-      https://www.cuitonline.com/search/ por numero de DNI (scraping, NO API
-      de Renaper): los datos recuperados son verificables y editables por
-      Recepcion, y si la consulta falla, no encuentra datos o no puede
-      utilizarse, se carga manualmente (BR-REP-021). EQUIPO: se busca por
-      IMEI como criterio principal; si existe se recupera su informacion y
-      puede consultarse su historial de ordenes, y si no existe se registra
-      uno nuevo con marca, modelo, color y IMEI y/o numero de serie;
-      un equipo sin IMEI disponible o legible se identifica por un medio
-      alternativo, dejando esa excepcion marcada para validacion
-      (BR-REP-022). La integracion con la fuente externa se documenta como
-      requerimiento funcional: no se asume que el acceso automatizado este
-      autorizado ni garantizado (pendiente tecnico: condiciones de uso,
-      privacidad, disponibilidad y confiabilidad de la fuente).
+      conceptual Cliente y se reutiliza la entidad Equipo existente (no se
+      crean entidades duplicadas). CLIENTE (BR-REP-020, UAT-010): Recepcion
+      ingresa el DNI y primero se busca un cliente existente en la base propia;
+      si existe se muestra y Recepcion decide explicitamente reutilizarlo
+      ("Usar estos datos"), pudiendo corregirlo; si no existe se crea uno nuevo
+      con su DNI, nombre y apellido en un unico campo, telefono y email. Un DNI
+      que ya pertenece a un cliente no crea otro y nunca se vincula un cliente
+      en silencio. Se registra su clasificacion Minorista o Mayorista, sin
+      efecto automatico en precios (DC19). La consulta externa por DNI es
+      opcional y solo a traves de un proveedor autorizado y configurable; la
+      carga manual esta siempre disponible y la falta del servicio nunca
+      bloquea la creacion del Cliente ni de la Orden (BR-REP-021, DC14). EQUIPO
+      (BR-REP-022, DC20): el Equipo tiene identidad fisica propia (identificador
+      interno, IMEI y numero de serie); la busqueda por IMEI devuelve las
+      coincidencias y Recepcion confirma expresamente la reutilizacion antes de
+      vincular el historial de ordenes; si no lo reutiliza se registra un
+      Equipo nuevo. Las caracteristicas comerciales (marca, modelo, variante,
+      capacidad y color) se eligen del catalogo de equipos de Ventas, que
+      aporta el tp_id como referencia comercial y nunca reemplaza la identidad
+      fisica, o se cargan a mano cuando el equipo no esta en el catalogo
+      (BR-REP-048). El formulario inicial de CLIENTE_EXTERNO no pide numero de
+      serie (UAT-011): el dato sigue existiendo en el Equipo. Un equipo sin IMEI
+      disponible o legible, o con coincidencias ambiguas, queda pendiente de
+      definicion funcional.
     outputs:
-      - Cliente identificado (existente recuperado o nuevo)
-      - Equipo identificado (existente recuperado o nuevo)
+      - Cliente identificado (existente reutilizado expresamente o nuevo), con su clasificacion
+      - Equipo identificado (reutilizacion confirmada por Recepcion o Equipo nuevo), con su tp_id cuando proviene del catalogo
       - Referencias de cliente y equipo disponibles para crear la Orden
     rules:
       - BR-REP-020
       - BR-REP-021
       - BR-REP-022
+      - BR-REP-048
 
   - id: PROC-REP-032
     type: activity
@@ -309,24 +315,29 @@ nodes:
       una entidad DiagnosticoInicial independiente. NO es lo mismo que las
       reparaciones diagnosticadas (trabajos como "cambio de bateria" o
       "cambio de pin de carga", que son ReparacionDetail de FEAT-REP-002).
-      (2) OBSERVACIONES GENERALES: texto libre en la OrdenReparacion para
-      danos existentes, condiciones generales y cualquier dato relevante del
-      estado del equipo al recibirlo. (3) CHECKLIST DE RECEPCION: opcional,
-      permite registrar verificaciones y distinguir las no realizadas (su
-      estructura se define posteriormente). (4) FOTOGRAFIAS: opcionales,
-      asociadas a la Orden como evidencia de recepcion con trazabilidad de
-      los archivos; pueden tomarse en el momento con la camara del celular
-      mediante una aplicacion web movil o seleccionarse desde la
-      galeria/archivos (requerimiento funcional de frontend y persistencia,
-      sin implementar). Todo es opcional y Recepcion puede GUARDAR
-      parcialmente y retomar mas tarde sin perder lo cargado: guardar NO
-      avanza el workflow ni crea un estado de negocio nuevo (la Orden sigue en
-      REQUERIMIENTO) (BR-REP-023, BR-REP-024). AL INTENTAR AVANZAR hacia
-      PROC-REP-045 se evalua la advertencia no bloqueante por fotografias
-      y/u observaciones faltantes (BR-REP-025): se indica que falta y
-      Recepcion elige volver a completar (permanece en este nodo) o continuar
-      igualmente, registrandose la confirmacion; no se advierte por falta de
-      checklist ni de diagnostico inicial. Esta advertencia de informacion
+      (2) OBSERVACIONES: las observaciones del equipo (danos, fallas visibles,
+      humedad, faltantes y estado fisico) son visibles para Recepcion y Taller
+      y salen en el comprobante inicial; las NOTAS INTERNAS solo se ven dentro
+      de la aplicacion y nunca salen en documentos ni PDF (UAT, iteracion 1).
+      (3) CHECKLIST DE RECEPCION (DC12): sus preguntas y opciones dependen del
+      tipo de equipo y las configura Administracion (BR-REP-040); todas las
+      verificaciones son opcionales y se pueden registrar como no realizadas.
+      (4) FOTOGRAFIAS (UAT-010/011): opcionales y solo con la Orden ya creada,
+      hasta 10 por Orden; se toman con la camara del celular o se eligen desde
+      la galeria o los archivos, se revisan en una vista previa y se aceptan o
+      descartan una por una (las descartadas no se guardan); quedan registradas
+      con usuario y fecha/hora y se consultan desde Recepcion y Taller. Todo es
+      opcional y Recepcion puede GUARDAR parcialmente y retomar mas tarde sin
+      perder lo cargado: guardar NO avanza el workflow ni crea un estado de
+      negocio nuevo (la Orden sigue en REQUERIMIENTO) (BR-REP-023,
+      BR-REP-024). En el ingreso inicial simplificado (UAT-008) estos datos se
+      cargan en el mismo formulario del alta, pero funcionalmente se registran
+      sobre la Orden ya creada. AL INTENTAR AVANZAR hacia PROC-REP-045 se evalua
+      la advertencia no bloqueante por informacion faltante (BR-REP-025, DC12):
+      fotografias, observaciones o verificaciones del checklist sin registrar;
+      se indica que falta y Recepcion elige volver a completar (permanece en
+      este nodo) o continuar igualmente, registrandose la confirmacion; la
+      falta de diagnostico inicial no genera una advertencia obligatoria. Esta advertencia de informacion
       incompleta NO es la decision del cliente sobre los trabajos
       (PROC-REP-046/047, FEAT-REP-002): son dos eventos distintos. Opcionalmente
       Recepcion puede seleccionar cero, uno o varios tipos de reparacion
@@ -342,16 +353,17 @@ nodes:
       - Equipo identificado
     outputs:
       - Diagnostico inicial (texto libre, guardable y recuperable)
-      - Observaciones generales (texto libre, guardables y recuperables)
-      - Checklist de recepcion (opcional)
-      - Fotografias de recepcion (opcionales)
+      - Observaciones del equipo (visibles, salen en el comprobante) y notas internas (nunca salen en documentos)
+      - Checklist de recepcion segun el tipo de equipo (opcional)
+      - Fotografias de recepcion (opcionales, hasta 10, con usuario y fecha/hora)
       - Reparaciones diagnosticadas por Recepcion (opcional, 0..N tipos; no son Detalles)
-      - Confirmacion trazable de la advertencia de evidencias faltantes (cuando corresponda)
+      - Confirmacion trazable de la advertencia de informacion faltante (cuando corresponda)
     rules:
       - BR-REP-023
       - BR-REP-024
       - BR-REP-025
       - BR-REP-026
+      - BR-REP-040
 
   - id: PROC-REP-035
     type: activity
@@ -378,7 +390,9 @@ nodes:
       pasa por revision tecnica antes de definir que reparacion se realiza
       (PROC-REP-045 = No -> PROC-REP-055): la referencia a nivel Detalle se
       materializa recien al definir los Detalles luego de esa revision
-      (PROC-REP-075), y la Orden nueva nace sin Detalles propios.
+      (PROC-REP-075), y la Orden nueva nace sin Detalles propios. Antes de
+      crear la Orden se valida la vigencia de la garantia de origen
+      (PROC-REP-036, DC15B).
     inputs:
       - Orden de Reparacion origen finalizada
     outputs:
@@ -388,6 +402,33 @@ nodes:
       - Detalle(s) origen identificado(s)
     rules:
       - BR-REP-019
+
+  - id: PROC-REP-036
+    type: decision
+    name: "¿Garantia de origen vigente?"
+    description: >
+      Nodo nuevo de la consolidacion V1.4 (DC15B). El sistema valida
+      automaticamente la vigencia de la garantia de cada Detalle origen
+      identificado en PROC-REP-035: su plazo definitivo, contado desde la
+      entrega de la Orden origen (BR-REP-041). "Vigente" -> PROC-REP-040: se
+      crea la Orden de garantia. "Vencida, excepcion autorizada" ->
+      PROC-REP-040: el sistema advierte el vencimiento y un usuario autorizado
+      admite el ingreso en garantia como excepcion, con motivo obligatorio y
+      auditoria (usuario, fecha/hora, Detalle origen, vencimiento y condicion
+      aplicada). "Vencida, sin excepcion" -> EVT-REP-998: el sistema advierte y
+      bloquea el ingreso en garantia; no se crea la Orden de garantia ni se
+      modifica la Orden origen. Como continua la atencion del cliente en ese
+      caso queda fuera de este recorrido y no se asume ninguna ruta. Las
+      precedencias concretas entre politicas de garantia y quien autoriza la
+      excepcion por defecto siguen pendientes de decision (DC15A, BR-REP-039).
+    inputs:
+      - Orden de Reparacion origen y Detalle(s) origen identificados
+    outputs:
+      - Resultado de la validacion de vigencia por Detalle origen
+      - Excepcion autorizada y auditada, cuando corresponde
+    rules:
+      - BR-REP-019
+      - BR-REP-041
 
   - id: PROC-REP-040
     type: activity
@@ -406,7 +447,9 @@ nodes:
       una garantia RMA (RMA_GARANTIA_REPARACION) se crea una NUEVA Orden
       con origen RMA_GARANTIA_REPARACION, condicion comercial NO_COBRABLE
       (BR-REP-016) y referencia a la Orden origen (BR-REP-019); la Orden
-      origen no se reabre ni se reutiliza transaccionalmente. V1.4 (flujo
+      origen no se reabre ni se reutiliza transaccionalmente. Solo se crea si
+      la garantia de origen esta vigente o se autorizo una excepcion
+      (PROC-REP-036). V1.4 (flujo
       CLIENTE_EXTERNO): la Orden se crea INMEDIATAMENTE despues de
       identificar Cliente y Equipo (PROC-REP-030), antes de registrar
       diagnostico, observaciones, fotografias o checklist: ninguno de ellos
@@ -753,7 +796,9 @@ nodes:
       de lo diagnosticado en el ingreso (BR-REP-026). El precio snapshot
       existe en todo Detalle, cualquiera sea el origen: precio registrado no
       implica pago requerido (la condicion comercial del origen determina si
-      se cobra).
+      se cobra). Consolidacion V1.4 (UAT, iteracion 1): ademas de los tipos del
+      catalogo, Recepcion puede cargar un Detalle "Otros - Reparacion no
+      tipificada" con descripcion y precio manual (BR-REP-047).
     inputs:
       - Orden de Reparacion
     outputs:
@@ -761,6 +806,7 @@ nodes:
     rules:
       - BR-REP-001
       - BR-REP-026
+      - BR-REP-047
 
   - id: PROC-REP-075
     type: activity
@@ -892,6 +938,12 @@ nodes:
       un evento de revalidacion (por ejemplo, cambio de disponibilidad de
       insumos) dispare nuevamente PROC-REP-080. No debe confundirse con
       REQUIERE_REVISION (PROC-REP-125): son dos agregados distintos.
+      Consolidacion V1.4 (UAT, gestion de inventario): un ingreso o ajuste de
+      stock y la revalidacion de las Ordenes que esperan recursos disparan esa
+      reevaluacion solo para los Detalles bloqueados por recursos, sin reservar,
+      sin repetir la habilitacion ni cambiar la prioridad (BR-REP-049).
+    rules:
+      - BR-REP-049
 
   - id: PROC-REP-125
     type: activity
@@ -1449,10 +1501,18 @@ nodes:
       reserva ni consume insumos (BR-REP-028, BR-REP-032). V1.4: ademas exige
       que el Detalle haya pasado por PROC-REP-182 (confirmacion tecnica vigente
       cuando su origen la requiere): no hay camino a este nodo sin ella, y la
-      confirmacion tecnica no garantiza stock (BR-REP-035).
+      confirmacion tecnica no garantiza stock (BR-REP-035). Consolidacion V1.4:
+      al iniciarse la Ejecucion la Orden queda en el hito EN_REPARACION y el
+      Detalle EN_PROGRESO (DC17). Custodia previa a la ejecucion (regla aprobada
+      el 14/10/2026, formalizada por DC16): si la politica del origen exige
+      recepcion fisica (CLIENTE_EXTERNO y garantia RMA), no se inicia una
+      Ejecucion sobre un equipo cuya recepcion no esta confirmada o que se
+      registro como no recibido; el rechazo no genera Ejecucion, reservas ni
+      movimientos (BR-REP-033). RT_INTERNO conserva su politica de recepcion.
     rules:
       - BR-REP-006
       - BR-REP-028
+      - BR-REP-033
       - BR-REP-035
 
   - id: PROC-REP-186
@@ -1918,13 +1978,18 @@ nodes:
       fin pasa antes por PROC-REP-268, la verificacion de saldo a favor del
       cliente).
       Aplica solo a CLIENTE_EXTERNO; la custodia de los demas origenes sigue sin
-      definir. No cambia CANCELADA a ENTREGADA.
+      definir. No cambia CANCELADA a ENTREGADA. Consolidacion V1.4 (DC18B):
+      registrar este evento de custodia requiere un permiso configurable desde
+      Administracion; Recepcion es el actor declarado, y los responsables
+      predeterminados de cada evento de custodia siguen pendientes de decision
+      (BR-REP-039).
     inputs:
       - Orden CANCELADA con recepcion fisica sin confirmar
     outputs:
       - Situacion de custodia determinada (usuario, fecha/hora y evidencia o referencia)
     rules:
       - BR-REP-033
+      - BR-REP-039
 
   - id: PROC-REP-267
     type: activity
@@ -2189,6 +2254,16 @@ nodes:
       solicitud (PROC-REP-128) y su resolucion efectiva (PROC-REP-046/047) son
       actividades separadas (BR-REP-037). Converge en PROC-REP-046.
 
+  - id: EVT-REP-998
+    type: end
+    name: Ingreso en garantia no admitido
+    description: >
+      Fin nuevo de la consolidacion V1.4 (DC15B). Se alcanza unicamente desde
+      PROC-REP-036 cuando la garantia de origen esta vencida y no se autorizo
+      una excepcion. No es el fin de una Orden de Reparacion: la Orden de
+      garantia no llega a crearse, no hay pagos ni custodia que verificar y por
+      eso no pasa por PROC-REP-268. La Orden origen permanece sin cambios.
+
   - id: EVT-REP-999
     type: end
     name: Fin del flujo de Orden de Reparacion
@@ -2241,7 +2316,19 @@ edges:
     to: PROC-REP-046
 
   - from: PROC-REP-035
+    to: PROC-REP-036
+
+  - from: PROC-REP-036
     to: PROC-REP-040
+    condition: Vigente
+
+  - from: PROC-REP-036
+    to: PROC-REP-040
+    condition: Vencida, excepcion autorizada
+
+  - from: PROC-REP-036
+    to: EVT-REP-998
+    condition: Vencida, sin excepcion
 
   - from: PROC-REP-040
     to: PROC-REP-032

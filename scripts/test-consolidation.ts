@@ -152,6 +152,121 @@ check("FEAT-REP-011 es TRANSVERSAL: no posee nodos y gobierna los responsables c
   for (const id of ["BR-REP-034", "BR-REP-039"]) assert.ok(feature("FEAT-REP-004").business_rules.includes(id), id);
 });
 
+console.log("\nBloques 3 y 4 - clientes, equipos, garantias, recepcion y configuracion (DC12, DC14, DC15, DC18, DC19, DC20, DC23 y UAT)\n");
+
+check("DC14: la consulta externa por DNI es opcional, solo con un proveedor autorizado y configurable; sin scraping", () => {
+  const t = rule("BR-REP-021");
+  assert.match(t, /unicamente a traves de un proveedor autorizado y configurable/);
+  assert.match(t, /la carga manual esta siempre disponible/);
+  assert.match(t, /nunca es obligatoria ni bloquea la creacion del Cliente ni de la Orden/);
+  assert.match(t, /esta consolidacion no implementa integraciones/);
+  const sourceOfTruth = JSON.stringify({ rules, model, features });
+  assert.ok(!/cuitonline/i.test(sourceOfTruth), "ninguna referencia a la fuente anterior");
+  assert.ok(!/scraping de/i.test(sourceOfTruth.replace(/reemplaza la referencia al scraping de una\s+pagina web/g, "")), "sin scraping como requerimiento");
+});
+
+check("UAT-010 y DC19: Cliente por DNI en la base propia, reutilizacion explicita, sin duplicados ni vinculo silencioso", () => {
+  const t = rule("BR-REP-020");
+  assert.match(t, /identificador interno propio \(nunca el DNI\)/);
+  assert.match(t, /nombre y apellido en un unico campo/);
+  assert.match(t, /Recepcion decide explicitamente reutilizarlo/);
+  assert.match(t, /no hay vinculacion silenciosa por DNI/);
+  assert.match(t, /sin cambiar precios automaticamente/);
+});
+
+check("DC20 y catalogo de Ventas: identidad fisica propia, reutilizacion confirmada por IMEI y tp_id como referencia comercial", () => {
+  const t = rule("BR-REP-022");
+  assert.match(t, /identidad fisica propia: identificador interno, IMEI y numero de serie/);
+  assert.match(t, /Recepcion debe confirmar expresamente la reutilizacion antes de vincular el historial/);
+  assert.match(t, /no pide numero de serie \(UAT-011\)/);
+  assert.match(t, /Pendiente de definicion: como se identifica un equipo sin IMEI/);
+  const c = rule("BR-REP-048");
+  assert.match(c, /el tp_id identifica un tipo de producto, nunca la unidad/);
+  assert.match(c, /nunca borra/);
+  assert.match(c, /El alta de una Orden nunca consulta el origen de Ventas en linea/);
+  assert.ok((node("PROC-REP-030").rules ?? []).includes("BR-REP-048"));
+  assert.ok(feature("FEAT-REP-001").business_rules.includes("BR-REP-048"));
+});
+
+check("DC15B: la vigencia de la garantia de origen se valida en PROC-REP-036; vencida bloquea salvo excepcion autorizada", () => {
+  assert.equal(node("PROC-REP-036").type, "decision");
+  assert.deepEqual(out("PROC-REP-035"), ["->PROC-REP-036"]);
+  assert.deepEqual(out("PROC-REP-036"), ["Vencida, excepcion autorizada->PROC-REP-040", "Vencida, sin excepcion->EVT-REP-998", "Vigente->PROC-REP-040"]);
+  assert.equal(node("EVT-REP-998").type, "end");
+  assert.deepEqual(model.edges.filter((e) => e.to === "EVT-REP-998").map((e) => e.from), ["PROC-REP-036"], "solo el ingreso no admitido termina en EVT-REP-998");
+  assert.match(rule("BR-REP-019"), /si esta vencida, se advierte y se bloquea el ingreso en garantia, salvo una excepcion autorizada, con motivo obligatorio y auditada/);
+  assert.deepEqual(orderOf(scenario("VAR-REP-038")), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-036", "EVT-REP-998"]);
+  assert.equal(expectedOf(scenario("VAR-REP-038"), "warranty_order_created"), false);
+  assert.deepEqual(orderOf(scenario("VAR-REP-039")).slice(0, 4), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-036", "PROC-REP-040"]);
+  assert.equal(expectedOf(scenario("VAR-REP-039"), "exception_audited"), true);
+  const hp3 = orderOf(scenario("HP-REP-003"));
+  assert.deepEqual(hp3.slice(0, 4), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-036", "PROC-REP-040"]);
+  assert.ok(feature("FEAT-REP-001").process_nodes.includes("PROC-REP-036"));
+});
+
+check("DC15A y UAT: garantia por Detalle, 90/30 dias segun el check-in, ajustes que no se pisan, desde la entrega; precedencias pendientes", () => {
+  const t = rule("BR-REP-041");
+  assert.match(t, /La garantia se asigna a cada Detalle de reparacion/);
+  assert.match(t, /con check-in realizado se sugieren 90 dias y sin check-in realizado 30 dias/);
+  assert.match(t, /una nueva sugerencia nunca lo pisa/);
+  assert.match(t, /La vigencia se cuenta desde la entrega del equipo al cliente/);
+  assert.match(t, /su contenido concreto sigue pendiente de decision/);
+});
+
+check("DC12: checklist por tipo de equipo, configurable, opcional y con advertencia por informacion faltante", () => {
+  assert.match(rule("BR-REP-024"), /sus preguntas y opciones dependen del tipo de equipo y las configura Administracion/);
+  assert.match(rule("BR-REP-024"), /todas las verificaciones son opcionales/);
+  assert.match(rule("BR-REP-025"), /tambien se advierte cuando faltan verificaciones del checklist/);
+  assert.match(rule("BR-REP-025"), /nunca bloquea/);
+  assert.ok((node("PROC-REP-032").rules ?? []).includes("BR-REP-040"));
+});
+
+check("UAT-010/011 y UAT iteracion 1: fotografias, notas internas y numero de serie", () => {
+  const f = rule("BR-REP-024");
+  assert.match(f, /como maximo 10 por Orden/);
+  assert.match(f, /se revisan en una vista previa y se aceptan o descartan una por una/);
+  assert.match(f, /se agregan solo con la Orden ya creada y nunca son obligatorias/);
+  assert.match(rule("BR-REP-023"), /notas internas, que solo se ven dentro de la aplicacion y nunca salen en documentos/);
+  assert.match(nodeText("PROC-REP-030"), /El formulario inicial de CLIENTE_EXTERNO no pide numero de serie \(UAT-011\)/);
+});
+
+check("DC23 y DC23AUD: administracion delegable y auditada; Estacion = Mesa de trabajo; FEAT-REP-010 transversal", () => {
+  const t = rule("BR-REP-040");
+  assert.match(t, /Todo cambio de configuracion queda auditado con usuario, fecha\/hora, valor anterior y valor nuevo/);
+  assert.match(t, /Los cambios posteriores nunca alteran las condiciones ya registradas/);
+  assert.match(rule("BR-REP-015"), /historial de precios de cada Tipo de Reparacion registra usuario, fecha\/hora y valores anterior y nuevo/);
+  assert.match(rule("BR-REP-011"), /Estacion de Trabajo y Mesa de trabajo son la misma entidad/);
+  const f = feature("FEAT-REP-010");
+  assert.equal(f.kind, "TRANSVERSAL");
+  assert.deepEqual(f.process_nodes, []);
+  for (const id of ["PROC-REP-030", "PROC-REP-032", "PROC-REP-036", "PROC-REP-172"]) assert.ok(f.governed_nodes?.includes(id), id);
+  assert.deepEqual(f.business_rules, ["BR-REP-040", "BR-REP-041", "BR-REP-048"]);
+});
+
+check("UAT: reparacion \"Otros\", stock operativo y custodia confirmada antes de ejecutar", () => {
+  assert.match(rule("BR-REP-047"), /descripcion y un precio manual/);
+  assert.match(rule("BR-REP-047"), /pendientes de confirmar: puntaje 0 y compatibilidad con cualquier Mesa de trabajo/);
+  assert.ok((node("PROC-REP-070").rules ?? []).includes("BR-REP-047"));
+  for (const id of ["FEAT-REP-002", "FEAT-REP-007"]) assert.ok(feature(id).business_rules.includes("BR-REP-047"), id);
+  const s = rule("BR-REP-049");
+  assert.match(s, /disponible = fisico - reservado/);
+  assert.match(s, /todo ajuste negativo exige confirmacion explicita/);
+  assert.match(s, /Ningun ingreso o ajuste modifica reservas/);
+  assert.match(s, /Los permisos de consulta, ingresos, ajustes y revalidacion son provisionales/);
+  assert.ok(feature("FEAT-REP-003").business_rules.includes("BR-REP-049"));
+  assert.match(rule("BR-REP-033"), /un tecnico no puede iniciar una Ejecucion sobre un equipo cuya recepcion no esta confirmada/);
+  assert.ok((node("PROC-REP-185").rules ?? []).includes("BR-REP-033"));
+  assert.ok(feature("FEAT-REP-005").business_rules.includes("BR-REP-033"));
+});
+
+check("DC18 y DC18B: cuatro situaciones de custodia, eventos con responsable y permiso; predeterminados pendientes", () => {
+  const t = rule("BR-REP-033");
+  assert.match(t, /Se adoptan estas cuatro situaciones de custodia/);
+  assert.match(t, /registra responsable, fecha\/hora y evidencia o referencia, y requiere un permiso configurable por evento/);
+  assert.match(t, /los responsables predeterminados de cada evento siguen pendientes/);
+  assert.ok((node("PROC-REP-271").rules ?? []).includes("BR-REP-039"));
+});
+
 check("validadores: el schema rechaza una Feature TRANSVERSAL con nodos y una de proceso sin nodos; el validador rechaza actores alternativos invalidos", () => {
   const ajv = new Ajv({ allErrors: true, strict: false });
   const validate = ajv.compile(JSON.parse(readFileSync("business/schemas/feature.schema.json", "utf8")));

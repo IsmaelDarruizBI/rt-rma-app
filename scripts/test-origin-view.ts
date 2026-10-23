@@ -102,7 +102,7 @@ check("ninguna arista conservada la recorren SOLO Scenarios de otro origen (evid
 });
 
 check("exclusiones exactas: caminos de RT_INTERNO, RMA y RT_GARANTIA_VENTA fuera; nodos compartidos dentro", () => {
-  for (const id of ["EVT-REP-002", "PROC-REP-020", "PROC-REP-025", "PROC-REP-035", "PROC-REP-290"]) assert.ok(!keptIds.has(id), `${id} no debe estar`);
+  for (const id of ["EVT-REP-002", "PROC-REP-020", "PROC-REP-025", "PROC-REP-035", "PROC-REP-036", "EVT-REP-998", "PROC-REP-290"]) assert.ok(!keptIds.has(id), `${id} no debe estar`);
   for (const id of ["EVT-REP-001", "PROC-REP-010", "PROC-REP-040", "PROC-REP-050", "PROC-REP-070", "PROC-REP-075", "PROC-REP-127", "PROC-REP-128", "PROC-REP-184", "PROC-REP-270"]) assert.ok(keptIds.has(id), `${id} compartido debe estar`);
   assert.ok(!hasEdge("PROC-REP-010", "RT_INTERNO", "PROC-REP-020"));
   assert.ok(!hasEdge("PROC-REP-040", "RMA_GARANTIA_REPARACION", "PROC-REP-045"));
@@ -112,7 +112,8 @@ check("exclusiones exactas: caminos de RT_INTERNO, RMA y RT_GARANTIA_VENTA fuera
   assert.ok(hasEdge("PROC-REP-010", "CLIENTE_EXTERNO", "PROC-REP-030"));
   assert.ok(hasEdge("PROC-REP-040", "CLIENTE_EXTERNO", "PROC-REP-032"));
   assert.ok(hasEdge("PROC-REP-050", "Si", "PROC-REP-060"));
-  assert.deepEqual(view.report.excludedScenarios.map((x) => x.id).sort(), ["EXC-REP-004", "HP-REP-002", "HP-REP-003", "VAR-REP-002", "VAR-REP-023", "VAR-REP-035"]);
+  // VAR-REP-038/039 son de la garantia RMA (consolidacion, DC15B)
+  assert.deepEqual(view.report.excludedScenarios.map((x) => x.id).sort(), ["EXC-REP-004", "HP-REP-002", "HP-REP-003", "VAR-REP-002", "VAR-REP-023", "VAR-REP-035", "VAR-REP-038", "VAR-REP-039"]);
   assert.ok(view.report.keptScenarios.includes("HP-REP-001"));
   for (const id of ["VAR-REP-010", "VAR-REP-011", "VAR-REP-020", "VAR-REP-024", "VAR-REP-026", "VAR-REP-027"]) assert.ok(view.report.keptScenarios.includes(id), id);
 });

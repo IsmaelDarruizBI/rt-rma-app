@@ -69,6 +69,9 @@ const T = (kind: DecisionKind, grounding: Grounding, basis: string, edgeKinds?: 
 
 export const NODE_KINDS: Record<string, NodeKindNote> = {
   "PROC-REP-010": T("DATO_ORDEN", "DOCUMENTADA", "El nodo describe los cuatro origenes de la Orden: es un dato de la Orden, no una accion del operador."),
+  "PROC-REP-036": T("SISTEMA", "DOCUMENTADA", "El sistema valida la vigencia de la garantia de cada Detalle origen; la excepcion la autoriza un usuario (DC15B).", {
+    "Vencida, excepcion autorizada": "HUMANA",
+  }),
   "PROC-REP-040": T("DATO_ORDEN", "DOCUMENTADA", "Las salidas estan rotuladas con el origen de la Orden."),
   "PROC-REP-045": T("HUMANA", "INFERIDA", "Distingue si Recepcion ya conoce los Detalles al ingreso."),
   "PROC-REP-046": T("HUMANA", "DOCUMENTADA", "Recepcion registra la decision del cliente por Detalle; si el cliente no respondio no hay decision que registrar y la solicitud queda sin resolver.", {

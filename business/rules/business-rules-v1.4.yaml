@@ -221,6 +221,14 @@ rules:
       sin ese override, ese Detalle en particular no puede iniciarse
       desde esa Estacion, pero la Orden puede continuar con otros
       Detalles.
+      Consolidacion V1.4. Estacion de Trabajo y Mesa de trabajo son la misma
+      entidad: "Estacion" es el nombre tecnico y "Mesa de trabajo" el nombre
+      visible para los usuarios. Sus tipos de reparacion habilitados se
+      administran como configuracion auditada (BR-REP-040). El "usuario
+      autorizado" a forzar la continuidad es quien tenga ese permiso,
+      configurable desde Administracion; por defecto, Coordinacion
+      (PROC-REP-179, BR-REP-039). Las capacidades de los tecnicos y los
+      recursos distintos de los insumos siguen pendientes de definicion.
     status: draft
 
   - id: BR-REP-012
@@ -462,6 +470,11 @@ rules:
       no participa del Subtotal. No existe costo configurable del Tipo de
       Reparacion: el costo de una reparacion (mano de obra + costo real
       de insumos) se resolvera en una etapa posterior, fuera de V1.3.
+      Consolidacion V1.4 (DC23AUD): el historial de precios de cada Tipo de
+      Reparacion registra usuario, fecha/hora y valores anterior y nuevo, como
+      todo cambio de configuracion (BR-REP-040); un cambio posterior no altera
+      las condiciones ya registradas en los Detalles. La reparacion no
+      tipificada "Otros" toma un precio manual por Detalle (BR-REP-047).
     status: draft
 
   - id: BR-REP-016
@@ -615,8 +628,14 @@ rules:
       -> Orden origen; Detalle nuevo -> Detalle origen), y resuelve el
       pendiente de vinculacion Orden vs. Detalle. Cliente y equipo se
       recuperan de la Orden origen (no es un alta nueva). La condicion
-      comercial de la Orden es NO_COBRABLE (BR-REP-016). Queda pendiente
-      definir las reglas de garantia RMA configurable y de garantia vencida.
+      comercial de la Orden es NO_COBRABLE (BR-REP-016). Vigencia
+      (consolidacion V1.4, DC15B): antes de crear la Orden de garantia se valida
+      automaticamente la garantia de cada Detalle origen, con su plazo
+      definitivo contado desde la entrega (BR-REP-041); si esta vencida, se
+      advierte y se bloquea el ingreso en garantia, salvo una excepcion
+      autorizada, con motivo obligatorio y auditada (PROC-REP-036). La politica
+      configurable de garantia es BR-REP-041; sus precedencias concretas siguen
+      pendientes.
       Revision obligatoria y multi-Detalle (MVP v2): toda garantia RMA pasa
       por revision tecnica antes de definir que reparacion se realiza
       (PROC-REP-045 = No -> 055 -> 065 -> 068). La nueva Orden nace
@@ -639,37 +658,58 @@ rules:
       (puede corregirlos); si no existe, se crea un Cliente nuevo. Se
       reutiliza siempre la misma entidad conceptual Cliente (sin entidades
       paralelas) y se conserva su clasificacion Minorista/Mayorista.
+      Consolidacion V1.4 (UAT-010 y DC19). El Cliente tiene un identificador
+      interno propio (nunca el DNI), DNI opcional validado y normalizado,
+      nombre y apellido en un unico campo tal como lo carga Recepcion o lo
+      devuelve una fuente autorizada (no se separa automaticamente), telefono y
+      email. Recepcion ingresa el DNI y la busqueda corre primero en la base
+      propia; si existe un cliente, Recepcion decide explicitamente
+      reutilizarlo ("Usar estos datos"). Un DNI que ya pertenece a un cliente
+      no crea otro y no hay vinculacion silenciosa por DNI ni comparacion por
+      nombre; sin DNI no se reconoce al cliente. Las correcciones de datos
+      quedan en la Orden nueva y las Ordenes y documentos anteriores conservan
+      lo registrado. La clasificacion Minorista/Mayorista se registra sin
+      cambiar precios automaticamente; reglas comerciales por clasificacion
+      podran definirse en el futuro. La busqueda nunca bloquea la creacion de
+      la Orden. La busqueda por telefono no esta implementada.
     status: draft
 
   - id: BR-REP-021
     name: Consulta externa opcional por DNI y carga manual alternativa
     description: >
-      Para un Cliente nuevo se contempla, de forma OPCIONAL, autocompletar
-      sus datos consultando https://www.cuitonline.com/search/ mediante el
-      numero de DNI. La integracion prevista es scraping de esa pagina, NO la
-      API de Renaper. Los datos recuperados son verificables y editables por
-      Recepcion antes de confirmarlos. Si la consulta falla, no encuentra
-      datos o no puede utilizarse, Recepcion carga los datos manualmente: la
-      consulta externa nunca es obligatoria ni bloquea el ingreso. Este
-      comportamiento es un requerimiento funcional; no se asume que el acceso
-      automatizado a la fuente este autorizado ni garantizado. Pendiente
-      tecnico: revisar condiciones de uso, privacidad, disponibilidad y
-      confiabilidad de la fuente antes de desarrollarlo.
+      Consolidacion V1.4 (DC14, reemplaza la referencia al scraping de una
+      pagina web). Para un Cliente que no esta en la base propia se contempla,
+      de forma OPCIONAL, una consulta externa por DNI, unicamente a traves de un
+      proveedor autorizado y configurable. Los datos recuperados son
+      verificables y editables por Recepcion antes de confirmarlos y nunca
+      completan el formulario por si solos. Si la consulta falla, no encuentra
+      datos, el servicio no esta disponible o no hay ningun proveedor
+      habilitado, Recepcion carga los datos manualmente: la carga manual esta
+      siempre disponible y la consulta externa nunca es obligatoria ni bloquea
+      la creacion del Cliente ni de la Orden. Se valida el DNI antes de
+      consultar, se respetan limites de consultas y no se guardan respuestas
+      completas con datos personales (UAT-010). No hay hoy ninguna fuente
+      externa habilitada y esta consolidacion no implementa integraciones.
     status: draft
 
   - id: BR-REP-022
-    name: Busqueda y reutilizacion de Equipo por IMEI
+    name: Identidad fisica del Equipo y reutilizacion confirmada por IMEI
     description: >
-      Recepcion busca primero un Equipo existente usando el IMEI como
-      criterio principal (PROC-REP-030). Si existe, se recupera su
-      informacion y puede consultarse el historial de ordenes de ese Equipo;
-      si no existe, se registra un Equipo nuevo con marca, modelo, color y
-      IMEI y/o numero de serie. Se reutiliza la entidad Equipo existente (no
-      se crea una entidad duplicada). Un equipo sin IMEI disponible o
-      legible se identifica por un medio alternativo (por ejemplo numero de
-      serie); esa excepcion queda identificada para su validacion y su
-      criterio exacto de identificacion alternativa esta pendiente de
-      definicion.
+      Consolidacion V1.4 (DC20, reemplaza en parte la version anterior). El
+      Equipo tiene identidad fisica propia: identificador interno, IMEI y
+      numero de serie. Sus caracteristicas comerciales (marca, modelo,
+      variante, capacidad y color) provienen del catalogo de equipos de Ventas,
+      cuyo tp_id se conserva como referencia comercial y nunca reemplaza la
+      identidad fisica (BR-REP-048), o se cargan a mano cuando el equipo no
+      esta en el catalogo. Recepcion busca un Equipo existente por IMEI
+      (PROC-REP-030): la busqueda devuelve las coincidencias y Recepcion debe
+      confirmar expresamente la reutilizacion antes de vincular el historial
+      de ordenes de ese Equipo; si no la confirma, se registra un Equipo nuevo.
+      No se crea una entidad duplicada cuando se reutiliza. El formulario
+      inicial de CLIENTE_EXTERNO no pide numero de serie (UAT-011), que sigue
+      siendo un dato del Equipo, opcional, para todos los origenes. Pendiente
+      de definicion: como se identifica un equipo sin IMEI disponible o legible
+      y como se resuelven las coincidencias ambiguas.
     status: draft
 
   - id: BR-REP-023
@@ -690,6 +730,10 @@ rules:
       perder lo ingresado: guardar NO avanza el workflow ni crea un estado de
       negocio nuevo (la Orden sigue en REQUERIMIENTO). Ningun campo es
       obligatorio para crear la Orden ni para continuar (BR-REP-025).
+      Consolidacion V1.4 (UAT, iteracion 1): se distinguen las observaciones
+      del equipo, visibles para Recepcion y Taller e incluidas en el
+      comprobante inicial, de las notas internas, que solo se ven dentro de la
+      aplicacion y nunca salen en documentos, PDF ni mensajes al cliente.
     status: draft
 
   - id: BR-REP-024
@@ -699,14 +743,19 @@ rules:
       son OPCIONALES y se registran sobre la Orden ya creada. Las
       fotografias se asocian a la Orden como parte de su evidencia de
       recepcion y deben preservar la trazabilidad de los archivos (quien las
-      incorporo y cuando). El ingreso de fotografias desde una aplicacion web
-      movil debe permitir tanto tomarlas en el momento con la camara del
-      celular como seleccionarlas desde la galeria o los archivos
-      (requerimiento funcional de frontend y persistencia, sin implementar
-      todavia). El checklist permite registrar verificaciones del equipo y
-      distinguir las no realizadas; su estructura especifica se define
-      posteriormente y un checklist incompleto no bloquea la recepcion. Lo
-      cargado se puede guardar y recuperar posteriormente.
+      incorporo y cuando). Consolidacion V1.4 (UAT-010/011): se agregan solo
+      con la Orden ya creada y nunca son obligatorias; como maximo 10 por
+      Orden, con el contador visible; se toman con la camara del celular o se
+      eligen varias desde la galeria o los archivos, se revisan en una vista
+      previa y se aceptan o descartan una por una (las descartadas no se
+      guardan); las guardadas se ven en miniatura, se abren ampliadas,
+      muestran quien y cuando las cargo y se consultan desde Recepcion y
+      Taller. Quien puede cargarlas y consultarlas es configurable (BR-REP-039).
+      El checklist (DC12) permite registrar verificaciones del equipo y
+      distinguir las no realizadas: sus preguntas y opciones dependen del tipo
+      de equipo y las configura Administracion (BR-REP-040); todas las
+      verificaciones son opcionales y un checklist incompleto no bloquea la
+      recepcion. Lo cargado se puede guardar y recuperar posteriormente.
     status: draft
 
   - id: BR-REP-025
@@ -717,13 +766,15 @@ rules:
       observaciones registradas. Si faltan fotografias, observaciones o
       ambas, se muestra una advertencia que indica exactamente que falta y
       ofrece dos acciones: volver a completar la informacion (permanece en
-      PROC-REP-032) o continuar igualmente. Si falta el checklist NO se
-      advierte por ese motivo, y por ahora la falta de diagnostico inicial
-      tampoco genera una advertencia obligatoria. La advertencia nunca
+      PROC-REP-032) o continuar igualmente. Consolidacion V1.4 (DC12): tambien
+      se advierte cuando faltan verificaciones del checklist, que siguen siendo
+      opcionales; por ahora la falta de diagnostico inicial no genera una
+      advertencia obligatoria. La advertencia nunca
       bloquea el proceso ni impide haber creado la Orden. Cuando Recepcion
       elige continuar igualmente, se registra la confirmacion de la
       advertencia para trazabilidad (usuario, fecha/hora y que faltaba:
-      fotografias, observaciones o ambas). Es una advertencia sobre
+      fotografias, observaciones o verificaciones del checklist). Es una
+      advertencia sobre
       INFORMACION INCOMPLETA de Recepcion y es un evento distinto de la
       decision del cliente sobre los trabajos (BR-REP-028): no comparten
       semantica ni nodo. Se aplica como regla de PROC-REP-032; no existe un
@@ -1027,6 +1078,18 @@ rules:
       RT_INTERNO (no emite comprobante de recepcion) y la devolucion de una
       Orden cancelada con origen distinto de CLIENTE_EXTERNO no estan definidas
       todavia y se conservan sin cambios.
+      Consolidacion V1.4 (DC18 y DC18B). Se adoptan estas cuatro situaciones de
+      custodia. Cada evento que las determina (recepcion fisica confirmada,
+      equipo no recibido, regularizacion en PROC-REP-271, devolucion fisica y
+      entrega en PROC-REP-270) registra responsable, fecha/hora y evidencia o
+      referencia, y requiere un permiso configurable por evento (BR-REP-039);
+      los responsables predeterminados de cada evento siguen pendientes de
+      decision. Custodia previa a la ejecucion (regla aprobada el 14/10/2026):
+      cuando la politica del origen exige recepcion fisica (CLIENTE_EXTERNO y
+      garantia RMA), un tecnico no puede iniciar una Ejecucion sobre un equipo
+      cuya recepcion no esta confirmada o que se registro como no recibido; el
+      rechazo no genera Ejecucion, reservas ni movimientos (PROC-REP-185).
+      RT_INTERNO conserva su politica de recepcion.
     status: draft
 
   - id: BR-REP-034
@@ -1401,4 +1464,112 @@ rules:
       (BR-REP-033) y los permisos iniciales por tipo de Ajuste Comercial
       (BR-REP-016). La autenticacion y el almacenamiento de usuarios, roles y
       permisos son una decision de arquitectura (DC27C), no de esta regla.
+    status: draft
+
+  - id: BR-REP-040
+    name: Administracion de configuracion y auditoria de cambios
+    description: >
+      Consolidacion V1.4 (DC23 y DC23AUD). Administracion administra los
+      catalogos y parametros del proceso y sus valores predeterminados: entre
+      otros, tipos de reparacion con su precio, puntaje y garantia, insumos,
+      Mesas de trabajo (Estaciones) y sus tipos habilitados, checklist de
+      recepcion por tipo de equipo, politicas de garantia, plantillas de
+      mensajes y permisos. Esa administracion es delegable mediante permisos
+      (BR-REP-039). Todo cambio de configuracion queda auditado con usuario,
+      fecha/hora, valor anterior y valor nuevo, y se conserva el historial de
+      precios. Los cambios posteriores nunca alteran las condiciones ya
+      registradas en una reparacion: cada Detalle, Ejecucion y documento
+      conserva su copia de lo que se aplico (precio, puntaje, garantia,
+      checklist, datos del equipo). El catalogo de equipos lo mantiene Ventas
+      y RMA solo lo sincroniza (BR-REP-048). La administracion de
+      configuraciones nuevas se implementa sobre la persistencia definitiva
+      (DC28), no sobre los archivos JSON del MVP.
+    status: draft
+
+  - id: BR-REP-041
+    name: Politica de garantia configurable y garantia por Detalle
+    description: >
+      Consolidacion V1.4 (DC15A, con lo confirmado en UAT, iteracion 1 y
+      UAT-009). La garantia se asigna a cada Detalle de reparacion, no solo a
+      la Orden. Su plazo surge de una politica configurable por tipo de
+      reparacion y por el resultado del check-in, administrada desde
+      Administracion (BR-REP-040); las precedencias entre politicas y sus
+      excepciones se definen desde Administracion y su contenido concreto sigue
+      pendiente de decision. Politica vigente confirmada en UAT: con check-in
+      realizado se sugieren 90 dias y sin check-in realizado 30 dias, por cada
+      Detalle no cancelado (BR-REP-045). Se conservan el plazo sugerido y el
+      definitivo; un usuario autorizado puede ajustar el plazo manualmente con
+      motivo antes de la entrega, el ajuste queda registrado y una nueva
+      sugerencia nunca lo pisa. La vigencia se cuenta desde la entrega del
+      equipo al cliente, nunca desde la creacion de la Orden ni desde la
+      finalizacion tecnica. Cada Detalle conserva la condicion de garantia que
+      se le aplico (politica, sugerido, ajustes y definitivo) para su
+      trazabilidad, y esa condicion es la que valida PROC-REP-036 en un
+      reclamo de garantia RMA (BR-REP-019). El comprobante final informa el
+      plazo definitivo y el vencimiento de cada Detalle.
+    status: draft
+
+  - id: BR-REP-047
+    name: Reparacion no tipificada "Otros"
+    description: >
+      Consolidacion V1.4 (UAT, iteracion 1). Ademas de los tipos del catalogo,
+      Recepcion puede registrar un Detalle "Otros - Reparacion no tipificada"
+      con una descripcion y un precio manual, sin crear un tipo de catalogo por
+      cada reparacion manual. El Detalle sigue el mismo circuito que cualquier
+      otro (autorizacion, ejecucion, control, cobro y garantia), su precio
+      manual es su snapshot (BR-REP-015) y debe poder distinguirse de un tipo
+      parametrizado en los reportes. No se inventan insumos previstos: no
+      reserva ni consume insumos que no se registren. Decisiones de la
+      implementacion pendientes de confirmar: puntaje 0 y compatibilidad con
+      cualquier Mesa de trabajo. La futura administracion de tipos de
+      reparacion (BR-REP-040) reemplazara el tipo reservado sin cambiar este
+      comportamiento.
+    status: draft
+
+  - id: BR-REP-048
+    name: Catalogo de equipos de Ventas
+    description: >
+      Consolidacion V1.4 (integracion confirmada el 22/10/2026 y DC20). RMA
+      usa una copia local del catalogo de productos de Ventas para elegir las
+      caracteristicas comerciales del Equipo en el alta de CLIENTE_EXTERNO:
+      Modelo, Variante, Capacidad y Color, solo con las combinaciones que
+      existen. El Equipo guarda el tp_id del producto como referencia comercial
+      y una copia de esas caracteristicas: el tp_id identifica un tipo de
+      producto, nunca la unidad, y no reemplaza la identidad fisica del Equipo
+      (BR-REP-022). Si el equipo no esta en el catalogo, o no hay copia
+      disponible, se carga a mano. La copia se actualiza por sincronizacion
+      manual (permiso configurable, BR-REP-039): conserva los tp_id originales,
+      valida estructura y unicidad, nunca borra (lo que Ventas deja de informar
+      o elimina queda no vigente), conserva la ultima copia valida si la lectura
+      falla y registra fecha, usuario y resultado de cada intento. El alta de
+      una Orden nunca consulta el origen de Ventas en linea, y un cambio
+      posterior del catalogo no reescribe Ordenes ni documentos.
+    status: draft
+
+  - id: BR-REP-049
+    name: Gestion operativa del stock
+    description: >
+      Consolidacion V1.4 (gestion de inventario aprobada el 14/10/2026,
+      formalizada por DC16). Por insumo se distinguen stock fisico, reservado y
+      disponible = fisico - reservado; el disponible puede ser negativo por un
+      override (BR-REP-003) o un faltante. Un ingreso de stock registra una
+      cantidad positiva, motivo u origen, usuario, fecha/hora y referencia
+      opcional, y aumenta el stock fisico. Un ajuste manual se expresa como
+      diferencia positiva o negativa, con motivo obligatorio; todo ajuste
+      negativo exige confirmacion explicita, y si deja disponible negativo por
+      reservas existentes se advierte antes de confirmar. Ningun ingreso o
+      ajuste modifica reservas, Detalles ni Ejecuciones, ningun ajuste deja
+      stock fisico negativo y no se duplican movimientos. Los movimientos son
+      inmutables y trazados (insumo, tipo, cantidad, fecha/hora, responsable,
+      Orden y Detalle cuando corresponde, motivo y referencia); un faltante se
+      corrige con un movimiento nuevo, sin borrar la evidencia. La revalidacion
+      de Ordenes que esperan recursos evalua solo los Detalles bloqueados por
+      recursos, sin reservar stock, sin repetir PROC-REP-140, sin cambiar la
+      prioridad ni interrumpir tomas o Ejecuciones, y respetando autorizaciones
+      y revisiones pendientes (PROC-REP-080/120, BR-REP-034). Los permisos de
+      consulta, ingresos, ajustes y revalidacion son provisionales (BR-REP-039).
+      Fuera de alcance: compras, lotes y costos (proceso de Compras, DC24 y
+      DC24LOT) e inventarios fisicos periodicos. Pendiente de decision: el
+      catalogo de tipos de movimiento (DESPERDICIO de BR-REP-005 frente a
+      DEVOLUCION de la implementacion).
     status: draft

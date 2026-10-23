@@ -826,6 +826,9 @@ scenarios:
       - key: origin_detail_identified
         label: Detalle origen identificado
         value: true
+      - key: origin_warranty_valid
+        label: Garantia del Detalle origen vigente (PROC-REP-036)
+        value: true
       - key: receipt_required
         label: Comprobante de recepcion requerido
         value: true
@@ -895,7 +898,12 @@ scenarios:
 
       - kind: PROCESS_EDGE
         from: PROC-REP-035
+        to: PROC-REP-036
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-036
         to: PROC-REP-040
+        condition: Vigente
 
       - kind: PROCESS_EDGE
         from: PROC-REP-040
@@ -6101,3 +6109,171 @@ scenarios:
       - key: simultaneous_takes
         label: Quedan dos tomas activas simultaneas
         value: false
+
+  - id: VAR-REP-038
+    name: Garantia RMA con la garantia de origen vencida, sin excepcion, ingreso no admitido
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-001
+
+    applies_to:
+      - HP-REP-003
+
+    description: >
+      Consolidacion V1.4 (DC15B). El cliente vuelve por una reparacion
+      anterior, pero el plazo definitivo de garantia del Detalle origen, contado
+      desde la entrega de la Orden origen, ya vencio (BR-REP-041). Al validar la
+      vigencia (PROC-REP-036) el sistema advierte el vencimiento y nadie
+      autoriza una excepcion: se bloquea el ingreso en garantia. No se crea la
+      Orden de garantia, la Orden origen no cambia y el recorrido termina en
+      EVT-REP-998, que no es el fin de una Orden (no hay pagos ni custodia que
+      verificar). Como sigue la atencion del cliente queda fuera de este
+      Scenario: no se asume que pase a otro origen.
+
+    trigger:
+      node: PROC-REP-036
+      edge:
+        from: PROC-REP-036
+        to: EVT-REP-998
+        condition: Vencida, sin excepcion
+      condition: Vencida, sin excepcion
+
+    affected_nodes:
+      - PROC-REP-035
+      - PROC-REP-036
+
+    rules:
+      - BR-REP-019
+      - BR-REP-041
+
+    facts:
+      - key: origin
+        label: Origen solicitado
+        value: RMA_GARANTIA_REPARACION
+      - key: origin_warranty_valid
+        label: Garantia del Detalle origen vigente
+        value: false
+      - key: exception_authorized
+        label: Excepcion autorizada
+        value: false
+
+    steps:
+      - kind: PROCESS_EDGE
+        from: EVT-REP-002
+        to: PROC-REP-035
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-035
+        to: PROC-REP-036
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-036
+        to: EVT-REP-998
+        condition: Vencida, sin excepcion
+
+    expected:
+      - key: expiry_warning_shown
+        label: Se advierte el vencimiento
+        value: true
+      - key: warranty_order_created
+        label: Se crea la Orden de garantia
+        value: false
+      - key: origin_order_modified
+        label: Se modifica la Orden origen
+        value: false
+      - key: next_route_assumed
+        label: Se asume una ruta para continuar la atencion
+        value: false
+
+  - id: VAR-REP-039
+    name: Garantia RMA con la garantia de origen vencida y excepcion autorizada
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-001
+
+    applies_to:
+      - HP-REP-003
+
+    description: >
+      Consolidacion V1.4 (DC15B). Igual que VAR-REP-038, la garantia del Detalle
+      origen esta vencida, pero un usuario autorizado admite el ingreso en
+      garantia como excepcion: registra el motivo, que es obligatorio, y la
+      excepcion queda auditada con usuario, fecha/hora, Detalle origen,
+      vencimiento y condicion aplicada. Se crea la Orden de garantia vinculada a
+      la Orden y al Detalle origen y el recorrido sigue como HP-REP-003 (revision
+      tecnica obligatoria). Quien autoriza la excepcion por defecto sigue
+      pendiente de decision; el permiso es configurable (BR-REP-039).
+
+    trigger:
+      node: PROC-REP-036
+      edge:
+        from: PROC-REP-036
+        to: PROC-REP-040
+        condition: Vencida, excepcion autorizada
+      condition: Vencida, excepcion autorizada
+
+    affected_nodes:
+      - PROC-REP-035
+      - PROC-REP-036
+      - PROC-REP-040
+
+    rules:
+      - BR-REP-019
+      - BR-REP-041
+      - BR-REP-039
+
+    facts:
+      - key: origin
+        label: Origen
+        value: RMA_GARANTIA_REPARACION
+      - key: origin_warranty_valid
+        label: Garantia del Detalle origen vigente
+        value: false
+      - key: exception_authorized
+        label: Excepcion autorizada con motivo
+        value: true
+
+    steps:
+      - kind: PROCESS_EDGE
+        from: EVT-REP-002
+        to: PROC-REP-035
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-035
+        to: PROC-REP-036
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-036
+        to: PROC-REP-040
+        condition: Vencida, excepcion autorizada
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-040
+        to: PROC-REP-045
+        condition: RMA_GARANTIA_REPARACION
+
+    expected:
+      - key: exception_audited
+        label: Excepcion auditada (usuario, fecha/hora, Detalle origen, vencimiento y motivo)
+        value: true
+      - key: warranty_order_created
+        label: Se crea la Orden de garantia vinculada a la Orden y al Detalle origen
+        value: true
+      - key: origin_order_reopened
+        label: Se reabre la Orden origen
+        value: false
+      - key: billing_condition
+        label: Condicion comercial
+        value: NO_COBRABLE

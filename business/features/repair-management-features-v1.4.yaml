@@ -84,7 +84,7 @@ features:
       al modelo Orden/Detalle de V1.3. En V1.4 el ingreso de CLIENTE_EXTERNO
       se limita a la captura de informacion y la creacion de la Orden:
       Recepcion busca y reutiliza Clientes y Equipos existentes (con
-      autocompletado opcional por DNI y carga manual alternativa), la Orden se
+      consulta externa opcional por DNI y carga manual alternativa), la Orden se
       crea de forma temprana y despues se registra sobre ella la informacion
       inicial y las condiciones del equipo (diagnostico inicial, observaciones,
       checklist, fotografias), guardable y recuperable, con una advertencia no
@@ -92,7 +92,16 @@ features:
       termina cuando la Orden existe y la informacion inicial se completo o se
       confirmo para avanzar; lo que sigue (definir Detalles, decision del
       cliente, comprobante) es de FEAT-REP-002 y las cancelaciones de
-      FEAT-REP-009.
+      FEAT-REP-009. Consolidacion V1.4: el Cliente se busca por DNI en la base
+      propia y se reutiliza de forma explicita (UAT-010); la consulta externa
+      solo puede hacerse con un proveedor autorizado y configurable (DC14); el
+      Equipo tiene identidad fisica propia y su reutilizacion por IMEI la
+      confirma Recepcion (DC20), con las caracteristicas comerciales del
+      catalogo de Ventas (BR-REP-048); se registra la clasificacion
+      Minorista/Mayorista (DC19); el checklist depende del tipo de equipo
+      (DC12), las fotografias y las notas internas siguen lo aprobado en UAT, y
+      la garantia RMA valida la vigencia de origen antes de crear la Orden
+      (PROC-REP-036, DC15B).
 
     inputs:
       - Necesidad de reparacion
@@ -115,6 +124,8 @@ features:
       - Confirmacion trazable de la advertencia de evidencias faltantes, cuando corresponda
       - Reparaciones diagnosticadas por Recepcion (0..N tipos), sin crear Detalles
       - Informacion inicial guardable parcialmente y recuperable, sin estado de negocio nuevo
+      - Equipo con referencia comercial tp_id del catalogo de Ventas, cuando se elige del catalogo
+      - Vigencia de la garantia de origen validada, o excepcion autorizada y auditada (RMA_GARANTIA_REPARACION)
 
     process_nodes:
       - PROC-REP-010
@@ -123,6 +134,7 @@ features:
       - PROC-REP-030
       - PROC-REP-032
       - PROC-REP-035
+      - PROC-REP-036
       - PROC-REP-040
 
     business_rules:
@@ -135,6 +147,9 @@ features:
       - BR-REP-024
       - BR-REP-025
       - BR-REP-026
+      - BR-REP-040
+      - BR-REP-041
+      - BR-REP-048
 
     scope:
       includes:
@@ -142,15 +157,25 @@ features:
         - Obtener contexto de equipos internos de Rosario Tecno
         - Recibir referencias de garantias de venta
         - Registrar o identificar cliente y equipo
-        - Buscar y reutilizar un Cliente existente por DNI y, cuando
-          corresponda, telefono; crear uno nuevo si no existe
-        - Autocompletar opcionalmente los datos de un Cliente nuevo
-          consultando cuitonline.com por DNI, con datos verificables y
-          editables y carga manual alternativa
-        - Buscar y reutilizar un Equipo existente por IMEI y consultar su
-          historial de ordenes; registrar uno nuevo si no existe
-        - Identificar por un medio alternativo un equipo sin IMEI
-          disponible o legible, dejando la excepcion marcada para validacion
+        - Buscar un Cliente existente por DNI en la base propia y reutilizarlo
+          solo por decision explicita de Recepcion, sin duplicar un DNI ni
+          vincular en silencio; crear uno nuevo si no existe (BR-REP-020)
+        - Registrar la clasificacion Minorista/Mayorista sin efecto automatico
+          en precios (DC19)
+        - Consultar opcionalmente un proveedor externo autorizado y configurable
+          por DNI, con datos verificables y editables y carga manual siempre
+          disponible, sin bloquear el alta (BR-REP-021, DC14)
+        - Buscar un Equipo por IMEI y reutilizarlo, con su historial de
+          ordenes, solo si Recepcion confirma la coincidencia; registrar uno
+          nuevo con identidad fisica propia si no (BR-REP-022, DC20)
+        - Elegir las caracteristicas comerciales del Equipo del catalogo de
+          Ventas (Modelo, Variante, Capacidad y Color) conservando el tp_id, o
+          cargarlas a mano (BR-REP-048)
+        - Omitir el numero de serie del formulario inicial de CLIENTE_EXTERNO,
+          sin quitarlo del Equipo (UAT-011)
+        - Validar la vigencia de la garantia de origen de una garantia RMA y
+          admitir una excepcion autorizada y auditada o bloquear el ingreso
+          (PROC-REP-036, BR-REP-019, BR-REP-041)
         - Relacionar una garantia de reparacion con la Orden original y con
           uno o mas Detalles origen (una unica Orden de garantia por
           inicio, BR-REP-019)
@@ -158,14 +183,16 @@ features:
           temprana y sin exigir diagnostico, observaciones, fotografias ni
           checklist
         - Asignar el estado inicial REQUERIMIENTO
-        - Registrar, sobre la Orden ya creada, el diagnostico inicial y las
-          observaciones generales (texto libre) y, opcionalmente, checklist y
-          fotografias de recepcion (PROC-REP-032)
+        - Registrar, sobre la Orden ya creada, el diagnostico inicial, las
+          observaciones del equipo (visibles) y las notas internas (nunca en
+          documentos) y, opcionalmente, el checklist del tipo de equipo y hasta
+          10 fotografias con vista previa, aceptacion o descarte (PROC-REP-032,
+          UAT-010/011, DC12)
         - Guardar parcialmente y recuperar la informacion inicial sin
           avanzar el workflow ni crear un estado de negocio nuevo
         - Advertir sin bloquear, al intentar avanzar desde PROC-REP-032, que
-          faltan fotografias u observaciones y registrar la confirmacion de
-          continuar igualmente
+          faltan fotografias, observaciones o verificaciones del checklist y
+          registrar la confirmacion de continuar igualmente (BR-REP-025)
         - Permitir seleccionar cero, uno o varios tipos de reparacion
           diagnosticados por Recepcion, sin crear Detalles
 
@@ -180,9 +207,12 @@ features:
         - Ejecutar cancelaciones, su transicion a CANCELADA y la devolucion
           fisica (FEAT-REP-009, PROC-REP-306, reutilizando PROC-REP-270 de
           FEAT-REP-008)
-        - Desarrollar el scraping de cuitonline.com ni la captura de
-          fotografias (requerimientos funcionales, sin implementar)
-        - Definir la estructura especifica del checklist de recepcion
+        - Integrar una fuente externa de identidad sin un proveedor
+          autorizado (BR-REP-021)
+        - Administrar las preguntas del checklist, el catalogo de equipos y las
+          politicas de garantia (FEAT-REP-010)
+        - Definir como sigue la atencion de un cliente cuya garantia RMA esta
+          vencida y no tiene excepcion
         - Validar factibilidad o disponibilidad de recursos
         - Ejecutar Detalles de Reparacion
         - Gestionar comercialmente la Orden (precio, pagos, saldo)
@@ -196,23 +226,23 @@ features:
         que esta Feature sea responsable de implementar el resolver (ver
         FEAT-REP-002/005/006/009 y docs/discovery/README.md).
       - >
-        Consulta externa por DNI (BR-REP-021): falta revisar condiciones de
-        uso, privacidad, disponibilidad y confiabilidad de cuitonline.com
-        antes de desarrollar el scraping; no se asume que el acceso
-        automatizado este autorizado ni garantizado.
+        Proveedor autorizado de consulta externa por DNI (BR-REP-021, DC14):
+        no hay ninguno habilitado; elegirlo y autorizarlo queda pendiente.
       - >
-        Equipos sin IMEI disponible o legible (BR-REP-022): falta definir el
-        criterio de identificacion alternativa y como se valida esa
-        excepcion.
+        Equipos sin IMEI disponible o legible y coincidencias ambiguas por
+        IMEI (BR-REP-022): falta definir el criterio de identificacion y como
+        se resuelve la coincidencia.
       - >
-        Estructura del checklist de recepcion y estandarizacion del
-        diagnostico inicial mediante una configuracion administrable
-        (BR-REP-023, BR-REP-024): a definir posteriormente.
+        Estandarizacion del diagnostico inicial mediante una configuracion
+        administrable (BR-REP-023): a definir posteriormente.
       - >
-        Almacenamiento, formato y trazabilidad de los archivos de
-        fotografias (BR-REP-024), y como se persiste la seleccion de
-        reparaciones diagnosticadas por Recepcion hasta que FEAT-REP-002
-        cree los Detalles (BR-REP-026): a definir.
+        Como se persiste la seleccion de reparaciones diagnosticadas por
+        Recepcion hasta que FEAT-REP-002 cree los Detalles (BR-REP-026): a
+        definir.
+      - >
+        Precedencias concretas entre politicas de garantia y responsable
+        predeterminado de la excepcion de garantia vencida (BR-REP-041,
+        PROC-REP-036): pendientes de decision.
 
   - id: FEAT-REP-002
     name: Diagnostico y gestion de Detalles de Reparacion
@@ -309,9 +339,13 @@ features:
       - BR-REP-032
       - BR-REP-033
       - BR-REP-037
+      - BR-REP-047
 
     scope:
       includes:
+        - Registrar un Detalle "Otros - Reparacion no tipificada" con
+          descripcion y precio manual, con el mismo circuito que cualquier otro
+          Detalle (BR-REP-047)
         - Permitir que un tecnico agregue un Detalle nuevo a una Orden con
           otros Detalles durante la ejecucion (PROC-REP-128, origen del
           diagnostico REVISION_TECNICA), pendiente de autorizacion, sin
@@ -468,6 +502,8 @@ features:
       - Faltantes identificados por Detalle
       - Override de factibilidad registrado sobre un Detalle especifico
         cuando corresponda
+      - Ingresos y ajustes de stock trazados y Ordenes en espera de recursos
+        revalidadas (BR-REP-049)
 
     process_nodes:
       - PROC-REP-080
@@ -484,6 +520,7 @@ features:
       - BR-REP-003
       - BR-REP-028
       - BR-REP-034
+      - BR-REP-049
 
     scope:
       includes:
@@ -513,6 +550,12 @@ features:
           autorizado despues de habilitar la OR, sin volver a habilitarla ni
           encolarla ni invalidar hitos previos (PROC-REP-090 enruta por el
           resolver cuando la Orden ya esta habilitada, BR-REP-034)
+        - Consultar el stock fisico, reservado y disponible por insumo y
+          registrar ingresos y ajustes con motivo, confirmacion de los ajustes
+          negativos y movimientos inmutables, sin tocar reservas (BR-REP-049)
+        - Revalidar las Ordenes que esperan recursos evaluando solo los
+          Detalles bloqueados por recursos, sin reservar, sin repetir la
+          habilitacion ni cambiar la prioridad (BR-REP-049)
 
       excludes:
         - Decidir la autorizacion del cliente (FEAT-REP-002)
@@ -521,6 +564,7 @@ features:
         - Seleccionar un Detalle especifico para trabajar (FEAT-REP-005)
         - Ejecutar Detalles de Reparacion (FEAT-REP-005)
         - Exigir que todos los Detalles de la Orden sean factibles
+        - Compras, lotes y costos de inventario (proceso de Compras, DC24)
 
     open_questions:
       - >
@@ -717,12 +761,16 @@ features:
       - BR-REP-011
       - BR-REP-012
       - BR-REP-028
+      - BR-REP-033
       - BR-REP-035
       - BR-REP-036
       - BR-REP-037
 
     scope:
       includes:
+        - Impedir el inicio de una Ejecucion sobre un equipo cuya recepcion
+          fisica no esta confirmada cuando el origen la exige, sin generar
+          Ejecucion, reservas ni movimientos (BR-REP-033)
         - Evaluar la posibilidad de ejecutar POR DETALLE (autorizacion,
           confirmacion tecnica, estacion, factibilidad y ausencia de otra
           Ejecucion activa); un Detalle ejecutable puede iniciarse o continuarse
@@ -932,6 +980,7 @@ features:
       - BR-REP-016
       - BR-REP-017
       - BR-REP-038
+      - BR-REP-047
 
     scope:
       includes:
@@ -1227,6 +1276,85 @@ features:
         Consecuencias comerciales/reembolsos de la cancelacion, fuera de
         alcance de V1.3.
       - Reglas futuras adicionales de cancelacion.
+
+  - id: FEAT-REP-010
+    name: Administracion de configuracion
+    kind: TRANSVERSAL
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    purpose: >
+      Feature TRANSVERSAL de la consolidacion V1.4 (DC23 y DC23AUD). No posee
+      nodos del proceso: administra los catalogos, parametros y valores
+      predeterminados que usan los nodos -tipos de reparacion con precio,
+      puntaje y garantia, insumos, Mesas de trabajo (Estaciones), checklist por
+      tipo de equipo, politicas de garantia, plantillas de mensajes y
+      sincronizacion del catalogo de equipos de Ventas- con auditoria de cada
+      cambio y sin alterar las condiciones ya registradas (BR-REP-040).
+
+    inputs:
+      - Catalogos y parametros vigentes
+      - Catalogo de productos de Ventas (solo lectura)
+
+    outputs:
+      - Configuracion vigente por catalogo y parametro
+      - Historial auditado de cambios (usuario, fecha/hora, valor anterior y nuevo)
+      - Historial de precios por Tipo de Reparacion
+      - Copia local del catalogo de equipos y registro de sincronizaciones
+
+    process_nodes: []
+
+    governed_nodes:
+      - PROC-REP-030
+      - PROC-REP-032
+      - PROC-REP-036
+      - PROC-REP-070
+      - PROC-REP-075
+      - PROC-REP-127
+      - PROC-REP-128
+      - PROC-REP-172
+      - PROC-REP-174
+      - PROC-REP-176
+      - PROC-REP-179
+      - PROC-REP-185
+      - PROC-REP-210
+
+    business_rules:
+      - BR-REP-040
+      - BR-REP-041
+      - BR-REP-048
+
+    scope:
+      includes:
+        - Administrar catalogos y parametros, delegable mediante permisos
+          (BR-REP-039)
+        - Auditar todo cambio con usuario, fecha/hora, valor anterior y nuevo,
+          y conservar el historial de precios
+        - Configurar el checklist de recepcion por tipo de equipo (DC12)
+        - Configurar las politicas de garantia (DC15A)
+        - Administrar las Mesas de trabajo (Estaciones) y sus tipos de
+          reparacion habilitados
+        - Sincronizar manualmente el catalogo de equipos de Ventas
+          (BR-REP-048)
+      excludes:
+        - Modificar condiciones ya registradas en Ordenes, Detalles o
+          documentos
+        - Mantener el catalogo de productos, que pertenece a Ventas
+        - Implementar la administracion sobre los archivos JSON del MVP (se
+          implementa sobre la persistencia definitiva, DC28)
+
+    open_questions:
+      - >
+        Precedencias concretas entre politicas de garantia (DC15A).
+      - >
+        Capacidades de los tecnicos y recursos distintos de los insumos:
+        pendientes de definicion.
+      - >
+        Plantillas, disparadores y proveedor de mensajes de WhatsApp (DC25):
+        pendientes de definicion.
 
   - id: FEAT-REP-011
     name: Seguridad, roles y permisos

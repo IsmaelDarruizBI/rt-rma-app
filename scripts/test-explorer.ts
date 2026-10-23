@@ -319,7 +319,7 @@ check("RT_GARANTIA_VENTA (fuera de MVP v2, sin Scenarios) ofrece las salidas sin
 });
 
 // 44 Scenarios de V1.4 mas los de la consolidacion del 23/10/2026 (VAR-REP-037 en adelante).
-const V14_SCENARIO_COUNT = 45;
+const V14_SCENARIO_COUNT = 47;
 check(`14) el explorador no omite salidas validas: los ${V14_SCENARIO_COUNT} Scenarios se recorren completos, nodo por nodo`, () => {
   assert.equal(scenarios.length, V14_SCENARIO_COUNT);
   let steps = 0;
@@ -461,7 +461,9 @@ check("13) los nodos nuevos 267 y 268 aparecen cuando corresponde y todo fin pas
       const ns = t.visits.map((v) => v.node);
       if (t.status === "ENDED") {
         ended++;
-        assert.equal(ns[ns.length - 2], "PROC-REP-268", `semilla ${seed}: el fin no pasa por 268`);
+        // un ingreso en garantia no admitido (EVT-REP-998, DC15B) no crea la Orden: no hay saldo que verificar en 268
+        if (ns[ns.length - 1] === "EVT-REP-998") assert.equal(ns[ns.length - 2], "PROC-REP-036", `semilla ${seed}: 998 solo tras 036`);
+        else assert.equal(ns[ns.length - 2], "PROC-REP-268", `semilla ${seed}: el fin no pasa por 268`);
       }
       ns.forEach((n, i) => {
         if (n === "PROC-REP-267") assert.ok(["PROC-REP-265", "PROC-REP-268"].includes(ns[i - 1]), `semilla ${seed}: 267 tras ${ns[i - 1]}`);
@@ -537,14 +539,19 @@ check("la politica de origen reutiliza origin-filter: ALLOWED + HIDDEN + UNCONFI
 });
 
 check("el inicio alternativo EVT-REP-002 fija el origen RMA y sigue el camino real de la garantia", () => {
-  const r = run([], { start: "EVT-REP-002", includeUncertain: true });
+  // la garantia valida primero la vigencia de origen (PROC-REP-036, DC15B); con la garantia vigente sigue a 040
+  const rmaCfg = { start: "EVT-REP-002", includeUncertain: true };
+  const atValidity = run([], rmaCfg);
+  assert.equal(main(atValidity).pending?.node, "PROC-REP-036");
+  const r = run(choose([], "Vigente", "main", rmaCfg), rmaCfg);
   assert.equal(r.origin, "RMA_GARANTIA_REPARACION");
-  assert.deepEqual(nodesOf(r).slice(0, 4), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-040", "PROC-REP-045"]);
+  assert.deepEqual(nodesOf(r).slice(0, 5), ["EVT-REP-002", "PROC-REP-035", "PROC-REP-036", "PROC-REP-040", "PROC-REP-045"]);
   assert.equal(main(r).pending?.node, "PROC-REP-045");
   // 045 en una garantia RMA: 'No' respaldado por Scenarios, 'Si' solo como hipotesis sin evidencia (el nodo dice que siempre es No)
   assert.deepEqual(main(r).pending?.options.map((o) => `${o.condition}/${o.status}`).sort(), ["No/ALLOWED", "Si/UNCONFIRMED"]);
-  const strict = run([], { start: "EVT-REP-002", includeUncertain: false });
-  assert.ok(nodesOf(strict).length > 4, "sin ramas sin evidencia 045 se resuelve solo por 'No'");
+  const strictCfg = { start: "EVT-REP-002", includeUncertain: false };
+  const strict = run(choose([], "Vigente", "main", strictCfg), strictCfg);
+  assert.ok(nodesOf(strict).length > 5, "sin ramas sin evidencia 045 se resuelve solo por 'No'");
 });
 
 if (failures > 0) {

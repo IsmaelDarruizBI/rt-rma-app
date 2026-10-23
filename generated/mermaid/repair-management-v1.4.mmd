@@ -11,6 +11,7 @@ flowchart TD
     PROC-REP-030["Registrar cliente y equipo"]
     PROC-REP-032["Registrar informacion inicial y condiciones del equipo"]
     PROC-REP-035["Identificar reparacion original en garantia"]
+    PROC-REP-036{"¿Garantia de origen vigente?"}
     PROC-REP-040["Crear Orden de Reparacion"]
     PROC-REP-045{"Se conocen los Detalles de reparacion requeridos"}
     PROC-REP-046["Registrar decision del cliente por Detalle"]
@@ -75,6 +76,7 @@ flowchart TD
     PROC-REP-305["Cancelar Orden / trabajos pendientes"]
     PROC-REP-306["Cancelar Orden por desistimiento del cliente (sin Detalles)"]
     EVT-REP-003{{"Hay una solicitud de autorizacion de un Detalle pendiente de gestion"}}
+    EVT-REP-998((("Ingreso en garantia no admitido")))
     EVT-REP-999((("Fin del flujo de Orden de Reparacion")))
 
     EVT-REP-001 --> PROC-REP-010
@@ -87,7 +89,10 @@ flowchart TD
     PROC-REP-030 --> PROC-REP-040
     EVT-REP-002 --> PROC-REP-035
     EVT-REP-003 --> PROC-REP-046
-    PROC-REP-035 --> PROC-REP-040
+    PROC-REP-035 --> PROC-REP-036
+    PROC-REP-036 -->|Vigente| PROC-REP-040
+    PROC-REP-036 -->|Vencida, excepcion autorizada| PROC-REP-040
+    PROC-REP-036 -->|Vencida, sin excepcion| EVT-REP-998
     PROC-REP-040 -->|CLIENTE_EXTERNO| PROC-REP-032
     PROC-REP-040 -->|RT_INTERNO| PROC-REP-045
     PROC-REP-040 -->|RT_GARANTIA_VENTA| PROC-REP-045
