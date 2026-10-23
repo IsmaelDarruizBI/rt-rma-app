@@ -606,7 +606,11 @@ nodes:
       COMPLETO se conservan y no se cancelan Ejecuciones activas: primero deben
       cerrarse, BR-REP-014) y PROC-REP-211 determina el desenlace, incluidos la
       custodia fisica del equipo (BR-REP-033) y el saldo, los anticipos y su
-      devolucion (BR-REP-038). Este nodo NO ofrece como elecciones del cliente
+      devolucion (BR-REP-038). Consolidacion V1.4 (DC07C): si hay una Ejecucion
+      activa, la decision queda registrada como SOLICITUD de desistimiento total
+      (usuario y fecha/hora) y se resuelve con el proceso guiado: el tecnico
+      interrumpe la Ejecucion y luego PROC-REP-211 deriva a la cancelacion
+      efectiva de lo que quede (BR-REP-030). Este nodo NO ofrece como elecciones del cliente
       la existencia del comprobante de recepcion, el hito de habilitacion, la
       factibilidad pendiente ni el estado de la Orden: son condiciones INTERNAS
       que el sistema resuelve automaticamente despues de registrar la decision,
@@ -1606,13 +1610,21 @@ nodes:
       continuan a PROC-REP-210. La diferencia funcional entre (b) y (c):
       Interrumpido deja la definicion vigente; Requiere redefinicion la
       invalida y obliga a pasar por la revision posterior (PROC-REP-125 a
-      127). Nunca se sobrescribe una Ejecucion anterior.
+      127). Nunca se sobrescribe una Ejecucion anterior. Consolidacion V1.4:
+      interrumpir exige motivo (mejoras UAT del 16/10/2026). Cuando se
+      interrumpe para resolver una cancelacion solicitada sobre ese Detalle
+      (DC07B), el tecnico registra ademas el estado en que queda el trabajo, los
+      materiales utilizados y si el trabajo puede revertirse; con eso
+      PROC-REP-210 reconcilia los insumos y PROC-REP-211 deriva a la cancelacion
+      efectiva (BR-REP-004, BR-REP-014). Un Detalle COMPLETO nunca se cancela
+      despues: se resuelve con ajustes o devoluciones (DC07D).
     outputs:
       - Trabajo realizado
       - Repuestos y cantidades reales
       - Observaciones
       - Resultado de la Ejecucion (Completado / Interrumpido / Requiere redefinicion)
-      - Motivo de redefinicion (obligatorio cuando el resultado es Requiere redefinicion)
+      - Motivo de interrupcion o de redefinicion (obligatorio cuando el resultado no es Completado)
+      - Estado del trabajo, materiales utilizados y reversibilidad, cuando se interrumpe para cancelar
     rules:
       - BR-REP-004
 
@@ -1734,8 +1746,19 @@ nodes:
       Con cantidad_detalles = 0 este nodo no se invoca: ninguna arista de una
       Orden sin Detalles llega aqui antes de que el tecnico defina los Detalles
       (BR-REP-013).
+      Consolidacion V1.4 (DC07). La solicitud de desistimiento y la cancelacion
+      efectiva son registros distintos, cada uno con usuario y fecha/hora. Si
+      el cliente pidio desistir de un Detalle que se estaba ejecutando, o de
+      todos los trabajos mientras habia una Ejecucion activa, la solicitud queda
+      pendiente hasta que el tecnico interrumpe (PROC-REP-200); despues, con la
+      Ejecucion ya resuelta, este nodo deriva a la cancelacion efectiva antes de
+      las salidas por estado: "Desistimiento solicitado de un Detalle ya
+      interrumpido" -> PROC-REP-300 y "Desistimiento total solicitado, sin
+      Ejecucion activa" -> PROC-REP-305. Los Detalles COMPLETO conservan su
+      resultado y nunca se cancelan.
     rules:
       - BR-REP-012
+      - BR-REP-030
 
   - id: PROC-REP-212
     type: decision
@@ -2223,11 +2246,17 @@ nodes:
       que lo devuelve a DEFINIDO, antes de poder cancelarlo -esa
       interrupcion ya paso por PROC-REP-210, que reconcilio sus insumos
       (CONSUMIDO/LIBERADO/DESPERDICIO), por lo que el Detalle nunca llega
-      a CANCELADO con reservas activas (BR-REP-014)-. QUIEN esta
-      autorizado a cancelar un Detalle todavia no fue definido por
-      negocio: se omite deliberadamente el campo `actor` de este nodo (el
-      schema no lo exige) en vez de asumir uno sin aprobacion -ver
-      docs/discovery/README.md, seccion Pendientes de V1.3-. Simplificacion
+      a CANCELADO con reservas activas (BR-REP-014)-. Consolidacion V1.4
+      (DC07 y DC08): un Detalle DEFINIDO puede cancelarse aunque otro Detalle
+      se este ejecutando, liberando solo sus propios recursos (DC07A); un
+      Detalle EN_PROGRESO primero se interrumpe y el tecnico registra estado,
+      materiales y reversibilidad (DC07B, PROC-REP-200), y recien entonces se
+      resuelve la cancelacion (arista desde PROC-REP-211); un Detalle COMPLETO
+      nunca se cancela (DC07D). Hay tres tipos de cancelacion, con permiso
+      propio (BR-REP-039): administrativa (por defecto Recepcion y
+      Coordinacion), descarte tecnico (el Tecnico, PROC-REP-183) y desistimiento
+      solicitado por el cliente (lo registra Recepcion). Como el actor depende
+      del tipo, este nodo no declara un unico `actor`. Simplificacion
       de este diagrama: se representa como alcanzable desde PROC-REP-170
       (el punto de espera mas representativo de la Orden), aunque
       conceptualmente puede originarse en cualquier momento sin Ejecucion
@@ -2251,6 +2280,7 @@ nodes:
       - BR-REP-014
       - BR-REP-030
       - BR-REP-036
+      - BR-REP-039
 
   - id: PROC-REP-305
     type: activity
@@ -2274,13 +2304,15 @@ nodes:
       un Detalle COMPLETO, porque ese trabajo efectivamente realizado
       debe poder controlarse, cobrarse y cerrarse-. Se preservan
       Ejecuciones, tecnicos, estaciones, tiempos, insumos, movimientos,
-      precios, pagos y auditoria. Las consecuencias comerciales (por
-      ejemplo, reembolso de pagos ya realizados si la Orden termina
-      CANCELADA) quedan explicitamente pendientes, fuera de V1.3. QUIEN
-      esta autorizado a ejecutar esta accion todavia no fue definido por
-      negocio: se omite deliberadamente el campo `actor` de este nodo (el
-      schema no lo exige) en vez de asumir uno sin aprobacion -ver
-      docs/discovery/README.md, seccion Pendientes de V1.3-. V1.4: tambien se
+      precios, pagos y auditoria. Los reembolsos de pagos ya realizados si la
+      Orden termina CANCELADA se tratan como saldo a favor del cliente
+      (BR-REP-038). Consolidacion V1.4 (DC07C y DC08): el desistimiento total
+      con una Ejecucion activa es un proceso guiado -se registra la solicitud,
+      se interrumpe la Ejecucion y despues se cancela lo que quede
+      (PROC-REP-211 -> 305)- que registra los Detalles afectados, el motivo y la
+      resolucion de cada uno; las Ejecuciones se resuelven antes del cierre. El
+      permiso depende del tipo de cancelacion (BR-REP-039), por eso el nodo no
+      declara un unico `actor`. V1.4: tambien se
       alcanza desde la decision del cliente (PROC-REP-047, "Rechaza todos los
       trabajos"): es la operacion que respalda la opcion de UI
       "Desistir de todos los trabajos pendientes", que aplica a cada Detalle
@@ -2289,6 +2321,7 @@ nodes:
     rules:
       - BR-REP-014
       - BR-REP-030
+      - BR-REP-039
 
   - id: PROC-REP-306
     type: activity
@@ -2317,9 +2350,11 @@ nodes:
       desiste antes del comprobante) el proceso continua a PROC-REP-268 y finaliza sin
       devolucion fisica. Antes del fin se verifica el saldo a favor por una sena
       ya pagada (BR-REP-038). Las reglas de cancelacion de Ordenes
-      con Detalles (PROC-REP-300/305, BR-REP-014) no se alteran. QUIEN esta
-      autorizado a cancelar sigue sin definirse por negocio: se omite
-      deliberadamente el campo actor, igual que en PROC-REP-300/305.
+      con Detalles (PROC-REP-300/305, BR-REP-014) no se alteran. Consolidacion
+      V1.4 (DC08): es un desistimiento solicitado por el cliente, que registra
+      Recepcion en PROC-REP-056; el permiso de la cancelacion es configurable
+      (BR-REP-039) y, como en PROC-REP-300/305, el nodo no declara un unico
+      actor.
     inputs:
       - Orden en REQUERIMIENTO con cantidad_detalles = 0
       - Decision de desistimiento del cliente
@@ -2787,6 +2822,14 @@ edges:
   - from: PROC-REP-211
     to: PROC-REP-080
     condition: Comprobante emitido, factibilidad pendiente
+
+  - from: PROC-REP-211
+    to: PROC-REP-300
+    condition: Desistimiento solicitado de un Detalle ya interrumpido
+
+  - from: PROC-REP-211
+    to: PROC-REP-305
+    condition: Desistimiento total solicitado, sin Ejecucion activa
 
   - from: PROC-REP-212
     to: PROC-REP-181

@@ -2,7 +2,7 @@
 %% DO NOT EDIT MANUALLY.
 %% SOURCE: business/processes/repair-management-v1.4.yaml
 %% VIEW: origen CLIENTE_EXTERNO (subconjunto de nodos y aristas reales; ver scripts/lib/origin-filter.ts)
-%% Nodos: 69 | Aristas: 117 | Aristas punteadas: carril independiente de Recepcion (EVT secundarios)
+%% Nodos: 69 | Aristas: 119 | Aristas punteadas: carril independiente de Recepcion (EVT secundarios)
 
 flowchart TD
     EVT-REP-001{{"Surge necesidad de reparacion"}}
@@ -164,6 +164,8 @@ flowchart TD
     PROC-REP-211 -->|REQUIERE_REVISION| PROC-REP-125
     PROC-REP-211 -->|Antes del comprobante de recepcion| PROC-REP-050
     PROC-REP-211 -->|Comprobante emitido, factibilidad pendiente| PROC-REP-080
+    PROC-REP-211 -->|Desistimiento solicitado de un Detalle ya interrumpido| PROC-REP-300
+    PROC-REP-211 -->|Desistimiento total solicitado, sin Ejecucion activa| PROC-REP-305
     PROC-REP-212 -->|Si| PROC-REP-181
     PROC-REP-212 -->|No| PROC-REP-213
     PROC-REP-213 --> PROC-REP-170

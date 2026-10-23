@@ -405,7 +405,9 @@ features:
           reutilizada, sin invalidar la autorizacion de Detalles que no
           cambian (BR-REP-029)
         - Registrar el desistimiento individual, total o sin Detalles y
-          derivarlo a FEAT-REP-009 (BR-REP-030, BR-REP-027)
+          derivarlo a FEAT-REP-009 (BR-REP-030, BR-REP-027); la solicitud se
+          registra con usuario y fecha/hora aparte de la cancelacion efectiva, y
+          queda pendiente mientras haya una Ejecucion que interrumpir (DC07)
         - Generar el comprobante de recepcion una sola vez, despues de la
           decision inicial, y no generarlo si el cliente desiste antes de
           aceptar el ingreso (PROC-REP-050/060, BR-REP-031)
@@ -834,7 +836,10 @@ features:
         - Garantizar como maximo una Ejecucion activa por Orden
         - Ejecutar el Detalle y registrar el trabajo real
         - Permitir que una Ejecucion finalice Completada, Interrumpida o
-          Requiere redefinicion
+          Requiere redefinicion, con motivo obligatorio cuando no se completa
+        - Interrumpir una Ejecucion para resolver una cancelacion solicitada,
+          registrando el estado del trabajo, los materiales utilizados y si
+          puede revertirse (DC07B, BR-REP-004)
         - Permitir que el tecnico indique, al cerrar una Ejecucion, que la
           definicion actual del Detalle requiere redefinicion
         - Registrar el motivo y dejar el Detalle DEFINIDO +
@@ -1210,10 +1215,16 @@ features:
       administra FEAT-REP-002 (PROC-REP-056 sin Detalles, PROC-REP-046/047 con
       Detalles); esta Feature solo ejecuta
       las cancelaciones, reutilizando PROC-REP-300/305/306 y el resolver
-      PROC-REP-211, sin duplicar logica.
+      PROC-REP-211, sin duplicar logica. Consolidacion V1.4 (DC07 y DC08): un
+      Detalle DEFINIDO se cancela aunque otro se ejecute; un Detalle en
+      ejecucion primero se interrumpe; el desistimiento total con una Ejecucion
+      activa es un proceso guiado; un Detalle COMPLETO nunca se cancela; la
+      solicitud de desistimiento y la cancelacion efectiva se registran por
+      separado; y hay tres tipos de cancelacion con permiso propio.
 
     inputs:
       - Detalle no terminal (DEFINIDO, sin Ejecucion activa)
+      - Solicitud de desistimiento de un Detalle que estaba en ejecucion, ya interrumpido
       - Orden con Detalles no terminales pendientes de cancelar
       - Estado de reservas del Detalle verificado, sin reservas activas
         (si el Detalle tuvo Ejecuciones previas, sus movimientos ya
@@ -1232,6 +1243,9 @@ features:
       - Orden CANCELADA cuando todos los Detalles quedan CANCELADO
       - Orden tecnicamente COMPLETA, continuando el cierre normal, cuando
         existe al menos un Detalle COMPLETO
+      - Cancelacion efectiva registrada aparte de la solicitud de desistimiento,
+        cada una con usuario y fecha/hora, y con su tipo (administrativa,
+        descarte tecnico o desistimiento del cliente)
 
     process_nodes:
       - PROC-REP-300
@@ -1262,9 +1276,20 @@ features:
       - BR-REP-030
       - BR-REP-033
       - BR-REP-036
+      - BR-REP-039
 
     scope:
       includes:
+        - Cancelar un Detalle DEFINIDO aunque otro Detalle se este ejecutando,
+          liberando solo sus recursos (DC07A)
+        - Resolver la cancelacion de un Detalle que estaba en ejecucion despues
+          de su interrupcion (PROC-REP-211 -> PROC-REP-300, DC07B)
+        - Resolver el desistimiento total con una Ejecucion activa como
+          proceso guiado (PROC-REP-211 -> PROC-REP-305), registrando los
+          Detalles afectados, el motivo y la resolucion, sin cerrar la Orden con
+          Ejecuciones sin resolver (DC07C)
+        - Registrar el tipo de cancelacion (administrativa, descarte tecnico o
+          desistimiento del cliente), cada uno con su permiso (BR-REP-039)
         - Cancelar individualmente y de inmediato un Detalle descartado por la
           evaluacion tecnica previa a la ejecucion (PROC-REP-300, motivo tecnico
           DIAGNOSTICO_DESCARTADO), diferenciado del rechazo o desistimiento del
@@ -1293,8 +1318,9 @@ features:
           comercial
         - Cancelar un Detalle no terminal
         - Cancelar los Detalles no terminales pendientes de una Orden
-        - Impedir la cancelacion mientras exista una Ejecucion activa
-          (requiere cierre/interrupcion previa)
+        - Impedir la cancelacion de un Detalle mientras ese mismo Detalle tenga
+          una Ejecucion activa (requiere interrupcion previa) y nunca cancelar
+          un Detalle COMPLETO (DC07D)
         - Preservar los Detalles COMPLETO al cancelar el resto de la
           Orden
         - Verificar, como precondicion y sin ejecutar la reconciliacion,
@@ -1319,17 +1345,20 @@ features:
           LIBERADO/DESPERDICIO (responsabilidad exclusiva de FEAT-REP-005
           y PROC-REP-210, nunca de esta Feature)
         - Ejecutar o retrabajar Detalles (FEAT-REP-005/006)
-        - Consecuencias comerciales/reembolsos de la cancelacion
-          (FEAT-REP-007, pendiente)
-        - Definir el actor autorizado a cancelar
+        - Consecuencias comerciales/reembolsos de la cancelacion (el saldo a
+          favor y su devolucion son de FEAT-REP-007, BR-REP-038)
+        - Interrumpir la Ejecucion (FEAT-REP-005)
         - Definir el catalogo de motivos de cancelacion
 
     open_questions:
       - >
-        Quien esta autorizado a cancelar un Detalle o una Orden (que
-        actor, con que permiso): no se asume ninguno; PROC-REP-300 y
-        PROC-REP-305 omiten deliberadamente el campo actor, y tampoco se
-        define para PROC-REP-306 (cancelacion temprana).
+        Permisos de cancelacion (DC08): los predeterminados son los
+        responsables vigentes (administrativa Recepcion y Coordinacion,
+        descarte tecnico el Tecnico, desistimiento registrado por Recepcion);
+        PROC-REP-300/305/306 no declaran un unico actor porque depende del tipo.
+      - >
+        Opciones de "reversibilidad" que registra el tecnico al interrumpir para
+        cancelar (DC07B) y como se usan despues: pendientes.
       - >
         Cancelacion temprana (V1.4): hoy solo se contempla para CLIENTE_EXTERNO,
         desde la decision del cliente sobre la revision tecnica (PROC-REP-056); queda
@@ -1341,8 +1370,8 @@ features:
         su criterio de equipo recibido no esta definido.
       - Catalogo definitivo de motivos de cancelacion/interrupcion.
       - >
-        Consecuencias comerciales/reembolsos de la cancelacion, fuera de
-        alcance de V1.3.
+        Consecuencias comerciales de la cancelacion distintas del saldo a favor
+        (por ejemplo penalidades): pendientes.
       - Reglas futuras adicionales de cancelacion.
 
   - id: FEAT-REP-010

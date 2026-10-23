@@ -104,7 +104,13 @@ rules:
       su resultado. Una Ejecucion interrumpida (con o sin redefinicion) no
       completa el Detalle -que vuelve a DEFINIDO-, pero
       queda conservada integramente en el historial: nunca se sobrescribe
-      una Ejecucion anterior.
+      una Ejecucion anterior. Consolidacion V1.4: el resultado Interrumpido
+      tambien exige motivo (mejoras UAT del 16/10/2026). Cuando la interrupcion
+      resuelve una cancelacion solicitada sobre ese Detalle (DC07B), el tecnico
+      registra ademas el estado en que queda el trabajo, los materiales
+      utilizados y si el trabajo puede revertirse, antes de que se resuelva la
+      cancelacion (BR-REP-014). Que opciones admite la reversibilidad y como
+      se usa despues siguen pendientes de definicion.
     status: draft
 
   - id: BR-REP-005
@@ -414,10 +420,22 @@ rules:
       tecnicamente COMPLETA y continua el flujo normal (Control Tecnico
       -> REPARACION_LISTA -> cierre comercial -> entrega cuando
       corresponda), porque ese Detalle representa trabajo efectivamente
-      realizado que debe poder controlarse, cobrarse y cerrarse. La
-      cancelacion (de un Detalle o de los Detalles no terminales de una
-      Orden) no puede ejecutarse mientras exista una Ejecucion activa:
-      primero debe cerrarse/interrumpirse. Invariante: un Detalle
+      realizado que debe poder controlarse, cobrarse y cerrarse.
+      Consolidacion V1.4 (DC07A a DC07D, reemplaza la restriccion a nivel
+      Orden de la version anterior). Un Detalle DEFINIDO puede cancelarse
+      aunque otro Detalle de la Orden se este ejecutando: se liberan solo los
+      recursos de ese Detalle y la Ejecucion del otro continua (DC07A). Un
+      Detalle EN_PROGRESO no se cancela directamente: primero se interrumpe su
+      Ejecucion y el tecnico registra el estado del trabajo, los materiales
+      utilizados y si puede revertirse; despues se resuelve la cancelacion
+      (DC07B, BR-REP-004). El desistimiento total con una Ejecucion activa es un
+      proceso guiado de interrupcion y desistimiento que registra los Detalles
+      afectados, el motivo y la resolucion de cada uno, y resuelve las
+      Ejecuciones antes del cierre (DC07C, BR-REP-030). Un Detalle COMPLETO nunca
+      se cancela retroactivamente: lo que corresponda se resuelve con Ajustes
+      Comerciales o devoluciones (DC07D, BR-REP-016, BR-REP-038). La solicitud de
+      desistimiento y la cancelacion efectiva se registran por separado, cada
+      una con usuario y fecha/hora. Invariante: un Detalle
       CANCELADO no puede conservar reservas activas de inventario. Esto
       no requiere un mecanismo nuevo: se garantiza reutilizando el
       mecanismo de generacion de movimientos ya existente (PROC-REP-210,
@@ -433,14 +451,16 @@ rules:
       movimientos, incluyendo los de un Detalle luego cancelado,
       conservan su trazabilidad historica al Detalle que los origino.
       Nunca se reescribe historia tecnica real (Ejecuciones, insumos,
-      movimientos, precios, pagos, auditoria). Las consecuencias
-      comerciales de la cancelacion (por
-      ejemplo, reembolsos de pagos ya realizados si la Orden termina
-      CANCELADA) quedan explicitamente pendientes, fuera de V1.3. Quien
-      esta autorizado a cancelar un Detalle o una Orden tambien queda
-      pendiente de definicion por negocio (ver docs/discovery/README.md,
-      seccion Pendientes de V1.3): los nodos PROC-REP-300/305 omiten
-      deliberadamente el actor en vez de asumir uno.
+      movimientos, precios, pagos, auditoria). Los reembolsos de pagos ya
+      realizados cuando la Orden termina CANCELADA son saldo a favor del
+      cliente y se devuelven antes del cierre (BR-REP-038); otras
+      consecuencias comerciales (por ejemplo penalidades) siguen pendientes.
+      Tipos y permisos (DC08): cancelacion administrativa (por defecto
+      Recepcion y Coordinacion), descarte tecnico (el Tecnico, PROC-REP-183,
+      BR-REP-036) y desistimiento solicitado por el cliente (lo registra
+      Recepcion), cada uno con permiso configurable (BR-REP-039); por eso
+      PROC-REP-300/305/306 no declaran un unico actor. El catalogo de motivos de
+      cancelacion sigue pendiente.
     status: draft
 
   - id: BR-REP-015
@@ -860,7 +880,8 @@ rules:
       CANCELACION del proceso, distinta de la finalizacion tecnica
       SIN_REPARACION (PROC-REP-069, BR-REP-010). No altera la cancelacion de
       Ordenes que ya poseen Detalles ni de trabajos completados (BR-REP-014).
-      Quien esta autorizado a cancelar sigue pendiente (ver BR-REP-014).
+      Es un desistimiento solicitado por el cliente: lo registra Recepcion y el
+      permiso de la cancelacion es configurable (BR-REP-014, BR-REP-039).
     status: draft
 
   - id: BR-REP-028
@@ -993,6 +1014,18 @@ rules:
       trabajos. Rechazar todos cancela los Detalles pendientes elegibles mediante
       PROC-REP-305 sin tocar los COMPLETO ni las Ejecuciones activas, y el desenlace
       (custodia, saldo y devolucion) lo determina PROC-REP-211.
+      Consolidacion V1.4 (DC07 y DC07C). La SOLICITUD de desistimiento (lo que
+      pide el cliente, registrada por Recepcion) y la CANCELACION EFECTIVA son
+      registros distintos, cada uno con usuario y fecha/hora. Cuando un Detalle
+      solicitado esta en ejecucion, o cuando se pide desistir de todo con una
+      Ejecucion activa, la solicitud queda pendiente, el tecnico interrumpe la
+      Ejecucion (PROC-REP-200) y despues PROC-REP-211 deriva a la cancelacion
+      efectiva ("Desistimiento solicitado de un Detalle ya interrumpido" ->
+      PROC-REP-300; "Desistimiento total solicitado, sin Ejecucion activa" ->
+      PROC-REP-305). El desistimiento total es un proceso guiado: registra los
+      Detalles afectados, el motivo y la resolucion de cada uno, y no se cierra
+      la Orden con Ejecuciones sin resolver. Los Detalles completos conservan su
+      resultado.
     status: draft
 
   - id: BR-REP-031
@@ -1321,7 +1354,10 @@ rules:
       Orden no finaliza ni pasa a TODO_CANCELADO antes de registrar y encaminar
       el Detalle nuevo; si no hay mas Detalles, el resolver (PROC-REP-211) aplica
       el circuito de custodia y devolucion de BR-REP-033. No se crea un estado
-      terminal DESCARTADO: CANCELADO con motivo tecnico lo representa.
+      terminal DESCARTADO: CANCELADO con motivo tecnico lo representa. Es el
+      tipo de cancelacion "descarte tecnico" de DC08, con permiso propio
+      (BR-REP-039), distinto de la cancelacion administrativa y del
+      desistimiento solicitado por el cliente.
       REQUIERE_REDEFINICION: el tecnico determina que el trabajo necesita otra
       definicion; se registran motivo y observaciones; desde el registro la
       definicion anterior queda invalidada y no puede ejecutarse; se mantiene el

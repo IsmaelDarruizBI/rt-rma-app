@@ -6636,3 +6636,241 @@ scenarios:
       - key: final_balance
         label: Saldo final
         value: 0
+
+  - id: VAR-REP-042
+    name: El cliente desiste de un Detalle que se esta ejecutando, se interrumpe y luego se cancela
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-009
+
+    applies_to:
+      - HP-REP-001
+
+    description: >
+      Consolidacion V1.4 (DC07B y DC07). El tecnico ejecuta DET-001 y DET-002
+      sigue DEFINIDO y trabajable. El cliente pide desistir de DET-001: Recepcion
+      registra la SOLICITUD de desistimiento (usuario y fecha/hora), que todavia
+      no cancela nada porque DET-001 esta EN_PROGRESO. El tecnico interrumpe la
+      Ejecucion (PROC-REP-200, Interrumpido) con motivo y registra el estado en
+      que queda el trabajo, los materiales utilizados y si puede revertirse;
+      PROC-REP-210 consume lo utilizado y libera lo reservado sin usar. Con la
+      Ejecucion resuelta, el resolver deriva a la cancelacion efectiva
+      (PROC-REP-211 -> PROC-REP-300), que se registra aparte de la solicitud,
+      con su propio usuario y fecha/hora y el tipo desistimiento del cliente.
+      DET-002 no se cancela y la Orden sigue con el.
+
+    trigger:
+      node: PROC-REP-211
+      edge:
+        from: PROC-REP-211
+        to: PROC-REP-300
+        condition: Desistimiento solicitado de un Detalle ya interrumpido
+      condition: Desistimiento solicitado de un Detalle ya interrumpido
+
+    affected_nodes:
+      - PROC-REP-190
+      - PROC-REP-200
+      - PROC-REP-210
+      - PROC-REP-211
+      - PROC-REP-300
+
+    rules:
+      - BR-REP-014
+      - BR-REP-004
+      - BR-REP-030
+      - BR-REP-005
+      - BR-REP-039
+
+    facts:
+      - key: requested_detail_state
+        label: Estado del Detalle cuyo desistimiento se pide (DET-001)
+        value: EN_PROGRESO
+      - key: other_detail_state
+        label: Estado del otro Detalle (DET-002)
+        value: DEFINIDO
+      - key: cancellation_type
+        label: Tipo de cancelacion
+        value: DESISTIMIENTO_DEL_CLIENTE
+
+    steps:
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-002
+        name: Registrar solicitud de desistimiento de un Detalle
+        description: >
+          Recepcion registra que el cliente desiste de DET-001, con usuario,
+          fecha/hora y motivo. Es una solicitud: DET-001 sigue en ejecucion y no
+          se cancela todavia (DC07).
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-190
+        to: PROC-REP-200
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-200
+        to: PROC-REP-210
+        condition: Interrumpido
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-210
+        to: PROC-REP-211
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-211
+        to: PROC-REP-300
+        condition: Desistimiento solicitado de un Detalle ya interrumpido
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-300
+        to: PROC-REP-211
+        condition: Cancelacion fuera de la evaluacion tecnica
+
+    expected:
+      - key: cancelled_while_in_progress
+        label: El Detalle se cancela mientras sigue EN_PROGRESO
+        value: false
+      - key: interruption_records_state_materials_reversibility
+        label: La interrupcion registra estado, materiales y reversibilidad
+        value: true
+      - key: request_and_cancellation_recorded_separately
+        label: Solicitud y cancelacion efectiva registradas por separado, con usuario y fecha/hora
+        value: true
+      - key: requested_detail_final_state
+        label: Estado final de DET-001
+        value: CANCELADO
+      - key: other_detail_cancelled
+        label: Se cancela DET-002
+        value: false
+      - key: active_reservations_after_cancellation
+        label: Reservas activas de DET-001 despues de cancelar
+        value: false
+
+  - id: VAR-REP-043
+    name: Desistimiento total guiado con una Ejecucion activa y el equipo en custodia
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-009
+
+    applies_to:
+      - HP-REP-001
+
+    description: >
+      Consolidacion V1.4 (DC07C). La Orden tiene DET-001 en ejecucion y DET-002
+      DEFINIDO, ninguno COMPLETO, y el equipo esta bajo custodia. El cliente
+      desiste de todos los trabajos: Recepcion registra la solicitud de
+      desistimiento total (usuario, fecha/hora y motivo) y se inicia el proceso
+      guiado. El tecnico interrumpe la Ejecucion de DET-001 registrando estado,
+      materiales y reversibilidad; despues el resolver deriva a la cancelacion
+      efectiva de todos los Detalles que quedan (PROC-REP-211 -> PROC-REP-305),
+      que registra los Detalles afectados, el motivo y la resolucion de cada
+      uno. Todos quedan CANCELADO: la Orden queda CANCELADA, la devolucion fisica
+      del equipo es obligatoria (PROC-REP-270) y el fin pasa por la verificacion
+      de saldo a favor (PROC-REP-268), sin pagos en este caso. Si hubiera un
+      Detalle COMPLETO no se cancelaria y la Orden seguiria al control tecnico.
+
+    trigger:
+      node: PROC-REP-211
+      edge:
+        from: PROC-REP-211
+        to: PROC-REP-305
+        condition: Desistimiento total solicitado, sin Ejecucion activa
+      condition: Desistimiento total solicitado, sin Ejecucion activa
+
+    affected_nodes:
+      - PROC-REP-200
+      - PROC-REP-210
+      - PROC-REP-211
+      - PROC-REP-305
+      - PROC-REP-270
+      - PROC-REP-268
+
+    rules:
+      - BR-REP-014
+      - BR-REP-030
+      - BR-REP-033
+      - BR-REP-038
+      - BR-REP-004
+
+    facts:
+      - key: active_execution_at_request
+        label: Hay una Ejecucion activa al pedir el desistimiento
+        value: true
+      - key: completed_details
+        label: Detalles COMPLETO
+        value: 0
+      - key: equipment_in_custody
+        label: Equipo bajo custodia
+        value: true
+
+    steps:
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-002
+        name: Registrar solicitud de desistimiento total
+        description: >
+          Recepcion registra que el cliente desiste de todos los trabajos, con
+          usuario, fecha/hora y motivo. Con una Ejecucion activa la solicitud
+          queda pendiente y se inicia el proceso guiado (DC07C).
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-190
+        to: PROC-REP-200
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-200
+        to: PROC-REP-210
+        condition: Interrumpido
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-210
+        to: PROC-REP-211
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-211
+        to: PROC-REP-305
+        condition: Desistimiento total solicitado, sin Ejecucion activa
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-305
+        to: PROC-REP-211
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-211
+        to: PROC-REP-270
+        condition: Todos cancelados, equipo bajo custodia
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-270
+        to: PROC-REP-268
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-268
+        to: EVT-REP-999
+        condition: Sin saldo a favor pendiente
+
+    expected:
+      - key: executions_resolved_before_closure
+        label: Las Ejecuciones se resuelven antes del cierre
+        value: true
+      - key: affected_details_reason_and_resolution_recorded
+        label: Detalles afectados, motivo y resolucion registrados
+        value: true
+      - key: workflow_state
+        label: Estado de workflow
+        value: CANCELADA
+      - key: marked_delivered
+        label: Se marca ENTREGADA
+        value: false
+      - key: equipment_return_registered
+        label: Devolucion fisica registrada
+        value: true

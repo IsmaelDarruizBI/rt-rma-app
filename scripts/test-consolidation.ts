@@ -358,6 +358,44 @@ check("UAT-009: check-in de entrega; 265 deriva a 269 con el Saldo en 0 y el che
   for (const id of ["HP-REP-002", "HP-REP-003"]) assert.ok(!orderOf(scenario(id)).includes("PROC-REP-269"), `${id} no exige check-in`);
 });
 
+console.log("\nDC07 - cancelaciones durante ejecuciones\n");
+
+check("DC07A: un Detalle DEFINIDO se cancela aunque otro se ejecute (VAR-REP-011/036 siguen validos)", () => {
+  assert.match(rule("BR-REP-014"), /Un Detalle DEFINIDO puede cancelarse aunque otro Detalle de la Orden se este ejecutando: se liberan solo los recursos de ese Detalle/);
+  assert.doesNotMatch(rule("BR-REP-014"), /no puede ejecutarse mientras exista una Ejecucion activa: primero debe cerrarse/, "la restriccion a nivel Orden se reemplazo (AUD-V14-004)");
+  assert.deepEqual(orderOf(scenario("VAR-REP-011")).slice(-3), ["PROC-REP-300", "PROC-REP-211", "PROC-REP-190"]);
+});
+
+check("DC07B: un Detalle en ejecucion primero se interrumpe (estado, materiales, reversibilidad) y despues se cancela", () => {
+  assert.match(rule("BR-REP-004"), /registra ademas el estado en que queda el trabajo, los materiales utilizados y si el trabajo puede revertirse/);
+  assert.match(rule("BR-REP-004"), /el resultado Interrumpido tambien exige motivo/);
+  assert.ok(out("PROC-REP-211").includes("Desistimiento solicitado de un Detalle ya interrumpido->PROC-REP-300"));
+  const s = scenario("VAR-REP-042");
+  assert.deepEqual(orderOf(s), ["PROC-REP-190", "PROC-REP-200", "PROC-REP-210", "PROC-REP-211", "PROC-REP-300", "PROC-REP-211"]);
+  assert.equal(expectedOf(s, "cancelled_while_in_progress"), false);
+  assert.equal(expectedOf(s, "request_and_cancellation_recorded_separately"), true);
+});
+
+check("DC07C: desistimiento total guiado; las Ejecuciones se resuelven antes del cierre", () => {
+  assert.match(rule("BR-REP-030"), /La SOLICITUD de desistimiento \(lo que pide el cliente, registrada por Recepcion\) y la CANCELACION EFECTIVA son registros distintos/);
+  assert.match(rule("BR-REP-030"), /no se cierra la Orden con Ejecuciones sin resolver/);
+  assert.ok(out("PROC-REP-211").includes("Desistimiento total solicitado, sin Ejecucion activa->PROC-REP-305"));
+  const s = scenario("VAR-REP-043");
+  assert.deepEqual(orderOf(s).slice(-6), ["PROC-REP-211", "PROC-REP-305", "PROC-REP-211", "PROC-REP-270", "PROC-REP-268", "EVT-REP-999"]);
+  assert.equal(expectedOf(s, "executions_resolved_before_closure"), true);
+});
+
+check("DC07D y DC08: un COMPLETO nunca se cancela; tres tipos de cancelacion con permiso; 300/305/306 sin actor unico", () => {
+  assert.match(rule("BR-REP-014"), /Un Detalle COMPLETO nunca se cancela retroactivamente/);
+  assert.match(rule("BR-REP-014"), /cancelacion administrativa \(por defecto Recepcion y Coordinacion\), descarte tecnico/);
+  assert.match(rule("BR-REP-036"), /tipo de cancelacion "descarte tecnico" de DC08/);
+  for (const id of ["PROC-REP-300", "PROC-REP-305", "PROC-REP-306"]) {
+    assert.equal(node(id).actor, undefined, id);
+    assert.doesNotMatch(nodeText(id), /no fue definido por negocio|sigue sin definirse por negocio/, id);
+  }
+  for (const id of ["PROC-REP-300", "PROC-REP-305"]) assert.ok((node(id).rules ?? []).includes("BR-REP-039"), id);
+});
+
 check("validadores: el schema rechaza una Feature TRANSVERSAL con nodos y una de proceso sin nodos; el validador rechaza actores alternativos invalidos", () => {
   const ajv = new Ajv({ allErrors: true, strict: false });
   const validate = ajv.compile(JSON.parse(readFileSync("business/schemas/feature.schema.json", "utf8")));

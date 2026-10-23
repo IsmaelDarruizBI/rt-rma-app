@@ -321,7 +321,7 @@ check("RT_GARANTIA_VENTA (fuera de MVP v2, sin Scenarios) ofrece las salidas sin
 });
 
 // 44 Scenarios de V1.4 mas los de la consolidacion del 23/10/2026 (VAR-REP-037 en adelante).
-const V14_SCENARIO_COUNT = 49;
+const V14_SCENARIO_COUNT = 51;
 check(`14) el explorador no omite salidas validas: los ${V14_SCENARIO_COUNT} Scenarios se recorren completos, nodo por nodo`, () => {
   assert.equal(scenarios.length, V14_SCENARIO_COUNT);
   let steps = 0;

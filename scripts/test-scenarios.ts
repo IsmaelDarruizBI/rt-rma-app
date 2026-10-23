@@ -625,6 +625,8 @@ const MVP_V2_VARIANT_IDS =
         "VAR-REP-039",
         "VAR-REP-040",
         "VAR-REP-041",
+        "VAR-REP-042",
+        "VAR-REP-043",
       ]
     : ["VAR-REP-001", "VAR-REP-002", "VAR-REP-003"];
 const MVP_V2_EXCEPTION_IDS = [
@@ -643,7 +645,7 @@ check("el scope es exactamente los HAPPY_PATH + VARIANT + 5 EXCEPTION esperados 
   assert.deepEqual(byType("VARIANT"), [...MVP_V2_VARIANT_IDS].sort());
   assert.deepEqual(byType("EXCEPTION"), [...MVP_V2_EXCEPTION_IDS].sort());
   assert.deepEqual(byType("EDGE_CASE"), []);
-  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 49 : 11);
+  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 51 : 11);
 });
 
 check("todos los IDs de Scenario son unicos", () => {
@@ -929,6 +931,9 @@ if (REVISION === "v1.4") {
         // consolidacion: la entrega con trabajos realizados exige el check-in (UAT-009)
         "PROC-REP-265::Saldo en 0, falta el check-in::PROC-REP-269",
         "PROC-REP-269::Revalidar::PROC-REP-265",
+        // consolidacion DC07: la cancelacion efectiva de un desistimiento solicitado, despues de interrumpir
+        "PROC-REP-211::Desistimiento solicitado de un Detalle ya interrumpido::PROC-REP-300",
+        "PROC-REP-211::Desistimiento total solicitado, sin Ejecucion activa::PROC-REP-305",
         "PROC-REP-182::No requiere evaluacion tecnica::PROC-REP-174",
         "PROC-REP-182::Requiere evaluacion tecnica::PROC-REP-183",
         "PROC-REP-183::CONFIRMADO::PROC-REP-184",
@@ -959,6 +964,8 @@ if (REVISION === "v1.4") {
         "PROC-REP-035", "PROC-REP-120",
         // comercial, documentos y comunicaciones (DC13, DC25, DC26, DC30, UAT-008/009)
         "PROC-REP-260",
+        // cancelaciones durante ejecuciones (DC07)
+        "PROC-REP-200",
       ].sort()
     );
   });
@@ -1061,6 +1068,8 @@ if (REVISION === "v1.4") {
     assert.deepEqual(outgoing("PROC-REP-211"), [
       "Antes del comprobante de recepcion->PROC-REP-050",
       "Comprobante emitido, factibilidad pendiente->PROC-REP-080",
+      "Desistimiento solicitado de un Detalle ya interrumpido->PROC-REP-300",
+      "Desistimiento total solicitado, sin Ejecucion activa->PROC-REP-305",
       "Ejecucion activa vigente->PROC-REP-190",
       "Existe Detalle trabajable, sin toma activa->PROC-REP-170",
       "Existe Detalle trabajable, toma activa->PROC-REP-212",
@@ -1129,11 +1138,13 @@ if (REVISION === "v1.4") {
   const CONSOLIDATION_RULES = Array.from({ length: 11 }, (_, i) => `BR-REP-0${39 + i}`);
   const V13_RULES_CHANGED_IN_V14: Record<string, string> = {
     "BR-REP-003": "DC06: el tecnico redefine (PROC-REP-127); redaccion del estado DEFINIDO (DC17)",
+    "BR-REP-004": "DC07B: interrumpir para cancelar registra estado, materiales y reversibilidad; motivo de interrupcion (UAT)",
     "BR-REP-009": "DC05: puntaje total derivado, PROC-REP-245 consolida (texto del MVP)",
     "BR-REP-011": "Estacion = Mesa de trabajo; override con permiso configurable (DC08)",
     "BR-REP-015": "DC23AUD: historial de precios auditado; precio manual de \"Otros\" (UAT)",
     "BR-REP-016": "DC09: Ajuste Comercial unificado (CORTESIA o DESCUENTO) por Orden o por Detalle",
     "BR-REP-012": "parrafo V1.4 (autorizacion y bloqueos) y estados del Detalle (DC17)",
+    "BR-REP-014": "DC07A a DC07D y DC08: cancelacion por Detalle durante ejecuciones, proceso guiado y tipos",
     "BR-REP-017": "parrafo V1.4 de saldo a favor (BR-REP-038); formula unica, anulacion (DC10) y cortesia total (DC11)",
     "BR-REP-018": "DC04: liberar antes del primer Detalle (texto del MVP) y liberacion de una toma ajena",
     "BR-REP-019": "responsable de PROC-REP-075; vigencia de la garantia de origen (DC15B)",
@@ -1370,7 +1381,7 @@ if (REVISION === "v1.4") {
     for (const v13 of v13Scenarios.scenarios.filter((s) => !changedIds.has(s.id))) {
       assert.deepEqual(strip(real(v13.id)), strip(v13), v13.id);
     }
-    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 38);
+    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 40);
   });
 
   // ---------------------------------------------------------------- iteracion 5
