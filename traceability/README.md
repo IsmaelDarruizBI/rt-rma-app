@@ -232,6 +232,17 @@ UAT-REP-001
 
 ## Estado actual
 
+Consolidacion V1.4 (23/10/2026, baseline candidata): la trazabilidad de cada
+decision confirmada hasta las reglas, Features, nodos y Scenarios, con el estado
+de implementacion en el producto, vive en
+`business/decisions/decision-log-v1.4.yaml` y se publica como matriz generada
+en `docs/consolidation/matriz-trazabilidad-v1.4.md`. La copia de `business/`
+que usa `rt-rma-mvp` pasara a ser generada con el commit de origen (DC02,
+`docs/consolidation/sincronizacion-dc02.md`). Las User Stories siguen viviendo en
+los specs del producto, no en este repositorio.
+
+Lo que sigue describe el estado anterior a la consolidacion.
+
 No implementado como sistema de trazabilidad completo. Esta convencion
 existe para que los IDs creados desde ahora (por ejemplo, en
 `business/processes/repair-management.yaml` y ahora tambien en

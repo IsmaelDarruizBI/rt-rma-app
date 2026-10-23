@@ -966,6 +966,8 @@ if (REVISION === "v1.4") {
         "PROC-REP-260",
         // cancelaciones durante ejecuciones (DC07)
         "PROC-REP-200",
+        // texto del fin corregido: su unica entrada es PROC-REP-268 (DC17, AUD-V14-016)
+        "EVT-REP-999",
       ].sort()
     );
   });

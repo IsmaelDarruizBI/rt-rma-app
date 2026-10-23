@@ -16,6 +16,7 @@ import Ajv from "ajv";
 import type { FeatureModel } from "./lib/feature-model";
 import { loadYaml, type BusinessRule, type ProcessModel } from "./lib/process-model";
 import { isProcessEdgeStep, type Scenario, type ScenarioModel } from "./lib/scenario-model";
+import { validateDecisionLog, LOG_FILE, type DecisionLog } from "./validate-decisions";
 import { validateProcessIntegrity, type Report } from "./validate-references";
 
 const PROCESS_FILE = "business/processes/repair-management-v1.4.yaml";
@@ -417,6 +418,27 @@ check("validadores: el schema rechaza una Feature TRANSVERSAL con nodos y una de
   validateProcessIntegrity(broken, actors, new Map(rules.map((r) => [r.id, r])), report);
   assert.ok(report.errors.some((e) => e.includes('actor alternativo inexistente "ACT-NOPE"')), JSON.stringify(report.errors));
   assert.ok(report.errors.some((e) => e.includes('"ACT-COORD" ya es el actor principal')), JSON.stringify(report.errors));
+});
+
+check("registro de decisiones: es consistente y el validador detecta referencias inexistentes, reglas nuevas sin decision y UAT sin aprobacion formalizado", () => {
+  const log = loadYaml<DecisionLog>(LOG_FILE);
+  assert.deepEqual(validateDecisionLog(log), []);
+  const broken = structuredClone(log);
+  broken.decisions[0].rules = [...(broken.decisions[0].rules ?? []), "BR-REP-999"];
+  assert.ok(validateDecisionLog(broken).some((e) => e.includes("regla inexistente BR-REP-999")));
+  const uncovered = structuredClone(log);
+  for (const x of [...uncovered.decisions, ...uncovered.uat_items]) x.rules = (x.rules ?? []).filter((r) => r !== "BR-REP-049");
+  assert.ok(validateDecisionLog(uncovered).some((e) => e.includes("regla nueva BR-REP-049 sin decision")));
+  const unapproved = structuredClone(log);
+  const pending = unapproved.uat_items.find((u) => u.status === "PENDIENTE");
+  assert.ok(pending, "hay al menos un comportamiento UAT sin aprobacion documentada");
+  pending.rules = ["BR-REP-020"];
+  assert.ok(validateDecisionLog(unapproved).some((e) => e.includes("no puede formalizarse como regla")));
+  // todo lo abierto de la devolucion sigue abierto, sin regla inventada
+  const titles = log.open_items.map((o) => o.title).join(" | ");
+  for (const fragment of ["Precedencias concretas", "Equipos sin IMEI", "evento de custodia", "devoluciones que el cliente no retira", "firmas", "tipo de Ajuste Comercial", "Reparto de puntaje", "Compras", "WhatsApp", "Capacidades de tecnicos", "Reporting", "AUD-V14-005", "AUD-V14-011"]) {
+    assert.ok(titles.toLowerCase().includes(fragment.toLowerCase()), `pendiente registrado: ${fragment}`);
+  }
 });
 
 if (failures > 0) {

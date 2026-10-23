@@ -1137,6 +1137,23 @@ ningun Scenario real declare esos edges como propios.
 Scenarios de MVP v2 se representan integramente con el Process Graph
 V1.3 existente, sin modificar nodos ni edges.
 
+## V1.4 consolidada - baseline candidata (23/10/2026)
+
+La V1.4 se consolido con las decisiones confirmadas por el responsable de
+producto: los siete bloques, DC07, los permisos predeterminados, DC14 y las
+incorporaciones de UAT (DC16). Es una baseline CANDIDATA: su aprobacion final
+(DC01) queda pendiente. Donde las secciones de V1.4 que siguen contradigan la
+consolidacion, rige la consolidacion.
+
+- Registro de decisiones, incorporaciones de UAT y pendientes:
+  `business/decisions/decision-log-v1.4.yaml` (`npm run validate:decisions:v1.4`).
+- Resumen, glosario, casos funcionales y estado: `docs/consolidation/README.md`.
+- Matriz decision -> regla -> Feature -> nodo -> Scenario -> implementacion:
+  `docs/consolidation/matriz-trazabilidad-v1.4.md` (generada).
+- Diseno logico de cada funcionalidad nueva o ampliada:
+  `docs/consolidation/diseno-logico-v1.4.md`.
+- Sincronizacion con `rt-rma-mvp` (DC02): `docs/consolidation/sincronizacion-dc02.md`.
+
 ## V1.4 (draft) - Ingreso de CLIENTE_EXTERNO, decision del cliente por Detalle y desistimiento
 
 V1.4 evoluciona V1.3 con decisiones confirmadas con Recepcion. Es

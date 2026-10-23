@@ -1,3 +1,16 @@
+# CONSOLIDACION V1.4 - BASELINE CANDIDATA (23/10/2026), pendiente de aprobacion
+# final (DC01). Aplica las decisiones confirmadas de los siete bloques, DC07, los
+# permisos predeterminados del 23/10/2026, DC14 y las incorporaciones de UAT
+# (DC16). Cada cambio cita su decision (DCxx o UAT-xxx) y el registro completo
+# esta en business/decisions/decision-log-v1.4.yaml; la matriz de trazabilidad y
+# el diseno logico estan en docs/consolidation/. En este archivo: los tres Happy
+# Paths pasan por 180 -> 212 -> 181 (cambio del MVP), HP-REP-003 valida la
+# vigencia (035 -> 036) y HP-REP-001 registra el check-in antes de entregar;
+# nuevos VAR-REP-037 a 043. Los casos que se resuelven dentro de un nodo o de
+# una accion transversal se catalogan en docs/consolidation/README.md.
+# El texto que sigue describe las iteraciones V1.4 previas a la consolidacion;
+# donde contradiga lo anterior, rige la consolidacion.
+#
 # Scenarios de PROC-REP V1.4 (Gestion de Ordenes de Reparacion).
 # V1.4 parte de business/scenarios/repair-management-scenarios-v1.3.yaml (que
 # permanece intacto). Cambios:
@@ -37,8 +50,8 @@
 #      en PROC-REP-211; la solicitud sin respuesta es 046 -> 211 (VAR-REP-027).
 #      Nuevo: VAR-REP-036 (autorizacion parcial en una Orden ya habilitada, sin
 #      omitir la factibilidad).
-# Todos los demas Scenarios son identicos a V1.3 salvo la version del
-# proceso. Los casos de prueba funcional de FEAT-REP-001 (cliente/equipo
+# Antes de la consolidacion, todos los demas Scenarios eran identicos a V1.3
+# salvo la version del proceso. Los casos de prueba funcional de FEAT-REP-001 (cliente/equipo
 # nuevo o existente, consulta externa, evidencias, advertencia, guardado
 # parcial) y los que se resuelven dentro de un mismo nodo se catalogan en
 # docs/discovery/README.md y no se declaran como Scenarios.

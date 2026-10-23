@@ -5,6 +5,39 @@
 - Esta auditoria NO modifica el Source of Truth ni implementa correcciones. Las propuestas son minimas y quedan para decidir en conjunto.
 - Metodo: lectura integral de nodos, aristas, reglas, Features y Scenarios; scripts de analisis sobre el modelo parseado (aristas no recorridas, referencias, actores, trazabilidad); recorrido de los tres Happy Paths arista por arista; combinacion de variantes y casos limite contra las reglas citadas; revision del README contra el YAML y de los Scenarios y tests contra las reglas y el grafo (ambas con subagentes de lectura; todo hallazgo se verifico contra el YAML antes de incluirlo).
 
+## Estado tras la consolidacion V1.4 (23/10/2026, baseline candidata)
+
+La consolidacion aplico las decisiones confirmadas. Ver `business/decisions/decision-log-v1.4.yaml` y `docs/consolidation/`.
+
+**Alcance actual:**
+
+- 76 nodos (71 funcionales);
+- 142 aristas;
+- 49 reglas;
+- 11 Features, 2 de ellas TRANSVERSALES;
+- 51 Scenarios: 3 HAPPY_PATH, 43 VARIANT y 5 EXCEPTION.
+
+La auditoria se hizo sobre el estado previo, que es el que describe el texto que sigue. Los conteos del alcance indicado debajo son los de ese momento.
+
+| Hallazgo | Estado tras la consolidacion |
+|---|---|
+| AUD-V14-001 a 003 | Resueltos antes de la consolidacion (sin cambios). |
+| AUD-V14-004 | **Resuelto** por DC07A a DC07D. BR-REP-014 cancela por Detalle; el Detalle en ejecucion primero se interrumpe (211 -> 300); el desistimiento total con Ejecucion activa es guiado (211 -> 305). Escenarios: VAR-REP-042/043. |
+| AUD-V14-005 | **Abierto** (ABI-16, BLOQUEA_MIGRACION). |
+| AUD-V14-006 | **Parcial**. DC18 registra cada evento de custodia con responsable; en el ingreso inicial la recepcion fisica se confirma al generar el comprobante de ingreso (BR-REP-046). Los responsables predeterminados por evento siguen pendientes (ABI-06). |
+| AUD-V14-007 | **Abierto**. Siguen las advertencias FEAT-REP-005/BR-REP-007 y FEAT-REP-007/BR-REP-016. La consolidacion no agrego advertencias nuevas: BR-REP-049 quedo citada por PROC-REP-120. |
+| AUD-V14-008 | **Abierto**. Se agregaron verificaciones estructurales (`validate-decisions.ts`: cobertura de decisiones, referencias en el texto y matriz al dia; nombres de estado DC17). El replay comercial suma check-in, anulacion y cortesia. La mayor parte de las aserciones sigue siendo textual. |
+| AUD-V14-009 | **Parcial**. VAR-REP-037 recorre 212 [No] -> 213. VAR-REP-030 a 034, 040 y 041 cubren anticipos, cancelacion con pagos, anulacion y cortesia total. VAR-REP-042/043 cubren la cancelacion durante una ejecucion. Los demas recorridos siguen sin Scenario. |
+| AUD-V14-010 | **Resuelto**. BR-REP-003 dice "el tecnico vuelve a elegir"; BR-REP-018 incluye PENDIENTE_AUTORIZACION entre las causas de cierre; BR-REP-014 fue reemplazada. El test de identidad declara cada regla cambiada y su motivo. |
+| AUD-V14-011 | **Abierto** (ABI-17). |
+| AUD-V14-012 | **Parcial**. Se corrigieron las cabeceras de los cuatro YAML V1.4 y el texto de EVT-REP-999. Los demas textos listados siguen pendientes de una pasada editorial. |
+| AUD-V14-013 | **Abierto**. El README de discovery ahora remite a la consolidacion, pero no se reescribieron sus secciones historicas. |
+| AUD-V14-014 | **Abierto**. |
+| AUD-V14-015 | **Resuelto en parte**. PROC-REP-300/305/306 no declaran un unico actor porque dependen del tipo de cancelacion (DC08, BR-REP-039). 069 y 220 no cambian. |
+| AUD-V14-016 | **Parcial**. EVT-REP-999 tiene una unica entrada documentada (PROC-REP-268) y EVT-REP-998 es el fin de un ingreso en garantia no admitido. |
+| AUD-V14-017 | **Abierto**. DC07 no define un punto de desistimiento durante la revision con cero Detalles. |
+| AUD-V14-018 | **Abierto**. |
+
 ## Resumen ejecutivo
 
 **Veredicto: NOT READY.** V1.4 es consistente en su nucleo (ingreso, autorizacion por Detalle, evaluacion tecnica, independencia operativa, custodia) y las validaciones pasan, pero se demostro un recorrido legitimo del cliente externo que no tiene salida valida (cierre comercial con saldo a favor) y tres contradicciones funcionales de severidad alta. Ninguna de las cuatro exige una regla de negocio nueva para quedar resuelta documentalmente, salvo la politica de saldo a favor (decision de negocio).

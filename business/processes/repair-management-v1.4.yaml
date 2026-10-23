@@ -1,3 +1,17 @@
+# CONSOLIDACION V1.4 - BASELINE CANDIDATA (23/10/2026), pendiente de aprobacion
+# final (DC01). Aplica las decisiones confirmadas de los siete bloques, DC07, los
+# permisos predeterminados del 23/10/2026, DC14 y las incorporaciones de UAT
+# (DC16). Cada cambio cita su decision (DCxx o UAT-xxx) y el registro completo
+# esta en business/decisions/decision-log-v1.4.yaml; la matriz de trazabilidad y
+# el diseno logico estan en docs/consolidation/. En este archivo: nodos nuevos
+# PROC-REP-036 (vigencia de la garantia de origen, DC15B), PROC-REP-269 (entrega
+# bloqueada hasta el check-in, UAT-009) y EVT-REP-998 (ingreso en garantia no
+# admitido); aristas 180 -> 212 (cambio del MVP, DC04), 035 -> 036 -> 040/998,
+# 265 -> 269 -> 265 y 211 -> 300/305 (DC07); actores_alternativos en 150, 213,
+# 267 y 270.
+# El texto que sigue describe las iteraciones V1.4 previas a la consolidacion;
+# donde contradiga lo anterior, rige la consolidacion.
+#
 # Gestion de Ordenes de Reparacion - V1.4 (draft).
 #
 # V1.4 EVOLUCIONA V1.3 (business/processes/repair-management-v1.3.yaml, que
@@ -2395,15 +2409,18 @@ nodes:
     type: end
     name: Fin del flujo de Orden de Reparacion
     description: >
-      Punto de fin comun a la entrega (PROC-REP-270, tanto a cliente como
-      la devolucion a Gestion RT de RT_INTERNO, que llega alli despues de
-      PROC-REP-290), y a la Orden CANCELADA que resulta del
-      resolver (PROC-REP-211) cuando, tras cancelar un Detalle
-      (PROC-REP-300) o cancelar los Detalles no terminales de la Orden
-      (PROC-REP-305), todos los Detalles quedan CANCELADO sin ningun
-      COMPLETO. Una cancelacion que deja al menos un Detalle COMPLETO no
-      llega aqui: continua el flujo normal hacia Control Tecnico
-      (PROC-REP-211 -> PROC-REP-220).
+      Fin operativo de una Orden de Reparacion. Su UNICA entrada es
+      PROC-REP-268 ("Sin saldo a favor pendiente", BR-REP-038): la
+      verificacion de saldo a favor la atraviesan la entrega a cliente y la
+      devolucion a Gestion RT de RT_INTERNO (PROC-REP-270), el cierre
+      SIN_REPARACION y todas las cancelaciones y desistimientos (PROC-REP-211,
+      306 y 271, directamente o despues de la devolucion fisica en
+      PROC-REP-270). Una cancelacion que deja al menos un Detalle COMPLETO no
+      llega aqui por ese camino: continua hacia Control Tecnico (PROC-REP-211 ->
+      PROC-REP-220). Consolidacion V1.4: texto corregido (antes nombraba entradas
+      directas desde 270 y 211 que V1.4 ya habia reemplazado por 268); un ingreso
+      en garantia no admitido termina en EVT-REP-998, no aqui (DC17, cierre
+      formalizado en BR-REP-012).
 
 
 edges:

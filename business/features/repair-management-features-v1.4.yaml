@@ -1,3 +1,16 @@
+# CONSOLIDACION V1.4 - BASELINE CANDIDATA (23/10/2026), pendiente de aprobacion
+# final (DC01). Aplica las decisiones confirmadas de los siete bloques, DC07, los
+# permisos predeterminados del 23/10/2026, DC14 y las incorporaciones de UAT
+# (DC16). Cada cambio cita su decision (DCxx o UAT-xxx) y el registro completo
+# esta en business/decisions/decision-log-v1.4.yaml; la matriz de trazabilidad y
+# el diseno logico estan en docs/consolidation/. En este archivo: las nueve
+# Features se amplian y FEAT-REP-010 (administracion de configuracion) y
+# FEAT-REP-011 (seguridad, roles y permisos) son TRANSVERSALES: no poseen nodos
+# y declaran governed_nodes. El repositorio no tiene User Stories: el alcance se
+# expresa en scope.includes/excludes.
+# El texto que sigue describe las iteraciones V1.4 previas a la consolidacion;
+# donde contradiga lo anterior, rige la consolidacion.
+#
 # Features funcionales de PROC-REP V1.4 (Gestion de Ordenes de Reparacion).
 # V1.4 parte de business/features/repair-management-features-v1.3.yaml (que
 # permanece intacto). Fronteras de V1.4 para el flujo de CLIENTE_EXTERNO:
@@ -12,14 +25,15 @@
 #                 FEAT-REP-001).
 #   FEAT-REP-009  ejecuta las cancelaciones (PROC-REP-300/305/306, BR-REP-027
 #                 y 030); la decision de desistir la administra FEAT-REP-002.
-# FEAT-REP-008 conserva PROC-REP-270, reutilizado para la devolucion fisica.
+# FEAT-REP-008 conserva PROC-REP-270, reutilizado para la devolucion fisica,
+# y suma PROC-REP-269 (check-in de entrega) en la consolidacion.
 # Iteracion de autorizacion (V1.4): FEAT-REP-002 suma PROC-REP-128 (alta de
 # Detalles por el tecnico) y PROC-REP-129 (espera de autorizacion);
 # FEAT-REP-003 y FEAT-REP-005 reflejan que un Detalle pendiente de
 # autorizacion no se evalua ni se ejecuta sin bloquear a los demas;
 # FEAT-REP-008 y FEAT-REP-009 reflejan la custodia y la devolucion fisica
 # obligatoria al cancelar con el equipo recibido (BR-REP-033).
-# El resto del archivo es identico a V1.3.
+# Antes de la consolidacion, el resto del archivo era identico a V1.3.
 #
 # Encabezado heredado de V1.3:
 # Etapa: Feature Definition. Convive con

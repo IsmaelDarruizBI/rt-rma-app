@@ -1,3 +1,16 @@
+# CONSOLIDACION V1.4 - BASELINE CANDIDATA (23/10/2026), pendiente de aprobacion
+# final (DC01). Aplica las decisiones confirmadas de los siete bloques, DC07, los
+# permisos predeterminados del 23/10/2026, DC14 y las incorporaciones de UAT
+# (DC16). Cada cambio cita su decision (DCxx o UAT-xxx) y el registro completo
+# esta en business/decisions/decision-log-v1.4.yaml; la matriz de trazabilidad y
+# el diseno logico estan en docs/consolidation/. En este archivo: BR-REP-003, 004,
+# 009, 011, 012, 014 a 019 cambian respecto de V1.3 por decisiones declaradas
+# (los tests listan cada una con su motivo); BR-REP-020 a 038 se amplian o
+# reemplazan en parte; BR-REP-039 a 049 son nuevas. Los estados del Detalle se
+# llaman DEFINIDO, EN_PROGRESO, COMPLETO y CANCELADO (DC17).
+# El texto que sigue describe las iteraciones V1.4 previas a la consolidacion;
+# donde contradiga lo anterior, rige la consolidacion.
+#
 # Reglas de negocio V1.4 (draft) del proceso de Gestion de Ordenes de
 # Reparacion. V1.4 parte de business/rules/business-rules-v1.3.yaml (que
 # permanece intacto) y SOLO agrega BR-REP-020 a BR-REP-034: ingreso de
