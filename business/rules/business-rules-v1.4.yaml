@@ -483,14 +483,24 @@ rules:
       El calculo comercial de la Orden sigue el esquema extensible
       Subtotal + Ajustes Comerciales Previos = Base Comercial (y, fuera
       de alcance de V1.3, Base Comercial + impuestos/recargos/otros
-      conceptos = Total Cobrable). Los Ajustes Comerciales son un
-      catalogo abierto de conceptos positivos o negativos; en V1.3 los
-      unicos tipos definidos son CORTESIA_DETALLE y CORTESIA_ORDEN. Una
-      cortesia no modifica ni elimina el precio original del Detalle
-      (que permanece como dato historico dentro del Subtotal): se resta
-      como Ajuste Comercial independiente. Toda cortesia requiere
-      autorizacion de un usuario ACT-ADMIN, con fecha/hora y motivo
-      obligatorio; ningun otro actor puede autorizarla en V1.3.
+      conceptos = Total Cobrable). Consolidacion V1.4 (DC09, reemplaza el
+      modelo de cortesias de V1.3): CORTESIA y DESCUENTO se unifican en un
+      unico Ajuste Comercial con tipo (CORTESIA o DESCUENTO), aplicable a la
+      Orden o a un Detalle, expresado como porcentaje o importe fijo, con motivo
+      obligatorio, usuario y fecha/hora, y con historial de cada alta, cambio o
+      retiro. Un ajuste no modifica ni elimina el precio original del Detalle
+      ni el precio de catalogo (que permanecen como dato historico dentro del
+      Subtotal): se resta como concepto independiente y se refleja en los
+      comprobantes, y no puede superar el importe al que se aplica (UAT,
+      iteracion 1). Cada tipo de ajuste tiene su propio permiso (BR-REP-039).
+      Los permisos iniciales por tipo siguen pendientes de decision: hasta
+      decidirlos se documentan, sin convertirlos en regla, la cortesia
+      autorizada por ACT-ADMIN de V1.3 y el descuento de Recepcion o
+      Administracion de la implementacion del UAT. Una cortesia total con Pagos
+      ya recibidos deja saldo a favor del cliente, que se devuelve antes del
+      cierre (DC11, BR-REP-038). Pendientes: si una CORTESIA puede ser parcial, y
+      como se trata un DESCUENTO que deja el total por debajo de lo ya cobrado
+      (la implementacion lo rechaza; DC11 solo define la cortesia total).
       Condicion comercial distinta de cortesia: el origen de la Orden
       determina si es COBRABLE (CLIENTE_EXTERNO, salvo cortesia),
       NO_COBRABLE (RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION) o
@@ -530,7 +540,7 @@ rules:
       Cobro es una FASE SECUENCIAL del cierre: una vez aprobado el
       control tecnico (REPARACION_LISTA), se determina el Total Cobrable
       (Base Comercial de los Detalles finales, ver BR-REP-015/BR-REP-016)
-      y se calcula el Saldo = Total Cobrable - Total Pagado
+      y se calcula el Saldo con la formula unica de BR-REP-038
       (PROC-REP-265). Si Saldo > 0, la Orden queda pendiente de completar
       cobro: pueden registrarse uno o mas Pagos adicionales -mediante el
       mismo mecanismo transversal (A)- y el Saldo se recalcula despues de
@@ -538,8 +548,8 @@ rules:
       entrega a cliente pasa por el mismo gate de condicion de entrega
       (PROC-REP-265) antes de PROC-REP-280 y PROC-REP-270; lo que cambia es
       como se aprueba: CLIENTE_EXTERNO (COBRABLE) solo puede pasar a
-      ENTREGADA cuando Saldo = 0 o cuando corresponde cortesia total de
-      Orden; RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION la aprueban por su
+      ENTREGADA cuando Saldo = 0 (una cortesia total sin Pagos recibidos deja
+      Saldo = 0); RT_GARANTIA_VENTA y RMA_GARANTIA_REPARACION la aprueban por su
       condicion NO_COBRABLE de origen (no por cortesia), sin registrar pagos
       ni entrar en PROC-REP-266. No existe override para entregar con deuda
       en V1.3 ni un bypass nuevo alrededor de PROC-REP-265. No modelar los pagos como si ocurrieran
@@ -566,6 +576,20 @@ rules:
       con un Pago de importe negativo. La entrega y el comprobante final solo se
       habilitan con Saldo = 0. Los Pagos originales no se modifican ni se
       borran.
+      Consolidacion V1.4. Formula unica: Saldo = Total final de la OR - Pagos
+      recibidos vigentes + Devoluciones realizadas (BR-REP-038); un Pago anulado
+      no cuenta. Anulacion de Pagos (DC10): corresponde por defecto a
+      Administracion, es delegable mediante permiso (BR-REP-039), exige motivo y
+      queda auditada con usuario y fecha/hora; el Pago nunca se borra, queda
+      registrado como anulado, y la anulacion puede volver a dejar Saldo > 0.
+      Cortesia total (DC11): si no hay Pagos recibidos deja Saldo = 0; si los
+      hay, deja saldo a favor del cliente, que debe devolverse antes del cierre
+      (BR-REP-038), conservando los Pagos y los Ajustes originales. Tipo de Pago
+      (reconciliacion del 24/09/2026): cada Pago es ANTICIPO o PAGO segun el
+      estado de la Orden al registrarlo; es un dato derivado, distinto del medio
+      de pago, y un anticipo no dispara PROC-REP-265. Check-in: en
+      CLIENTE_EXTERNO con trabajos realizados la entrega exige ademas el
+      check-in registrado (BR-REP-045), sin que condicione el cobro.
     status: draft
 
   - id: BR-REP-018
@@ -861,9 +885,13 @@ rules:
       cambia, conserva la suya. El cliente no esta obligado a aceptar todos los
       Detalles. Debe registrarse fecha/hora, usuario responsable, alcance
       (Detalles afectados) y resultado de cada decision, y contemplarse
-      evidencia de consentimiento; el canal de consentimiento (firma, WhatsApp,
-      presencial, etc.) NO se define todavia y queda pendiente de decision de
-      negocio. Si todavia no hay Detalles, el cliente puede aceptar continuar
+      evidencia de consentimiento: el canal elegido y, cuando corresponda, la
+      firma manuscrita en pantalla o la foto o archivo del documento firmado,
+      ligada al documento y su version (DC26, BR-REP-042); cuando cada firma es
+      obligatoria sigue pendiente de decision. En el ingreso inicial simplificado
+      la autorizacion inicial se registra al generar el comprobante de ingreso y
+      autorizacion (UAT-008, BR-REP-046); las autorizaciones posteriores conservan
+      el circuito explicito y Recepcion las gestiona (DC06). Si todavia no hay Detalles, el cliente puede aceptar continuar
       unicamente para obtener un diagnostico tecnico: esa aceptacion NO
       autoriza reparaciones que se identifiquen despues. Para efectos de
       es_trabajable (BR-REP-012), en CLIENTE_EXTERNO un Detalle requiere ademas
@@ -986,6 +1014,21 @@ rules:
       RMA_GARANTIA_REPARACION conservan su comportamiento original: su
       comprobante, cuando corresponde, no depende de ninguna decision de
       cliente externo.
+      Consolidacion V1.4 (DC13 y UAT). Existe un unico documento VIGENTE por
+      tipo y contexto: una correccion genera una version nueva con motivo y
+      referencia a la version que reemplaza, ninguna version se borra y cada
+      documento emitido conserva su copia de los datos (snapshot). En el ingreso
+      inicial simplificado de CLIENTE_EXTERNO el comprobante de recepcion es el
+      comprobante unico de ingreso y autorizacion (ING, UAT-008, BR-REP-046),
+      que incluye las observaciones visibles y nunca las notas internas.
+      Despues, con al menos un Detalle autorizado, Recepcion puede generar a
+      pedido el comprobante de autorizacion de reparacion (AUT, mejoras UAT del
+      16/10/2026): solo los Detalles autorizados con descripcion, precio y
+      total, fecha y canal de la autorizacion, aclara que no es un comprobante
+      de pago, no se genera automaticamente, admite versiones nuevas cuando se
+      autoriza otro trabajo y evita duplicados involuntarios. Generar un
+      documento no equivale a enviarlo ni registra que el cliente lo recibio o
+      firmo (BR-REP-042, BR-REP-044).
     status: draft
 
   - id: BR-REP-032
@@ -1404,18 +1447,18 @@ rules:
       devuelve unicamente el excedente, 265 -> 267). Independencia: la devolucion
       de dinero no es la devolucion fisica del equipo ni la custodia
       (BR-REP-033, PROC-REP-270/271); son dimensiones distintas y una no
-      sustituye a la otra. Responsabilidad: el registro lo hace Recepcion
-      (PROC-REP-267); que usuarios pueden registrar devoluciones (por ejemplo
-      solo ACT-ADMIN, como las cortesias) y el catalogo de medios quedan
-      pendientes de definicion por negocio. Origenes sin circuito comercial
+      sustituye a la otra. Responsabilidad (consolidacion V1.4, DC12C): registran
+      devoluciones por defecto Administracion o Recepcion, con permiso
+      configurable (PROC-REP-267, BR-REP-039); el catalogo de medios de
+      devolucion sigue pendiente. Origenes sin circuito comercial
       (RT_INTERNO, RMA_GARANTIA_REPARACION, RT_GARANTIA_VENTA): no registran
       pagos ni devoluciones; un saldo a favor en ellos no esta definido y se
       documenta como pendiente funcional (la respuesta de PROC-REP-268 es siempre
-      "sin saldo a favor"). Relacion con BR-REP-014 (texto V1.3 congelado): esa regla deja
-      pendientes "reembolsos de pagos ya realizados si la Orden termina
-      CANCELADA"; BR-REP-038 define para V1.4 el tratamiento funcional de ese
-      reembolso (saldo a favor del cliente); las demas consecuencias comerciales
-      de una cancelacion (por ejemplo penalidades) siguen pendientes. Pendiente:
+      "sin saldo a favor"). Relacion con BR-REP-014: los reembolsos de pagos ya
+      realizados cuando la Orden termina CANCELADA se tratan como saldo a favor
+      del cliente con esta regla; las demas consecuencias comerciales de una
+      cancelacion (por ejemplo penalidades) siguen pendientes. Una cortesia
+      total con Pagos recibidos tambien genera saldo a favor (DC11). Pendientes:
       plazo o abandono si el cliente no retira el dinero y devoluciones
       posteriores a ENTREGADA.
     status: draft
@@ -1507,6 +1550,102 @@ rules:
       trazabilidad, y esa condicion es la que valida PROC-REP-036 en un
       reclamo de garantia RMA (BR-REP-019). El comprobante final informa el
       plazo definitivo y el vencimiento de cada Detalle.
+    status: draft
+
+  - id: BR-REP-042
+    name: Firma y evidencia de los documentos
+    description: >
+      Consolidacion V1.4 (DC26). Un documento puede firmarse con una firma
+      manuscrita en pantalla o con una foto o archivo del documento firmado. La
+      evidencia queda ligada al documento y a la version firmada, con usuario y
+      fecha/hora de registro, y nunca se borra. Una version nueva del documento
+      (BR-REP-031) no hereda la firma de la anterior. Cuando es obligatoria cada
+      firma, segun el documento, sigue pendiente de decision; el comprobante de
+      autorizacion (AUT) se definio en UAT sin firma obligatoria. Registrar la
+      evidencia nunca se infiere de haber generado o compartido el documento.
+    status: draft
+
+  - id: BR-REP-043
+    name: Consentimiento y preferencias de comunicacion
+    description: >
+      Consolidacion V1.4 (DC30). El cliente tiene consentimientos y preferencias
+      de comunicacion por finalidad, que distinguen los mensajes operativos
+      (avisos sobre su Orden) de los comerciales. Cada consentimiento registra
+      la finalidad, el canal, la fecha/hora, el origen (como se obtuvo) y, si
+      ocurre, su revocacion, que se conserva en el historial. El envio de un
+      mensaje respeta el consentimiento y las preferencias vigentes para su
+      finalidad y canal. Como se obtiene el consentimiento en el ingreso y que
+      mensajes concretos requiere cada finalidad se definen con las plantillas
+      y disparadores (pendientes, DC25).
+    status: draft
+
+  - id: BR-REP-044
+    name: Comunicaciones asistidas con plantillas e historial
+    description: >
+      Consolidacion V1.4 (DC25, etapa 1). Los mensajes al cliente se preparan
+      desde plantillas configurables (BR-REP-040) y se envian de forma asistida:
+      el sistema prepara el texto y, cuando el dispositivo lo permite, el
+      documento a compartir, y abre WhatsApp con el telefono del cliente
+      normalizado. Abrir WhatsApp no equivale a enviar: nada se marca como
+      enviado ni entregado automaticamente (mejoras UAT del 16/10/2026). Cada
+      envio asistido queda en el historial de comunicaciones de la Orden, con la
+      plantilla, el destinatario, el canal, el documento compartido, el usuario
+      y la fecha/hora. Se respeta el consentimiento por finalidad (BR-REP-043).
+      Etapa 2, despues de la migracion a PostgreSQL: proveedor oficial, cola
+      persistente, estados de envio y reintentos. Pendientes: plantillas,
+      disparadores y proveedor.
+    status: draft
+
+  - id: BR-REP-045
+    name: Check-in de entrega
+    description: >
+      Consolidacion V1.4 (UAT-009 y sus decisiones aprobadas del 20/10/2026).
+      El check-in registra si se pudieron verificar las funciones basicas del
+      equipo: realizado o no realizado. Se registra con la reparacion lista
+      (todos los trabajos terminados y aprobados en control) y antes de
+      entregar, y puede volver a registrarse hasta la entrega. Lo registran
+      Recepcion o Administracion (predeterminado, BR-REP-039), con usuario y
+      fecha/hora, en un historial que no se modifica. En CLIENTE_EXTERNO, con
+      trabajos realizados y garantia aplicable, la entrega exige el check-in
+      registrado (PROC-REP-265 -> PROC-REP-269); sin trabajos realizados,
+      RT_INTERNO y la garantia RMA no lo exigen. El ingreso y su comprobante no
+      lo piden. Al registrarlo se reasigna la garantia sugerida de cada Detalle
+      no cancelado (BR-REP-041) sin pisar los ajustes manuales. La notificacion y
+      el cobro no dependen del check-in, y el aviso al cliente no comunica una
+      garantia definitiva no confirmada. El comprobante final lleva el
+      resultado del check-in. Las Ordenes anteriores con check-in registrado al
+      ingresar conservan su validez. Esta regla formaliza el registro que la
+      implementacion audita temporalmente en la recepcion.
+    status: draft
+
+  - id: BR-REP-046
+    name: Ingreso inicial simplificado y comprobante de ingreso y autorizacion
+    description: >
+      Consolidacion V1.4 (UAT-008, decidido tras la primera reunion de UAT con
+      Recepcion y Taller). En el ingreso inicial de CLIENTE_EXTERNO, Recepcion
+      crea la Orden (cliente, equipo, falla declarada, estado fisico,
+      accesorios y observaciones), carga uno o varios Detalles con su precio y
+      genera el comprobante de ingreso y autorizacion (ING). Esa unica accion
+      ejecuta en una sola operacion consistente, sin estados parcialmente
+      confirmados si algo falla: la confirmacion de la recepcion fisica
+      (BR-REP-033), la finalizacion de la definicion inicial, el registro de la
+      autorizacion inicial de los Detalles incluidos con el canal elegido
+      (BR-REP-028), la emision del comprobante (PROC-REP-050/060, BR-REP-031),
+      la factibilidad y, cuando corresponde, la primera habilitacion
+      (PROC-REP-080/090/140) y el ingreso a la cola con prioridad 4 - Normal
+      (PROC-REP-150/170, BR-REP-034); si un Detalle espera recursos, el ingreso a
+      la cola ocurre cuando vuelve a ser factible. Los eventos de cada nodo se
+      conservan para la trazabilidad. En ese camino no se ofrecen acciones
+      separadas de confirmacion fisica, finalizacion ni primera autorizacion, y
+      un reintento o doble clic no duplica documentos ni registros. Si falta
+      informacion obligatoria se indica que completar: el comprobante exige al
+      menos un trabajo; que el estado fisico sea obligatorio es una decision de
+      la implementacion pendiente de confirmar. Generar el comprobante no
+      equivale a enviarlo ni registra que el cliente lo recibio o firmo. Aplica
+      solo al ingreso inicial de CLIENTE_EXTERNO: RT_INTERNO, la garantia RMA,
+      el camino de revision tecnica y las autorizaciones posteriores conservan
+      su circuito explicito. El check-in no forma parte del ingreso (UAT-009,
+      BR-REP-045).
     status: draft
 
   - id: BR-REP-047

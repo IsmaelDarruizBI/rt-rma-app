@@ -267,6 +267,97 @@ check("DC18 y DC18B: cuatro situaciones de custodia, eventos con responsable y p
   assert.ok((node("PROC-REP-271").rules ?? []).includes("BR-REP-039"));
 });
 
+console.log("\nBloques 5 y 6 - comercial, documentos, check-in y comunicaciones (DC09 a DC13, DC25, DC26, DC30, UAT-008/009)\n");
+
+check("DC09: un unico Ajuste Comercial (CORTESIA o DESCUENTO) por Orden o por Detalle; permisos por tipo pendientes", () => {
+  const t = rule("BR-REP-016");
+  assert.match(t, /CORTESIA y DESCUENTO se unifican en un unico Ajuste Comercial con tipo \(CORTESIA o DESCUENTO\), aplicable a la Orden o a un Detalle/);
+  assert.match(t, /no puede superar el importe al que se aplica/);
+  assert.match(t, /Los permisos iniciales por tipo siguen pendientes de decision/);
+  assert.match(t, /como se trata un DESCUENTO que deja el total por debajo de lo ya cobrado/);
+  // la condicion comercial por origen no cambia
+  assert.match(t, /RMA_GARANTIA_REPARACION \(garantia de una reparacion RMA anterior\) es NO_COBRABLE como consecuencia de su origen/);
+});
+
+check("DC10 y DC11: anulacion auditada sin borrar el Pago; cortesia total con Pagos previos deja saldo a favor; formula unica", () => {
+  const t = rule("BR-REP-017");
+  assert.match(t, /Anulacion de Pagos \(DC10\): corresponde por defecto a Administracion, es delegable/);
+  assert.match(t, /el Pago nunca se borra, queda registrado como anulado/);
+  assert.match(t, /si los hay, deja saldo a favor del cliente, que debe devolverse antes del cierre/);
+  assert.doesNotMatch(t, /Saldo = Total Cobrable - Total Pagado/, "una sola formula de Saldo");
+  assert.match(t, /Tipo de Pago \(reconciliacion del 24\/09\/2026\)/);
+  assert.equal(scenario("VAR-REP-040").feature, "FEAT-REP-007");
+  assert.equal(scenario("VAR-REP-041").feature, "FEAT-REP-007");
+});
+
+check("DC12C: devoluciones por Administracion o Recepcion por defecto; no se cierra con saldo a favor", () => {
+  assert.equal(node("PROC-REP-267").actor, "ACT-RECEP");
+  assert.deepEqual(node("PROC-REP-267").actores_alternativos, ["ACT-ADMIN"]);
+  assert.match(rule("BR-REP-038"), /registran devoluciones por defecto Administracion o Recepcion/);
+  assert.match(rule("BR-REP-038"), /ninguna Orden finaliza operativamente \(EVT-REP-999\) con saldo a favor pendiente/);
+});
+
+check("DC13: un documento vigente por tipo y contexto, versiones con motivo y referencia; ING y AUT del UAT", () => {
+  const t = rule("BR-REP-031");
+  assert.match(t, /Existe un unico documento VIGENTE por tipo y contexto: una correccion genera una version nueva con motivo y referencia/);
+  assert.match(t, /comprobante unico de ingreso y autorizacion \(ING, UAT-008, BR-REP-046\)/);
+  assert.match(t, /comprobante de autorizacion de reparacion \(AUT/);
+  assert.match(t, /aclara que no es un comprobante de pago, no se genera automaticamente/);
+  assert.match(nodeText("PROC-REP-060"), /Documentos \(DC13\)/);
+  assert.match(nodeText("PROC-REP-280"), /Es un documento versionado/);
+});
+
+check("DC26: firma en pantalla o archivo firmado ligados al documento y su version; obligatoriedad pendiente", () => {
+  const t = rule("BR-REP-042");
+  assert.match(t, /firma manuscrita en pantalla o con una foto o archivo del documento firmado/);
+  assert.match(t, /ligada al documento y a la version firmada/);
+  assert.match(t, /Cuando es obligatoria cada firma, segun el documento, sigue pendiente de decision/);
+  for (const id of ["PROC-REP-046", "PROC-REP-280"]) assert.ok((node(id).rules ?? []).includes("BR-REP-042"), id);
+});
+
+check("DC25 etapa 1 y DC30: plantillas, historial de envios asistidos sin darlos por enviados y consentimiento por finalidad", () => {
+  const c = rule("BR-REP-044");
+  assert.match(c, /plantillas configurables/);
+  assert.match(c, /Abrir WhatsApp no equivale a enviar/);
+  assert.match(c, /Cada envio asistido queda en el historial de comunicaciones de la Orden/);
+  assert.match(c, /Etapa 2, despues de la migracion a PostgreSQL: proveedor oficial, cola persistente, estados de envio y reintentos/);
+  const k = rule("BR-REP-043");
+  assert.match(k, /distinguen los mensajes operativos \(avisos sobre su Orden\) de los comerciales/);
+  assert.match(k, /la finalidad, el canal, la fecha\/hora, el origen \(como se obtuvo\) y, si ocurre, su revocacion/);
+  for (const id of ["BR-REP-043", "BR-REP-044"]) assert.ok((node("PROC-REP-260").rules ?? []).includes(id), id);
+});
+
+check("UAT-008: ingreso inicial simplificado en una sola operacion consistente, con eventos conservados y sin duplicados", () => {
+  const t = rule("BR-REP-046");
+  assert.match(t, /genera el comprobante de ingreso y autorizacion \(ING\)/);
+  assert.match(t, /en una sola operacion consistente, sin estados parcialmente confirmados/);
+  assert.match(t, /Los eventos de cada nodo se conservan para la trazabilidad/);
+  assert.match(t, /un reintento o doble clic no duplica documentos ni registros/);
+  assert.match(t, /que el estado fisico sea obligatorio es una decision de la implementacion pendiente de confirmar/);
+  assert.match(t, /Aplica solo al ingreso inicial de CLIENTE_EXTERNO/);
+  assert.ok((node("PROC-REP-046").rules ?? []).includes("BR-REP-046"));
+  assert.ok(feature("FEAT-REP-002").business_rules.includes("BR-REP-046"));
+});
+
+check("UAT-009: check-in de entrega; 265 deriva a 269 con el Saldo en 0 y el check-in pendiente; HP-REP-001 lo registra", () => {
+  assert.deepEqual(out("PROC-REP-265"), ["No, saldo a favor del cliente->PROC-REP-267", "No, saldo pendiente de cobro->PROC-REP-266", "Saldo en 0, falta el check-in->PROC-REP-269", "Si->PROC-REP-280"]);
+  assert.deepEqual(out("PROC-REP-269"), ["Revalidar->PROC-REP-265"]);
+  assert.deepEqual(model.edges.filter((e) => e.to === "PROC-REP-269").map((e) => e.from), ["PROC-REP-265"]);
+  assert.equal(node("PROC-REP-269").actor, "ACT-SYSTEM");
+  assert.ok(feature("FEAT-REP-008").process_nodes.includes("PROC-REP-269"));
+  const t = rule("BR-REP-045");
+  assert.match(t, /Lo registran Recepcion o Administracion/);
+  assert.match(t, /sin trabajos realizados, RT_INTERNO y la garantia RMA no lo exigen/);
+  assert.match(t, /La notificacion y el cobro no dependen del check-in/);
+  const hp = scenario("HP-REP-001");
+  const order = orderOf(hp);
+  const at = order.indexOf("PROC-REP-269");
+  assert.ok(at > 0 && order[at - 1] === "PROC-REP-265" && order[at + 1] === "PROC-REP-265", "265 -> 269 -> 265");
+  assert.ok(hp.steps.some((s) => s.kind === "FUNCTIONAL_ACTION" && s.name === "Registrar check-in"));
+  assert.equal(expectedOf(hp, "detail_warranty_days"), 90);
+  for (const id of ["HP-REP-002", "HP-REP-003"]) assert.ok(!orderOf(scenario(id)).includes("PROC-REP-269"), `${id} no exige check-in`);
+});
+
 check("validadores: el schema rechaza una Feature TRANSVERSAL con nodos y una de proceso sin nodos; el validador rechaza actores alternativos invalidos", () => {
   const ajv = new Ajv({ allErrors: true, strict: false });
   const validate = ajv.compile(JSON.parse(readFileSync("business/schemas/feature.schema.json", "utf8")));

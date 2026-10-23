@@ -76,6 +76,7 @@ const expectedOf = (s: Scenario, key: string): unknown => s.expected.find((f) =>
 
 const GATE = "PROC-REP-268";
 const REFUND = "PROC-REP-267";
+const CHECKIN = "PROC-REP-269"; // consolidacion V1.4: entrega bloqueada hasta registrar el check-in (BR-REP-045)
 const COMMERCIAL_NODES = ["PROC-REP-220", "PROC-REP-250", "PROC-REP-260", "PROC-REP-265", "PROC-REP-266", "PROC-REP-280"];
 
 /**
@@ -108,10 +109,13 @@ function saldo(total: number, payments: number[], refunds: number[]): number {
   return total - sum(payments) + sum(refunds);
 }
 
-/** Routing of PROC-REP-265 for an origin with commercial circuit (CLIENTE_EXTERNO). */
-function route265(balance: number): { to: string; condition: string } {
+/**
+ * Routing of PROC-REP-265 for an origin with commercial circuit (CLIENTE_EXTERNO). Consolidation V1.4
+ * (UAT-009, BR-REP-045): with the Saldo at 0, an Order with completed work also needs the check-in.
+ */
+function route265(balance: number, checkinPending = false): { to: string; condition: string } {
   if (balance > 0) return { to: "PROC-REP-266", condition: "No, saldo pendiente de cobro" };
-  if (balance === 0) return { to: "PROC-REP-280", condition: "Si" };
+  if (balance === 0) return checkinPending ? { to: CHECKIN, condition: "Saldo en 0, falta el check-in" } : { to: "PROC-REP-280", condition: "Si" };
   return { to: REFUND, condition: "No, saldo a favor del cliente" };
 }
 
@@ -171,19 +175,22 @@ check("268 y 267: salidas exactas; 267 rotula su salida por contexto (entrega o 
   assert.equal(node(GATE)?.type, "decision");
 });
 
-check("265 tiene tres salidas excluyentes y el saldo a favor nunca entra al circuito de cobro (266)", () => {
+check("265 tiene cuatro salidas excluyentes (V1.4 consolidada suma el check-in) y el saldo a favor nunca entra al circuito de cobro (266)", () => {
   assert.deepEqual(out("PROC-REP-265"), [
     "No, saldo a favor del cliente->PROC-REP-267",
     "No, saldo pendiente de cobro->PROC-REP-266",
+    "Saldo en 0, falta el check-in->PROC-REP-269",
     "Si->PROC-REP-280",
   ].sort());
+  assert.deepEqual(into(CHECKIN), ["PROC-REP-265::Saldo en 0, falta el check-in"], "269 solo recibe la entrega bloqueada por check-in");
+  assert.deepEqual(out(CHECKIN), ["Revalidar->PROC-REP-265"]);
   assert.deepEqual(into("PROC-REP-266"), ["PROC-REP-265::No, saldo pendiente de cobro"], "266 solo recibe saldo pendiente de cobro");
   assert.deepEqual(out("PROC-REP-266"), ["Revalidar->PROC-REP-265"]);
   assert.deepEqual(into("PROC-REP-280"), ["PROC-REP-265::Si"], "el comprobante final y la entrega solo se habilitan con 265 aprobado (Saldo = 0)");
 });
 
 check("no hay ciclos sin accion financiera: todo ciclo entre 265/266/267/268 pasa por un nodo que exige un movimiento real", () => {
-  const set = ["PROC-REP-265", "PROC-REP-266", REFUND, GATE];
+  const set = ["PROC-REP-265", "PROC-REP-266", REFUND, GATE, CHECKIN];
   const cycles: string[][] = [];
   const dfs = (start: string, current: string, path: string[]): void => {
     for (const e of model.edges.filter((edge) => edge.from === current && set.includes(edge.to))) {
@@ -194,7 +201,7 @@ check("no hay ciclos sin accion financiera: todo ciclo entre 265/266/267/268 pas
   for (const s of set) dfs(s, s, [s]);
   assert.ok(cycles.length >= 3, `ciclos detectados: ${cycles.map((c) => c.join(">")).join(" | ")}`);
   for (const cycle of cycles) {
-    assert.ok(cycle.includes("PROC-REP-266") || cycle.includes(REFUND), `el ciclo ${cycle.join(">")} exige un pago (266) o una devolucion (267)`);
+    assert.ok(cycle.includes("PROC-REP-266") || cycle.includes(REFUND) || cycle.includes(CHECKIN), `el ciclo ${cycle.join(">")} exige un pago (266), una devolucion (267) o el check-in (269)`);
   }
   assert.match(nodeText(REFUND), /Cada pasada por este nodo exige un movimiento real/);
   assert.match(nodeText("PROC-REP-266"), /pago/i);
@@ -275,8 +282,12 @@ check("BR-REP-038: casos, independencia fisica/dinero, origenes sin circuito com
   assert.match(r, /la devolucion de dinero no es la devolucion fisica del equipo ni la custodia/);
   assert.match(r, /Origenes sin circuito comercial \(RT_INTERNO, RMA_GARANTIA_REPARACION, RT_GARANTIA_VENTA\)/);
   assert.match(r, /un saldo a favor en ellos no esta definido y se documenta como pendiente funcional/);
-  assert.match(r, /que usuarios pueden registrar devoluciones[^.]*y el catalogo de medios quedan pendientes de definicion por negocio/);
-  assert.match(r, /BR-REP-014 \(texto V1\.3 congelado\)/);
+  // DC12C (consolidacion V1.4) define quien registra; el catalogo de medios sigue pendiente
+  assert.match(r, /registran devoluciones por defecto Administracion o Recepcion, con permiso configurable/);
+  assert.match(r, /el catalogo de medios de devolucion sigue pendiente/);
+  // BR-REP-014 ya no esta congelada (DC07): los reembolsos de una Orden CANCELADA son saldo a favor
+  assert.match(r, /Relacion con BR-REP-014: los reembolsos de pagos ya realizados cuando la Orden termina CANCELADA se tratan como saldo a favor/);
+  assert.match(r, /plazo o abandono si el cliente no retira el dinero/);
 });
 
 check("BR-REP-017 conserva el texto V1.3 y agrega la formula con devoluciones; 267/268 citan BR-REP-038", () => {
@@ -327,6 +338,7 @@ function replay(s: Scenario): { ledger: RefundLedger; balanceAtFirst267: number 
   const refundQueue = [...money.refunds];
   const path: string[] = [];
   let refundsAtLastEntryTo267 = -1;
+  let checkinRegistered = fact(s, "checkin_required_for_delivery") !== true;
   let balanceAtFirst267: number | undefined;
   let balanceAfterFirstRefund: number | undefined;
   const rebuild = (): void => {
@@ -336,9 +348,16 @@ function replay(s: Scenario): { ledger: RefundLedger; balanceAtFirst267: number 
   };
   for (const step of s.steps) {
     if (isFunctionalActionStep(step)) {
-      if (/^Registrar (anticipo|sena)/.test(step.name)) {
+      if (/^Registrar (anticipo|sena|pago)/.test(step.name)) {
         payments.push(money.paymentOnAction);
         rebuild();
+      } else if (/^Anular pago/.test(step.name)) {
+        // DC10: the voided Pago is kept as voided and stops counting for the Saldo
+        assert.ok(payments.length > 0, `${s.id}: hay un Pago que anular`);
+        payments.pop();
+        rebuild();
+      } else if (/^Registrar check-in/.test(step.name)) {
+        checkinRegistered = true;
       } else if (/^Registrar devolucion/.test(step.name)) {
         const amount = refundQueue.shift();
         assert.ok(amount !== undefined, `${s.id}: hay un importe de devolucion para "${step.name}"`);
@@ -362,7 +381,7 @@ function replay(s: Scenario): { ledger: RefundLedger; balanceAtFirst267: number 
     path.push(`${step.from}>${step.to}`);
     const balance = ledger.balance;
     if (step.from === "PROC-REP-265") {
-      const expected = route265(balance);
+      const expected = route265(balance, !checkinRegistered);
       assert.equal(step.to, expected.to, `${s.id}: con Saldo ${balance}, 265 debe ir a ${expected.to}`);
       assert.equal(step.condition, expected.condition, `${s.id}: con Saldo ${balance}, la condicion de 265 es "${expected.condition}"`);
     }
@@ -377,7 +396,7 @@ function replay(s: Scenario): { ledger: RefundLedger; balanceAtFirst267: number 
     if (step.from === GATE && step.to === REFUND) assert.ok(balance < 0, `${s.id}: 268 deriva a 267 solo con saldo a favor`);
     if (step.from === GATE && step.to === "EVT-REP-999") assert.equal(balance, 0, `${s.id}: la Orden finaliza con Saldo ${balance}`);
     if (step.from === "PROC-REP-280") assert.equal(balance, 0, `${s.id}: no se genera comprobante final ni se entrega con Saldo ${balance}`);
-    if (step.from === "PROC-REP-266") assert.ok(balance > 0, `${s.id}: el circuito de cobro solo atiende Saldo > 0`);
+    if (step.to === "PROC-REP-266") assert.ok(balance > 0, `${s.id}: el circuito de cobro solo atiende Saldo > 0`);
   }
   assert.equal(refundQueue.length, 0, `${s.id}: todas las devoluciones previstas se registraron`);
   return { ledger, balanceAtFirst267, balanceAfterFirstRefund, path };
@@ -421,7 +440,7 @@ check("VAR-REP-031: varios Detalles (2 COMPLETO, 1 CANCELADO) -> solo se devuelv
   assert.equal(r.ledger.refunds.length, expectedOf(s, "refunds_registered"), "historial con ambas devoluciones");
   assert.equal(saldo(20000, [30000], [6000, 4000]), 0);
   const to265 = edgeSteps(s).filter((e) => e.from === "PROC-REP-265").map((e) => e.to);
-  assert.deepEqual(to265, [REFUND, REFUND, "PROC-REP-280"], "tras la devolucion parcial 265 vuelve a derivar a 267 y no entrega");
+  assert.deepEqual(to265, [REFUND, REFUND, "PROC-REP-280"], "tras la devolucion parcial 265 vuelve a derivar a 267 y no entrega (el check-in ya estaba registrado)");
   assert.equal(expectedOf(s, "delivery_allowed_with_partial_refund"), false);
   assert.equal(expectedOf(s, "refund_over_credit_accepted"), false);
   assert.equal(expectedOf(s, "refund_double_counted"), false);
@@ -490,8 +509,31 @@ check("origenes sin circuito comercial: ningun Scenario de RT_INTERNO / RMA_GARA
   assert.equal(edgeSteps(s35).at(-2)?.to, GATE);
 });
 
+check("VAR-REP-040 (DC10): el Pago anulado se conserva y deja de contar; el Saldo vuelve a ser positivo y se cobra antes de entregar", () => {
+  const s = scenario("VAR-REP-040");
+  const r = replay(s);
+  assert.equal(r.ledger.balance, 0);
+  assert.ok(r.path.includes("PROC-REP-265>PROC-REP-266"), "tras la anulacion hay saldo pendiente de cobro");
+  assert.ok(r.path.includes(`PROC-REP-265>${CHECKIN}`), "con el Saldo en 0 falta el check-in");
+  assert.equal(expectedOf(s, "voided_payment_preserved"), true);
+  assert.equal(expectedOf(s, "voided_payment_counts_in_balance"), false);
+  assert.match(rule("BR-REP-017"), /el Pago nunca se borra, queda registrado como anulado/);
+});
+
+check("VAR-REP-041 (DC11): cortesia total con un anticipo deja saldo a favor; se devuelve antes de entregar, sin tocar el Pago ni el Ajuste", () => {
+  const s = scenario("VAR-REP-041");
+  const r = replay(s);
+  assert.equal(r.balanceAtFirst267, -5000);
+  assert.equal(r.ledger.balance, 0);
+  assert.deepEqual(r.ledger.refunds.map((x) => x.amount), [5000]);
+  const order = r.path;
+  assert.ok(order.indexOf("PROC-REP-265>PROC-REP-267") < order.indexOf("PROC-REP-265>PROC-REP-280"), "la devolucion precede a la entrega");
+  assert.equal(expectedOf(s, "delivery_allowed_before_refund"), false);
+  assert.match(rule("BR-REP-016"), /Una cortesia total con Pagos\s*ya recibidos deja saldo a favor del cliente/);
+});
+
 check("los Scenarios con dinero respetan la formula y quedan consistentes con sus facts (sin saldo ni importes contradictorios)", () => {
-  for (const id of ["VAR-REP-030", "VAR-REP-031", "VAR-REP-032", "VAR-REP-033", "VAR-REP-034"]) {
+  for (const id of ["VAR-REP-030", "VAR-REP-031", "VAR-REP-032", "VAR-REP-033", "VAR-REP-034", "VAR-REP-040", "VAR-REP-041"]) {
     const s = scenario(id);
     const m = moneyOf(s);
     const payments = m.initialPayments.length > 0 ? m.initialPayments : [m.paymentOnAction];

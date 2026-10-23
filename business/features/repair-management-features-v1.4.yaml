@@ -271,7 +271,12 @@ features:
       deja la Orden creada y con su informacion inicial. Tambien permite que
       un tecnico agregue un Detalle nuevo detectado durante la ejecucion, que
       queda pendiente de autorizacion sin bloquear ni interrumpir los demas
-      trabajos autorizados.
+      trabajos autorizados. Consolidacion V1.4: el ingreso inicial de
+      CLIENTE_EXTERNO se simplifica en un comprobante unico de ingreso y
+      autorizacion (UAT-008, BR-REP-046); las autorizaciones posteriores conservan
+      su circuito y pueden documentarse con el comprobante de autorizacion (AUT);
+      los documentos son versionados (DC13) y admiten firma o archivo firmado
+      (DC26).
 
     inputs:
       - Orden de Reparacion creada, con su informacion inicial
@@ -287,7 +292,9 @@ features:
       - Decision del cliente por Detalle y definicion vigente (autoriza o
         rechaza), con fecha/hora, usuario, alcance y evidencia de
         consentimiento
-      - Comprobante de recepcion emitido despues de la aceptacion inicial
+      - Comprobante de recepcion emitido despues de la aceptacion inicial; en el
+        ingreso inicial simplificado, comprobante unico de ingreso y autorizacion (ING)
+      - Comprobante de autorizacion de reparacion (AUT) versionado, generado a pedido
       - Orden preparada para validacion de factibilidad por Detalle
       - Resultado SIN_REPARACION cuando no puede definirse ningun Detalle
       - Informacion de revision tecnica registrada, a nivel Orden o a
@@ -339,10 +346,23 @@ features:
       - BR-REP-032
       - BR-REP-033
       - BR-REP-037
+      - BR-REP-042
+      - BR-REP-046
       - BR-REP-047
 
     scope:
       includes:
+        - Ejecutar el ingreso inicial simplificado de CLIENTE_EXTERNO (crear la
+          Orden, cargar los Detalles y generar el comprobante de ingreso y
+          autorizacion en una sola operacion consistente, sin estados parciales
+          ni duplicados), BR-REP-046
+        - Generar a pedido el comprobante de autorizacion (AUT) con los Detalles
+          autorizados, versionado y sin duplicados, que no es comprobante de
+          pago (BR-REP-031)
+        - Mantener un unico documento vigente por tipo y contexto; las
+          correcciones crean versiones con motivo y referencia (DC13)
+        - Registrar la evidencia del consentimiento (canal y, cuando
+          corresponda, firma en pantalla o archivo firmado), BR-REP-042
         - Registrar un Detalle "Otros - Reparacion no tipificada" con
           descripcion y precio manual, con el mismo circuito que cualquier otro
           Detalle (BR-REP-047)
@@ -444,8 +464,13 @@ features:
         DESCARTADA. (V1.4 ya fija el origen RECEPCION en PROC-REP-070 y
         REVISION_TECNICA en PROC-REP-075.)
       - >
-        Canal de consentimiento del cliente (firma, WhatsApp, presencial,
-        etc.) y su evidencia (BR-REP-028): pendiente de decision de negocio.
+        Cuando es obligatoria la firma de cada documento (BR-REP-042, DC26):
+        pendiente de decision. El canal y la forma de la evidencia ya estan
+        definidos (BR-REP-028).
+      - >
+        Si el estado fisico es obligatorio para emitir el comprobante de
+        ingreso y autorizacion (BR-REP-046): decision de la implementacion
+        pendiente de confirmar.
       - >
         Si una redefinicion PROC-REP-127 que confirma exactamente el mismo
         Tipo y precio debe volver a requerir autorizacion del cliente
@@ -935,7 +960,11 @@ features:
       final: precio snapshot por Detalle, Subtotal, Ajustes Comerciales
       (cortesias), registro de Pagos en cualquier momento, y el gate de
       Saldo que debe completarse -Completar Cobro- despues de
-      REPARACION_LISTA y antes de la entrega.
+      REPARACION_LISTA y antes de la entrega. Consolidacion V1.4: un unico Ajuste
+      Comercial (CORTESIA o DESCUENTO) por Orden o por Detalle (DC09); anulacion
+      auditada de Pagos sin borrarlos (DC10); cortesia total con Pagos previos
+      como saldo a favor que se devuelve antes del cierre (DC11); devoluciones
+      por Administracion o Recepcion (DC12C).
 
     inputs:
       - Detalle(s) de Reparacion con Tipo y precio snapshot
@@ -944,13 +973,14 @@ features:
     outputs:
       - Subtotal de la Orden (suma de precios snapshot de Detalles NO
         CANCELADOS)
-      - Ajuste Comercial de cortesia (CORTESIA_DETALLE o CORTESIA_ORDEN)
-        registrado, con autorizacion ACT-ADMIN, fecha/hora y motivo
+      - Ajuste Comercial (CORTESIA o DESCUENTO) por Orden o por Detalle, con
+        motivo, usuario, fecha/hora e historial de cambios
       - Base Comercial calculada (Subtotal + Ajustes Comerciales Previos)
       - Pago(s) registrados en cualquier momento (seña, anticipo,
         parciales, multiples medios)
       - Total Pagado y Total Cobrable calculados
-      - Saldo calculado (Total final - Pagos recibidos + Devoluciones realizadas)
+      - Saldo calculado (Total final - Pagos recibidos vigentes + Devoluciones realizadas)
+      - Pago anulado con motivo y auditoria, conservado como anulado
       - Devolucion de dinero registrada y trazada cuando existe saldo a favor
         del cliente
       - Condicion de entrega validada (Saldo = 0, cortesia total, o
@@ -988,8 +1018,13 @@ features:
           Reparacion como snapshot al confirmar un Detalle
         - Calcular el Subtotal excluyendo estructuralmente los Detalles
           CANCELADO
-        - Registrar Ajustes Comerciales (CORTESIA_DETALLE y
-          CORTESIA_ORDEN), con autorizacion ACT-ADMIN
+        - Registrar Ajustes Comerciales (CORTESIA o DESCUENTO) por Orden o por
+          Detalle, en porcentaje o importe fijo, con motivo e historial, sin
+          tocar precios de catalogo ni snapshots (BR-REP-016)
+        - Anular un Pago registrado por error (Administracion por defecto,
+          delegable), con motivo y auditoria, sin borrarlo (BR-REP-017)
+        - Tratar una cortesia total con Pagos previos como saldo a favor que se
+          devuelve antes del cierre (BR-REP-016, BR-REP-038)
         - Registrar Pagos como capacidad transversal (seña, anticipo,
           parciales, multiples medios), en cualquier momento desde que la
           Orden existe, restringido a usuarios operativos activos que no
@@ -1023,13 +1058,19 @@ features:
         precio del Detalle/Orden.
       - Multi-moneda en precios y pagos.
       - >
-        Impuestos, recargos, descuentos y otros conceptos comerciales
-        futuros entre Base Comercial y Total Cobrable.
+        Impuestos, recargos y otros conceptos comerciales futuros entre Base
+        Comercial y Total Cobrable.
       - >
-        Quien esta autorizado a registrar devoluciones de dinero y el catalogo
-        de medios de devolucion (BR-REP-038), el plazo o abandono si el cliente
-        no retira el dinero, las devoluciones posteriores a ENTREGADA y el
-        tratamiento de un saldo a favor en origenes sin circuito comercial.
+        Permisos iniciales por tipo de Ajuste Comercial (BR-REP-016): pendiente
+        de decision.
+      - >
+        Tratamiento de un DESCUENTO que deja el total por debajo de lo ya
+        cobrado (BR-REP-016): la implementacion lo rechaza; pendiente de
+        decision.
+      - >
+        Catalogo de medios de devolucion (BR-REP-038), el plazo o abandono si el
+        cliente no retira el dinero, las devoluciones posteriores a ENTREGADA y
+        el tratamiento de un saldo a favor en origenes sin circuito comercial.
 
   - id: FEAT-REP-008
     name: Finalizacion, entrega e integracion del resultado
@@ -1045,7 +1086,11 @@ features:
       -precondicion que recibe de FEAT-REP-007, no que esta Feature
       calcula-, determinar si corresponde entrega a cliente, notificar,
       generar el comprobante final, entregar el equipo o informar el
-      resultado a Gestion RT segun el origen de la Orden.
+      resultado a Gestion RT segun el origen de la Orden. Consolidacion V1.4: el
+      check-in de entrega (UAT-009) con la garantia por Detalle, documentos
+      versionados con firma o archivo firmado (DC13, DC26), y comunicaciones
+      asistidas con plantillas, historial y consentimiento por finalidad (DC25
+      etapa 1, DC30).
 
     inputs:
       - Orden con REPARACION_LISTA o resultado SIN_REPARACION
@@ -1062,6 +1107,9 @@ features:
       - Resultado informado al sistema de Gestion RT para equipos
         RT_INTERNO
       - Flujo de Orden finalizado segun su origen
+      - Check-in registrado (realizado o no realizado) y garantia definitiva por Detalle
+      - Evidencia de firma ligada al documento y su version, cuando se registra
+      - Historial de comunicaciones asistidas
 
     process_nodes:
       - PROC-REP-250
@@ -1069,6 +1117,7 @@ features:
       - PROC-REP-280
       - PROC-REP-270
       - PROC-REP-268
+      - PROC-REP-269
       - PROC-REP-290
 
     shared_node_bindings:
@@ -1079,9 +1128,25 @@ features:
       - BR-REP-033
       - BR-REP-038
       - BR-REP-039
+      - BR-REP-041
+      - BR-REP-042
+      - BR-REP-043
+      - BR-REP-044
+      - BR-REP-045
 
     scope:
       includes:
+        - Registrar el check-in (Recepcion o Administracion) desde que la
+          reparacion esta lista y exigirlo para entregar una Orden de
+          CLIENTE_EXTERNO con trabajos realizados (PROC-REP-269, BR-REP-045)
+        - Reasignar la garantia sugerida de cada Detalle segun el check-in, sin
+          pisar ajustes manuales, y contar la vigencia desde la entrega
+          (BR-REP-041)
+        - Preparar los avisos al cliente desde plantillas, registrar cada envio
+          asistido sin darlo por enviado y respetar el consentimiento por
+          finalidad (BR-REP-043, BR-REP-044)
+        - Registrar la firma en pantalla o el archivo firmado de la constancia
+          de entrega y del comprobante final (BR-REP-042)
         - Registrar la devolucion fisica del equipo cuando una Orden CANCELADA
           lo exige (PROC-REP-270 reutilizado, BR-REP-033), con fecha/hora,
           usuario que entrega y persona que recibe, sin convertir CANCELADA en
@@ -1114,6 +1179,9 @@ features:
       - >
         Definir el estado terminal definitivo para Ordenes de origen
         RT_INTERNO.
+      - >
+        Cuando es obligatoria cada firma (BR-REP-042) y las plantillas,
+        disparadores y proveedor de WhatsApp (BR-REP-044): pendientes.
 
   - id: FEAT-REP-009
     name: Cancelacion de Detalles y Orden
@@ -1311,6 +1379,7 @@ features:
       - PROC-REP-030
       - PROC-REP-032
       - PROC-REP-036
+      - PROC-REP-260
       - PROC-REP-070
       - PROC-REP-075
       - PROC-REP-127
@@ -1386,6 +1455,7 @@ features:
     process_nodes: []
 
     governed_nodes:
+      - PROC-REP-036
       - PROC-REP-046
       - PROC-REP-075
       - PROC-REP-127
@@ -1396,6 +1466,7 @@ features:
       - PROC-REP-183
       - PROC-REP-213
       - PROC-REP-267
+      - PROC-REP-269
       - PROC-REP-270
       - PROC-REP-271
       - PROC-REP-300

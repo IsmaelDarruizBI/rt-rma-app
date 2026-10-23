@@ -143,6 +143,7 @@ export const NODE_WAITS: Record<string, WaitNote> = {
   "PROC-REP-125": { event: "El tecnico realiza la revision tecnica del Detalle", basis: "Espera de revision tecnica, analoga a PROC-REP-120." },
   "PROC-REP-129": { event: "Recepcion obtiene la respuesta de autorizacion del cliente", basis: "Espera de autorizacion del cliente, analoga a PROC-REP-120 y PROC-REP-125." },
   "PROC-REP-266": { event: "Se registra uno o mas Pagos adicionales (BR-REP-017-A)", basis: "La entrega queda bloqueada hasta que se registren Pagos que salden la diferencia." },
+  "PROC-REP-269": { event: "Recepcion o Administracion registran el check-in (BR-REP-045)", basis: "La entrega queda bloqueada hasta registrar el check-in, analoga a PROC-REP-266." },
 };
 
 export const CONTEXT_EXITS: ContextExitNote[] = [

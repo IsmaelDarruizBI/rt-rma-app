@@ -158,12 +158,22 @@ scenarios:
       realizado al retirar antes de la entrega. Representa el
       comportamiento normal del proceso, no necesariamente el camino con
       menos nodos: en particular, es normal que el cliente tenga Saldo
-      pendiente hasta el momento de retirar el equipo.
+      pendiente hasta el momento de retirar el equipo. Consolidacion V1.4
+      (UAT-009): con el Saldo en 0 la entrega todavia exige el check-in;
+      Recepcion lo registra (funciones basicas verificadas), la garantia de
+      cada Detalle queda en 90 dias desde la entrega y recien entonces se
+      aprueba la condicion de entrega.
 
     facts:
       - key: origin
         label: Origen
         value: CLIENTE_EXTERNO
+      - key: checkin_required_for_delivery
+        label: La entrega exige el check-in (CLIENTE_EXTERNO con trabajos realizados)
+        value: true
+      - key: checkin_result
+        label: Resultado del check-in
+        value: REALIZADO
       - key: order_created_before_initial_information
         label: La Orden se crea antes de registrar la informacion inicial
         value: true
@@ -423,6 +433,25 @@ scenarios:
 
       - kind: PROCESS_EDGE
         from: PROC-REP-265
+        to: PROC-REP-269
+        condition: Saldo en 0, falta el check-in
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-008
+        name: Registrar check-in
+        description: >
+          Recepcion registra el check-in de entrega (funciones basicas
+          verificadas) con la reparacion lista, antes de entregar
+          (BR-REP-045). Se reasigna la garantia sugerida de 90 dias a cada
+          Detalle no cancelado (BR-REP-041).
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-269
+        to: PROC-REP-265
+        condition: Revalidar
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
         to: PROC-REP-280
         condition: Si
 
@@ -464,6 +493,12 @@ scenarios:
       - key: repair_warranty_generated
         label: Garantia de reparacion generada
         value: true
+      - key: checkin_registered_before_delivery
+        label: Check-in registrado antes de entregar
+        value: true
+      - key: detail_warranty_days
+        label: Garantia definitiva de cada Detalle (dias desde la entrega)
+        value: 90
 
   # Nota sobre active_features: una Feature esta activa en un Happy Path si
   # PARTE de su comportamiento funcional participa en ese recorrido; eso no
@@ -5140,6 +5175,9 @@ scenarios:
       - key: origin
         label: Origen
         value: CLIENTE_EXTERNO
+      - key: checkin_required_for_delivery
+        label: La entrega exige el check-in (CLIENTE_EXTERNO con trabajos realizados)
+        value: true
       - key: detail_count
         label: Cantidad de Detalles
         value: 3
@@ -5200,6 +5238,15 @@ scenarios:
         from: PROC-REP-250
         to: PROC-REP-260
         condition: Si
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-008
+        name: Registrar check-in
+        description: >
+          Recepcion registra el check-in de entrega (funciones basicas
+          verificadas) con la reparacion lista, antes de llegar a la validacion de entrega
+          (BR-REP-045). Se reasigna la garantia sugerida de 90 dias a cada
+          Detalle no cancelado (BR-REP-041).
 
       - kind: PROCESS_EDGE
         from: PROC-REP-260
@@ -5674,6 +5721,9 @@ scenarios:
       - key: origin
         label: Origen
         value: CLIENTE_EXTERNO
+      - key: checkin_required_for_delivery
+        label: La entrega exige el check-in (CLIENTE_EXTERNO con trabajos realizados)
+        value: true
       - key: advance_payment_amount
         label: Anticipo recibido (Pago)
         value: 5000
@@ -5691,6 +5741,15 @@ scenarios:
         description: >
           El cliente cancelo por anticipado el Total final de $5.000 mediante
           Pagos de la capacidad transversal (BR-REP-017-A).
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-008
+        name: Registrar check-in
+        description: >
+          Recepcion registra el check-in de entrega (funciones basicas
+          verificadas) con la reparacion lista, antes de llegar a la validacion de entrega
+          (BR-REP-045). Se reasigna la garantia sugerida de 90 dias a cada
+          Detalle no cancelado (BR-REP-041).
 
       - kind: PROCESS_EDGE
         from: PROC-REP-260
@@ -6277,3 +6336,303 @@ scenarios:
       - key: billing_condition
         label: Condicion comercial
         value: NO_COBRABLE
+
+  - id: VAR-REP-040
+    name: Anulacion de un Pago registrado por error antes de entregar
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-007
+
+    applies_to:
+      - HP-REP-001
+
+    description: >
+      Consolidacion V1.4 (DC10). Orden de CLIENTE_EXTERNO con un Total final de
+      $10.000. Recepcion registro un anticipo de $10.000 por error (por ejemplo,
+      con un medio de pago equivocado). Administracion anula ese Pago con motivo
+      obligatorio: el Pago no se borra, queda registrado como anulado con
+      usuario y fecha/hora y deja de contar para el Saldo, que vuelve a $10.000.
+      Al validar la entrega el Saldo es positivo y la Orden entra al circuito de
+      cobro (PROC-REP-266); se registra el pago correcto, el Saldo queda en 0, se
+      registra el check-in y recien entonces se aprueba la condicion de entrega.
+      La anulacion es delegable mediante permiso (BR-REP-039).
+
+    trigger:
+      node: PROC-REP-265
+      edge:
+        from: PROC-REP-265
+        to: PROC-REP-266
+        condition: No, saldo pendiente de cobro
+      condition: No, saldo pendiente de cobro
+
+    affected_nodes:
+      - PROC-REP-265
+      - PROC-REP-266
+      - PROC-REP-269
+      - PROC-REP-280
+
+    rules:
+      - BR-REP-017
+      - BR-REP-038
+      - BR-REP-039
+      - BR-REP-045
+
+    facts:
+      - key: origin
+        label: Origen
+        value: CLIENTE_EXTERNO
+      - key: checkin_required_for_delivery
+        label: La entrega exige el check-in (CLIENTE_EXTERNO con trabajos realizados)
+        value: true
+      - key: final_total
+        label: Total final de la OR
+        value: 10000
+      - key: advance_payment_amount
+        label: Importe de cada Pago registrado
+        value: 10000
+
+    steps:
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Registrar anticipo por error
+        description: >
+          Se registra un Pago de $10.000 con un medio de pago equivocado
+          (capacidad transversal de Pagos, BR-REP-017-A).
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Anular pago
+        description: >
+          Administracion anula el Pago con motivo obligatorio (DC10). El Pago se
+          conserva como anulado, con usuario y fecha/hora, y deja de contar para
+          el Saldo.
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-260
+        to: PROC-REP-265
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-266
+        condition: No, saldo pendiente de cobro
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Registrar pago final
+        description: >
+          Se registra el Pago correcto de $10.000 con el medio que corresponde.
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-266
+        to: PROC-REP-265
+        condition: Revalidar
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-269
+        condition: Saldo en 0, falta el check-in
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-008
+        name: Registrar check-in
+        description: >
+          Recepcion registra el check-in de entrega (BR-REP-045).
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-269
+        to: PROC-REP-265
+        condition: Revalidar
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-280
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-280
+        to: PROC-REP-270
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-270
+        to: PROC-REP-268
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-268
+        to: EVT-REP-999
+        condition: Sin saldo a favor pendiente
+
+    expected:
+      - key: voided_payment_preserved
+        label: El Pago anulado se conserva (no se borra)
+        value: true
+      - key: voided_payment_counts_in_balance
+        label: El Pago anulado cuenta para el Saldo
+        value: false
+      - key: void_reason_registered
+        label: Motivo, usuario y fecha/hora de la anulacion registrados
+        value: true
+      - key: voided_by_default_role
+        label: Rol predeterminado que anula
+        value: ACT-ADMIN
+      - key: final_balance
+        label: Saldo final
+        value: 0
+
+  - id: VAR-REP-041
+    name: Cortesia total con Pagos previos, saldo a favor y devolucion antes de entregar
+    type: VARIANT
+    scope: FEATURE
+    status: draft
+
+    source_process:
+      id: PROC-REP
+      version: "1.4"
+
+    feature: FEAT-REP-007
+
+    applies_to:
+      - HP-REP-001
+
+    description: >
+      Consolidacion V1.4 (DC09 y DC11). El cliente dejo un anticipo de $5.000 y,
+      con la reparacion terminada, se le otorga una cortesia total de la Orden:
+      un Ajuste Comercial de tipo CORTESIA por el total (con motivo, usuario y
+      fecha/hora) deja el Total final en $0. Los Pagos y el Ajuste originales se
+      conservan. El Saldo queda en -5.000: hay saldo a favor del cliente, que no
+      habilita la entrega por si solo y debe devolverse (PROC-REP-267) antes del
+      cierre. Tras la devolucion el Saldo queda en 0, se registra el check-in y
+      se aprueba la condicion de entrega. Quien puede otorgar una cortesia por
+      defecto sigue pendiente de decision (BR-REP-016).
+
+    trigger:
+      node: PROC-REP-265
+      edge:
+        from: PROC-REP-265
+        to: PROC-REP-267
+        condition: No, saldo a favor del cliente
+      condition: No, saldo a favor del cliente
+
+    affected_nodes:
+      - PROC-REP-265
+      - PROC-REP-267
+      - PROC-REP-269
+      - PROC-REP-280
+
+    rules:
+      - BR-REP-016
+      - BR-REP-017
+      - BR-REP-038
+      - BR-REP-045
+
+    facts:
+      - key: origin
+        label: Origen
+        value: CLIENTE_EXTERNO
+      - key: checkin_required_for_delivery
+        label: La entrega exige el check-in (CLIENTE_EXTERNO con trabajos realizados)
+        value: true
+      - key: subtotal
+        label: Subtotal de los Detalles
+        value: 5000
+      - key: final_total
+        label: Total final de la OR, despues de la cortesia total
+        value: 0
+      - key: advance_payment_amount
+        label: Anticipo recibido (Pago)
+        value: 5000
+      - key: refund_amount
+        label: Devolucion de dinero
+        value: 5000
+
+    steps:
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Registrar anticipo
+        description: >
+          El cliente deja un anticipo de $5.000 (capacidad transversal de Pagos).
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Registrar ajuste comercial de cortesia total
+        description: >
+          Se registra un Ajuste Comercial CORTESIA por el total de la Orden, con
+          motivo, usuario y fecha/hora (BR-REP-016). El precio de los Detalles
+          no cambia.
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-260
+        to: PROC-REP-265
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-267
+        condition: No, saldo a favor del cliente
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-007
+        name: Registrar devolucion de dinero
+        description: >
+          Se devuelven los $5.000 como movimiento distinto del Pago, con medio,
+          referencia y motivo (BR-REP-038).
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-267
+        to: PROC-REP-265
+        condition: Devolucion registrada, validar entrega
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-269
+        condition: Saldo en 0, falta el check-in
+
+      - kind: FUNCTIONAL_ACTION
+        feature: FEAT-REP-008
+        name: Registrar check-in
+        description: >
+          Recepcion registra el check-in de entrega (BR-REP-045).
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-269
+        to: PROC-REP-265
+        condition: Revalidar
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-265
+        to: PROC-REP-280
+        condition: Si
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-280
+        to: PROC-REP-270
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-270
+        to: PROC-REP-268
+
+      - kind: PROCESS_EDGE
+        from: PROC-REP-268
+        to: EVT-REP-999
+        condition: Sin saldo a favor pendiente
+
+    expected:
+      - key: delivery_allowed_before_refund
+        label: Se entrega antes de devolver el saldo a favor
+        value: false
+      - key: original_payment_preserved
+        label: El anticipo original se conserva
+        value: true
+      - key: courtesy_adjustment_preserved
+        label: El Ajuste de cortesia se conserva
+        value: true
+      - key: refund_recorded_as_negative_payment
+        label: La devolucion se registra como Pago negativo
+        value: false
+      - key: final_balance
+        label: Saldo final
+        value: 0

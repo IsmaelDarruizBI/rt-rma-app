@@ -204,14 +204,16 @@ check("8) ningun avance automatico entra en un bucle: se detiene antes de repeti
   }
 });
 
-check("9) un nodo puede repetirse legitimamente: cobro 265 -> 266 (espera) -> 265 (visita 2) y devolucion 265 -> 267 -> 265", () => {
+check("9) un nodo puede repetirse legitimamente: cobro 265 -> 266 (espera) -> 265 (visita 2), check-in 265 -> 269 -> 265 (visita 3) y devolucion 265 -> 267 -> 265", () => {
   // build a CE path to PROC-REP-265 by driving HP-REP-001 (it contains 265 -> 266 -> 265)
   const hp = driveScenario(scenarios.find((s) => s.id === "HP-REP-001") as Scenario);
   const visits = main(hp.result).visits.filter((v) => v.node === "PROC-REP-265");
-  assert.deepEqual(visits.map((v) => v.visitNo), [1, 2], "265 se visita dos veces con sus numeros de visita");
+  // consolidacion V1.4 (UAT-009): con el Saldo en 0 falta el check-in, 265 -> 269 -> 265
+  assert.deepEqual(visits.map((v) => v.visitNo), [1, 2, 3], "265 se visita tres veces con sus numeros de visita");
   assert.equal(main(hp.result).visits.find((v) => v.node === "PROC-REP-266")?.via?.mode, "CHOICE");
   const step = main(hp.result).visits.filter((v) => v.node === "PROC-REP-265")[1];
   assert.equal(step.via?.mode, "EVENT", "volver de 266 a 265 es la accion explicita 'se produjo el evento esperado'");
+  assert.equal(main(hp.result).visits.filter((v) => v.node === "PROC-REP-265")[2].via?.mode, "EVENT", "volver de 269 a 265 tambien es un evento (check-in registrado)");
   const vf = driveScenario(scenarios.find((s) => s.id === "VAR-REP-031") as Scenario);
   assert.deepEqual(main(vf.result).visits.filter((v) => v.node === "PROC-REP-265").map((v) => v.visitNo), [1, 2, 3]);
   assert.ok(vf.actions.filter((a) => a.type === "CONTINUE_CYCLE").length >= 2, "cada repeticion automatica de 267 -> 265 pide confirmacion");
@@ -319,7 +321,7 @@ check("RT_GARANTIA_VENTA (fuera de MVP v2, sin Scenarios) ofrece las salidas sin
 });
 
 // 44 Scenarios de V1.4 mas los de la consolidacion del 23/10/2026 (VAR-REP-037 en adelante).
-const V14_SCENARIO_COUNT = 47;
+const V14_SCENARIO_COUNT = 49;
 check(`14) el explorador no omite salidas validas: los ${V14_SCENARIO_COUNT} Scenarios se recorren completos, nodo por nodo`, () => {
   assert.equal(scenarios.length, V14_SCENARIO_COUNT);
   let steps = 0;

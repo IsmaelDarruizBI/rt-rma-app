@@ -2,7 +2,7 @@
 %% DO NOT EDIT MANUALLY.
 %% SOURCE: business/processes/repair-management-v1.4.yaml
 %% VIEW: origen CLIENTE_EXTERNO (subconjunto de nodos y aristas reales; ver scripts/lib/origin-filter.ts)
-%% Nodos: 68 | Aristas: 115 | Aristas punteadas: carril independiente de Recepcion (EVT secundarios)
+%% Nodos: 69 | Aristas: 117 | Aristas punteadas: carril independiente de Recepcion (EVT secundarios)
 
 flowchart TD
     EVT-REP-001{{"Surge necesidad de reparacion"}}
@@ -67,6 +67,7 @@ flowchart TD
     PROC-REP-271["Resolver custodia del equipo pendiente de confirmar<br/>[Recepcion]"]
     PROC-REP-267["Registrar devolucion de dinero al cliente<br/>[Recepcion]"]
     PROC-REP-268{"Hay saldo a favor del cliente pendiente de devolver"}
+    PROC-REP-269["Orden pendiente de check-in (entrega bloqueada)<br/>[Sistema]"]
     PROC-REP-270["Entregar equipo<br/>[Administrador]"]
     PROC-REP-300["Cancelar Detalle"]
     PROC-REP-305["Cancelar Orden / trabajos pendientes"]
@@ -183,6 +184,8 @@ flowchart TD
     PROC-REP-268 -->|Sin saldo a favor pendiente| EVT-REP-999
     PROC-REP-268 -->|Saldo a favor del cliente pendiente de devolver| PROC-REP-267
     PROC-REP-266 -->|Revalidar| PROC-REP-265
+    PROC-REP-265 -->|Saldo en 0, falta el check-in| PROC-REP-269
+    PROC-REP-269 -->|Revalidar| PROC-REP-265
     PROC-REP-270 --> PROC-REP-268
     PROC-REP-170 -->|Cancelar Detalle| PROC-REP-300
     PROC-REP-300 -->|Cancelacion fuera de la evaluacion tecnica| PROC-REP-211

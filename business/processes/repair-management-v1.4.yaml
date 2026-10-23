@@ -517,8 +517,10 @@ nodes:
       (BR-REP-013). Registra, por cada Detalle afectado Y su definicion
       vigente, si el cliente lo AUTORIZA o lo RECHAZA (el cliente no esta
       obligado a aceptar todos), con fecha/hora, usuario responsable, alcance y
-      resultado, y contemplando evidencia de consentimiento (el canal -firma,
-      WhatsApp, presencial, etc.- queda pendiente de decision de negocio). La
+      resultado, y contemplando evidencia de consentimiento: el canal elegido y,
+      cuando corresponda, la firma manuscrita en pantalla o la foto o archivo
+      del documento firmado, ligada al documento y su version (BR-REP-042,
+      DC26); cuando cada firma es obligatoria sigue pendiente de decision. La
       aceptacion de la revision tecnica NO autoriza reparaciones posteriores:
       los Detalles que se definan luego vuelven a requerir su propia decision.
       Un Detalle nuevo o modificado (nueva definicion vigente) nace
@@ -554,17 +556,30 @@ nodes:
       EVT-REP-003): puede resolverse en cualquier momento, sin exigir una
       respuesta inmediata del cliente y sin detener al tecnico; la creacion de
       la solicitud (por ejemplo PROC-REP-128) y su resolucion son actividades
-      distintas.
+      distintas. Consolidacion V1.4 (UAT-008 y mejoras UAT del 16/10/2026). En el
+      ingreso inicial simplificado de CLIENTE_EXTERNO la autorizacion inicial de
+      los Detalles cargados se registra al generar el comprobante de ingreso y
+      autorizacion (BR-REP-046), sin botones separados. Las autorizaciones
+      posteriores conservan este circuito explicito y, con al menos un Detalle
+      autorizado, Recepcion puede generar a pedido el comprobante de
+      autorizacion de reparacion (AUT): incluye solo los Detalles autorizados con
+      su definicion vigente, precio y total, la fecha y el canal de la
+      autorizacion, aclara que no es un comprobante de pago, se versiona sin
+      duplicarse y no se genera automaticamente (BR-REP-031).
     inputs:
       - Detalle(s) con definicion vigente pendiente de decision
     outputs:
       - Decision por Detalle y definicion vigente (autoriza / rechaza), o solicitud sin resolver
       - Fecha/hora, usuario responsable, alcance y evidencia de consentimiento
+      - Comprobante de autorizacion de reparacion (AUT) versionado, cuando Recepcion lo genera
     rules:
       - BR-REP-028
       - BR-REP-029
       - BR-REP-030
+      - BR-REP-031
       - BR-REP-037
+      - BR-REP-042
+      - BR-REP-046
 
   - id: PROC-REP-047
     type: decision
@@ -716,7 +731,16 @@ nodes:
       equipo recibido o no recibido. Eleccion minima: se extiende este nodo en
       lugar de agregar un nodo posterior, porque un nodo de espera impondria al
       grafo secuencial un orden que el negocio no exige. La simple creacion de
-      la Orden no implica que el equipo este en el taller.
+      la Orden no implica que el equipo este en el taller. Consolidacion V1.4. En
+      el ingreso inicial simplificado de CLIENTE_EXTERNO (UAT-008, BR-REP-046)
+      el documento emitido aqui es el comprobante unico de ingreso y
+      autorizacion (ING): cliente, equipo, estado fisico, accesorios,
+      observaciones visibles (nunca las notas internas), Detalles autorizados con
+      precio, total y fechas, como constancia de recepcion y de autorizacion; la
+      marca de este nodo se conserva y no se emite un documento redundante.
+      Documentos (DC13): existe un unico documento vigente por tipo y contexto;
+      una correccion genera una version nueva con motivo y referencia a la que
+      reemplaza, y ninguna version se borra (BR-REP-031).
     outputs:
       - Comprobante de recepcion generado
       - Confirmacion del intercambio fisico (fecha/hora, usuario responsable y referencia del comprobante) cuando se concreta; hasta entonces la recepcion queda pendiente de confirmar
@@ -791,7 +815,10 @@ nodes:
       recien entonces el proceso continua: en CLIENTE_EXTERNO a la decision del
       cliente por Detalle (PROC-REP-046) y luego, por el enrutamiento interno de
       PROC-REP-211, al comprobante (PROC-REP-050); en los demas origenes
-      directamente a PROC-REP-050. Cada
+      directamente a PROC-REP-050. En el ingreso inicial simplificado de
+      CLIENTE_EXTERNO (UAT-008) "Finalizar definicion" no es una accion separada:
+      forma parte de generar el comprobante de ingreso y autorizacion
+      (BR-REP-046). Cada
       Detalle registra el origen de su diagnostico: RECEPCION cuando proviene
       de lo diagnosticado en el ingreso (BR-REP-026). El precio snapshot
       existe en todo Detalle, cualquiera sea el origen: precio registrado no
@@ -1867,7 +1894,18 @@ nodes:
       cambios respecto de V1.2. En V1.3 todo origen con entrega a cliente
       (CLIENTE_EXTERNO, RT_GARANTIA_VENTA, RMA_GARANTIA_REPARACION) sigue
       luego a PROC-REP-265 (validacion de la condicion de entrega): no hay
-      un camino alternativo que la evite.
+      un camino alternativo que la evite. Consolidacion V1.4 (DC25 etapa 1 y
+      DC30): el mensaje se prepara desde plantillas configurables y el envio
+      asistido queda en el historial de comunicaciones de la Orden, sin dar por
+      enviado ni recibido lo que solo se abrio en WhatsApp; respeta el
+      consentimiento y las preferencias del cliente por finalidad, y un aviso
+      operativo se distingue de un mensaje comercial (BR-REP-043, BR-REP-044).
+      El cliente puede ser notificado antes del check-in, sin comunicar una
+      garantia definitiva no confirmada (UAT-009). Plantillas, disparadores y
+      proveedor oficial siguen pendientes.
+    rules:
+      - BR-REP-043
+      - BR-REP-044
 
   - id: PROC-REP-280
     type: activity
@@ -1892,10 +1930,21 @@ nodes:
       garantia de reparacion. Si el resultado de la Orden es
       SIN_REPARACION, no se genera garantia de reparacion y el comprobante
       refleja Subtotal = 0: no existe importe cobrable asociado
-      (PROC-REP-069, BR-REP-010).
+      (PROC-REP-069, BR-REP-010). Consolidacion V1.4: el comprobante final lleva
+      el resultado del check-in y, por cada trabajo realizado, la garantia
+      definitiva y su vencimiento contado desde la entrega (UAT-009,
+      BR-REP-041); los Ajustes Comerciales se muestran por Orden o por Detalle
+      (BR-REP-016) y los Pagos anulados no cuentan para el Saldo. Es un documento
+      versionado: una correccion genera una version nueva con motivo y
+      referencia a la reemplazada (DC13, BR-REP-031), y la firma o el archivo
+      firmado quedan ligados a esa version (BR-REP-042).
     outputs:
       - Comprobante final con desglose de Detalles/Ajustes/pagos/saldo
-      - Garantia de reparacion (unicamente si hubo reparacion)
+      - Garantia de reparacion (unicamente si hubo reparacion), con plazo definitivo y vencimiento por Detalle
+    rules:
+      - BR-REP-031
+      - BR-REP-041
+      - BR-REP-042
 
   - id: PROC-REP-265
     type: decision
@@ -1937,8 +1986,18 @@ nodes:
       desactualizado si despues se registraba un pago final; ahora el
       comprobante (PROC-REP-280) se genera recien cuando esta validacion
       aprueba, reflejando siempre el saldo definitivo.
+      Consolidacion V1.4 (UAT-009, BR-REP-045): una Orden de CLIENTE_EXTERNO con
+      trabajos realizados ademas exige el check-in registrado para aprobar la
+      entrega. Con Saldo = 0 y el check-in pendiente la salida es "Saldo en 0,
+      falta el check-in" -> PROC-REP-269; "Si" significa Saldo = 0 y, cuando
+      corresponde, check-in registrado. Las cuatro salidas son excluyentes. El
+      check-in no condiciona la notificacion ni el cobro. Los Ajustes
+      Comerciales (BR-REP-016) y la anulacion de un Pago (BR-REP-017) cambian el
+      Saldo que se evalua aqui; una cortesia total con Pagos recibidos deja
+      saldo a favor y se devuelve (BR-REP-038).
     rules:
       - BR-REP-017
+      - BR-REP-045
 
   - id: PROC-REP-266
     type: activity
@@ -1955,7 +2014,9 @@ nodes:
       diferencia (o se aplique una cortesia); despues de cada Pago se
       revalida la condicion de entrega, recalculando el Saldo
       (PROC-REP-265). V1.4: este nodo atiende SOLO el Saldo > 0; un saldo a
-      favor del cliente (Saldo < 0) va a PROC-REP-267 y nunca entra aqui.
+      favor del cliente (Saldo < 0) va a PROC-REP-267 y nunca entra aqui. La
+      anulacion de un Pago registrado por error (BR-REP-017) puede volver a dejar
+      Saldo > 0: el Pago anulado se conserva y no cuenta para el Saldo.
     rules:
       - BR-REP-017
 
@@ -1995,6 +2056,8 @@ nodes:
     type: activity
     name: Registrar devolucion de dinero al cliente
     actor: ACT-RECEP
+    actores_alternativos:
+      - ACT-ADMIN
     description: >
       Nodo nuevo en V1.4 (FEAT-REP-007, BR-REP-038). Se alcanza cuando la
       Orden tiene saldo a favor del cliente (Saldo < 0, con Saldo = Total final
@@ -2015,9 +2078,11 @@ nodes:
       Saldo = 0. Cada pasada por este nodo exige un movimiento real, de modo
       que no hay revalidaciones sin accion financiera. Es independiente de la
       devolucion FISICA del equipo (PROC-REP-270, custodia, BR-REP-033): el
-      dinero y el equipo son dimensiones distintas. Quien esta autorizado a
-      registrar devoluciones y el catalogo de medios quedan pendientes de
-      definicion por negocio. Salidas excluyentes segun desde donde se llego:
+      dinero y el equipo son dimensiones distintas. Consolidacion V1.4 (DC12C):
+      registran devoluciones por defecto Administracion o Recepcion, con permiso
+      configurable (BR-REP-039); el catalogo de medios de devolucion y el
+      tratamiento de las devoluciones que el cliente no retira siguen
+      pendientes. Salidas excluyentes segun desde donde se llego:
       "Devolucion registrada, validar entrega" -> PROC-REP-265 y "Devolucion
       registrada, validar fin de Orden" -> PROC-REP-268.
     inputs:
@@ -2028,6 +2093,7 @@ nodes:
     rules:
       - BR-REP-038
       - BR-REP-017
+      - BR-REP-039
 
   - id: PROC-REP-268
     type: decision
@@ -2054,6 +2120,28 @@ nodes:
     rules:
       - BR-REP-038
       - BR-REP-033
+
+  - id: PROC-REP-269
+    type: activity
+    name: Orden pendiente de check-in (entrega bloqueada)
+    actor: ACT-SYSTEM
+    description: >
+      Nodo nuevo de la consolidacion V1.4 (UAT-009, BR-REP-045), analogo a
+      PROC-REP-266. Una Orden de CLIENTE_EXTERNO con trabajos realizados, con la
+      reparacion lista y el Saldo en 0, no puede entregarse mientras no se
+      registre el check-in (verificacion de funciones basicas). La situacion
+      visible es "Pendiente de verificacion de funciones basicas": es solo
+      presentacion, el workflow sigue en REPARACION_LISTA. La entrega queda
+      bloqueada hasta que Recepcion o Administracion registren el check-in
+      mediante la capacidad transversal de check-in (realizado o no realizado),
+      que tambien puede registrarse antes, desde que la reparacion esta lista;
+      al registrarlo se reasigna la garantia sugerida de cada Detalle no
+      cancelado sin pisar ajustes manuales (BR-REP-041) y se revalida la
+      condicion de entrega (PROC-REP-265). Sin trabajos realizados, RT_INTERNO y
+      la garantia RMA no pasan por aqui.
+    rules:
+      - BR-REP-045
+      - BR-REP-041
 
   - id: PROC-REP-270
     type: activity
@@ -2097,7 +2185,11 @@ nodes:
       equipo y la devolucion de DINERO son dimensiones independientes; tras este
       nodo el fin del flujo pasa siempre por PROC-REP-268 (verificacion de saldo
       a favor), y la entrega comercial solo se habilita cuando PROC-REP-265
-      aprueba con Saldo = 0.
+      aprueba con Saldo = 0. Consolidacion V1.4: la entrega comercial de una
+      Orden de CLIENTE_EXTERNO con trabajos realizados exige ademas el check-in
+      registrado (PROC-REP-265/269, BR-REP-045); la constancia de entrega puede
+      llevar firma manuscrita en pantalla o un archivo firmado (BR-REP-042), cuya
+      obligatoriedad sigue pendiente.
     outputs:
       - Devolucion fisica registrada (fecha/hora, usuario que entrega y persona que recibe) cuando corresponde
     rules:
@@ -2770,6 +2862,14 @@ edges:
     condition: Saldo a favor del cliente pendiente de devolver
 
   - from: PROC-REP-266
+    to: PROC-REP-265
+    condition: Revalidar
+
+  - from: PROC-REP-265
+    to: PROC-REP-269
+    condition: Saldo en 0, falta el check-in
+
+  - from: PROC-REP-269
     to: PROC-REP-265
     condition: Revalidar
 

@@ -623,6 +623,8 @@ const MVP_V2_VARIANT_IDS =
         "VAR-REP-037",
         "VAR-REP-038",
         "VAR-REP-039",
+        "VAR-REP-040",
+        "VAR-REP-041",
       ]
     : ["VAR-REP-001", "VAR-REP-002", "VAR-REP-003"];
 const MVP_V2_EXCEPTION_IDS = [
@@ -641,7 +643,7 @@ check("el scope es exactamente los HAPPY_PATH + VARIANT + 5 EXCEPTION esperados 
   assert.deepEqual(byType("VARIANT"), [...MVP_V2_VARIANT_IDS].sort());
   assert.deepEqual(byType("EXCEPTION"), [...MVP_V2_EXCEPTION_IDS].sort());
   assert.deepEqual(byType("EDGE_CASE"), []);
-  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 47 : 11);
+  assert.equal(scenariosModel.scenarios.length, REVISION === "v1.4" ? 49 : 11);
 });
 
 check("todos los IDs de Scenario son unicos", () => {
@@ -924,6 +926,9 @@ if (REVISION === "v1.4") {
         "PROC-REP-036::Vigente::PROC-REP-040",
         "PROC-REP-036::Vencida, excepcion autorizada::PROC-REP-040",
         "PROC-REP-036::Vencida, sin excepcion::EVT-REP-998",
+        // consolidacion: la entrega con trabajos realizados exige el check-in (UAT-009)
+        "PROC-REP-265::Saldo en 0, falta el check-in::PROC-REP-269",
+        "PROC-REP-269::Revalidar::PROC-REP-265",
         "PROC-REP-182::No requiere evaluacion tecnica::PROC-REP-174",
         "PROC-REP-182::Requiere evaluacion tecnica::PROC-REP-183",
         "PROC-REP-183::CONFIRMADO::PROC-REP-184",
@@ -938,7 +943,7 @@ if (REVISION === "v1.4") {
     const v13Ids = new Set(v13Process.nodes.map((n) => n.id));
     assert.deepEqual(
       processModel.nodes.map((n) => n.id).filter((id) => !v13Ids.has(id)),
-      ["PROC-REP-032", "PROC-REP-036", "PROC-REP-046", "PROC-REP-047", "PROC-REP-056", "PROC-REP-128", "PROC-REP-129", "PROC-REP-182", "PROC-REP-183", "PROC-REP-184", "PROC-REP-271", "PROC-REP-267", "PROC-REP-268", "PROC-REP-306", "EVT-REP-003", "EVT-REP-998"]
+      ["PROC-REP-032", "PROC-REP-036", "PROC-REP-046", "PROC-REP-047", "PROC-REP-056", "PROC-REP-128", "PROC-REP-129", "PROC-REP-182", "PROC-REP-183", "PROC-REP-184", "PROC-REP-271", "PROC-REP-267", "PROC-REP-268", "PROC-REP-269", "PROC-REP-306", "EVT-REP-003", "EVT-REP-998"]
     );
     const changed = v13Process.nodes
       .filter((n) => JSON.stringify(n) !== JSON.stringify(nodeById.get(n.id)))
@@ -952,6 +957,8 @@ if (REVISION === "v1.4") {
         "PROC-REP-180", "PROC-REP-212", "PROC-REP-213", "PROC-REP-245",
         // DC15B, DC19, DC20 y UAT
         "PROC-REP-035", "PROC-REP-120",
+        // comercial, documentos y comunicaciones (DC13, DC25, DC26, DC30, UAT-008/009)
+        "PROC-REP-260",
       ].sort()
     );
   });
@@ -1119,14 +1126,15 @@ if (REVISION === "v1.4") {
   // Reglas de V1.3 que V1.4 cambia, cada una con su motivo: las iteraciones V1.4 (012, 017, 019) y las
   // decisiones de la consolidacion del 23/10/2026 (DCxx). Todas las demas deben seguir identicas a V1.3.
   // Reglas nuevas de la consolidacion del 23/10/2026, en orden.
-  const CONSOLIDATION_RULES = ["BR-REP-039", "BR-REP-040", "BR-REP-041", "BR-REP-047", "BR-REP-048", "BR-REP-049"];
+  const CONSOLIDATION_RULES = Array.from({ length: 11 }, (_, i) => `BR-REP-0${39 + i}`);
   const V13_RULES_CHANGED_IN_V14: Record<string, string> = {
     "BR-REP-003": "DC06: el tecnico redefine (PROC-REP-127); redaccion del estado DEFINIDO (DC17)",
     "BR-REP-009": "DC05: puntaje total derivado, PROC-REP-245 consolida (texto del MVP)",
     "BR-REP-011": "Estacion = Mesa de trabajo; override con permiso configurable (DC08)",
     "BR-REP-015": "DC23AUD: historial de precios auditado; precio manual de \"Otros\" (UAT)",
+    "BR-REP-016": "DC09: Ajuste Comercial unificado (CORTESIA o DESCUENTO) por Orden o por Detalle",
     "BR-REP-012": "parrafo V1.4 (autorizacion y bloqueos) y estados del Detalle (DC17)",
-    "BR-REP-017": "parrafo V1.4 de saldo a favor (BR-REP-038)",
+    "BR-REP-017": "parrafo V1.4 de saldo a favor (BR-REP-038); formula unica, anulacion (DC10) y cortesia total (DC11)",
     "BR-REP-018": "DC04: liberar antes del primer Detalle (texto del MVP) y liberacion de una toma ajena",
     "BR-REP-019": "responsable de PROC-REP-075; vigencia de la garantia de origen (DC15B)",
   };
@@ -1139,7 +1147,11 @@ if (REVISION === "v1.4") {
     const r17 = rulesModel.rules.find((x) => x.id === "BR-REP-017");
     const v17 = v13ById.get("BR-REP-017");
     const flat = (t: string | undefined): string => (t ?? "").replace(/\s+/g, " ").trim();
-    assert.ok(flat(r17?.description).startsWith(flat(v17?.description)), "BR-REP-017 conserva el texto V1.3");
+    // la consolidacion deja una sola formula de Saldo y aclara la cortesia total (DC11); el resto del texto V1.3 se conserva
+    const v17n = flat(v17?.description)
+      .replace("y se calcula el Saldo = Total Cobrable - Total Pagado (PROC-REP-265)", "y se calcula el Saldo con la formula unica de BR-REP-038 (PROC-REP-265)")
+      .replace("ENTREGADA cuando Saldo = 0 o cuando corresponde cortesia total de Orden;", "ENTREGADA cuando Saldo = 0 (una cortesia total sin Pagos recibidos deja Saldo = 0);");
+    assert.ok(flat(r17?.description).startsWith(v17n), "BR-REP-017 conserva el texto V1.3 salvo la formula y la cortesia total");
     assert.match(flat(r17?.description), /BR-REP-038/);
     assert.deepEqual({ ...r17, description: "" }, { ...v17, description: "" });
     // BR-REP-019 solo cambia el responsable de PROC-REP-075 (Recepcion -> tecnico)
@@ -1358,7 +1370,7 @@ if (REVISION === "v1.4") {
     for (const v13 of v13Scenarios.scenarios.filter((s) => !changedIds.has(s.id))) {
       assert.deepEqual(strip(real(v13.id)), strip(v13), v13.id);
     }
-    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 36);
+    assert.equal(scenariosModel.scenarios.length, v13Scenarios.scenarios.length + 38);
   });
 
   // ---------------------------------------------------------------- iteracion 5
