@@ -8,6 +8,12 @@
 # (los tests listan cada una con su motivo); BR-REP-020 a 038 se amplian o
 # reemplazan en parte; BR-REP-039 a 049 son nuevas. Los estados del Detalle se
 # llaman DEFINIDO, EN_PROGRESO, COMPLETO y CANCELADO (DC17).
+# Correccion final previa a DC01 (23/10/2026, solo documental): BR-REP-045 ya no
+# da por aprobado volver a registrar el check-in y conserva la condicion "con
+# trabajos realizados y garantia aplicable"; BR-REP-018 y 039 tratan la
+# interrupcion incluida en una liberacion ajena como excepcion especifica;
+# BR-REP-041 precisa "registrado como no realizado"; BR-REP-024, 040, 044 y 047
+# dejan de describir detalles de almacenamiento o de interfaz.
 # El texto que sigue describe las iteraciones V1.4 previas a la consolidacion;
 # donde contradiga lo anterior, rige la consolidacion.
 #
@@ -621,8 +627,9 @@ rules:
       (reconciliacion del 24/09/2026): cada Pago es ANTICIPO o PAGO segun el
       estado de la Orden al registrarlo; es un dato derivado, distinto del medio
       de pago, y un anticipo no dispara PROC-REP-265. Check-in: en
-      CLIENTE_EXTERNO con trabajos realizados la entrega exige ademas el
-      check-in registrado (BR-REP-045), sin que condicione el cobro.
+      CLIENTE_EXTERNO con trabajos realizados y garantia aplicable la entrega
+      exige ademas el check-in registrado (BR-REP-045), sin que condicione el
+      cobro.
     status: draft
 
   - id: BR-REP-018
@@ -663,12 +670,22 @@ rules:
       permitida por defecto a Tecnico y Coordinacion, con permiso configurable
       desde Administracion (BR-REP-039); requiere una advertencia que indique
       quien tiene la Orden, confirmacion explicita, motivo obligatorio y
-      auditoria (titular, quien libera, fecha/hora, estacion, motivo y estado
-      de la Orden y de sus Detalles), y conserva la trazabilidad de la toma
-      original y de su liberacion. Si hay una Ejecucion en curso, primero se
-      interrumpe con la logica existente (PROC-REP-200 y PROC-REP-210) y luego
-      se libera (PROC-REP-213); no se libera una Orden cerrada o entregada ni
-      se admiten dos tomas simultaneas.
+      auditoria, y conserva la trazabilidad de la toma original y de su
+      liberacion. En PROC-REP-212 decide el titular de la toma o, en una
+      liberacion ajena, quien libera con ese permiso. Si hay una Ejecucion en
+      curso, la operacion de liberacion incluye su interrupcion con la logica
+      existente (PROC-REP-200 Interrumpido y PROC-REP-210: lo utilizado se
+      consume y lo reservado sin usar se libera) y recien entonces cierra la
+      toma (PROC-REP-213). Esa interrupcion es una excepcion especifica al
+      permiso habitual de interrumpir, que corresponde al tecnico de la
+      Ejecucion: solo existe dentro de la liberacion confirmada y no concede
+      un permiso general para interrumpir Ejecuciones ajenas. La auditoria
+      registra quien realiza la operacion, el titular, la Orden, la Ejecucion
+      afectada cuando la hay, el motivo, la fecha/hora, la estacion y el
+      resultado (estado de la Orden y de sus Detalles). La definicion exacta
+      del motivo de interrupcion que deriva de la liberacion (BR-REP-004)
+      sigue pendiente. No se libera una Orden cerrada o entregada ni se
+      admiten dos tomas simultaneas.
     status: draft
 
   - id: BR-REP-019
@@ -802,12 +819,10 @@ rules:
       recepcion y deben preservar la trazabilidad de los archivos (quien las
       incorporo y cuando). Consolidacion V1.4 (UAT-010/011): se agregan solo
       con la Orden ya creada y nunca son obligatorias; como maximo 10 por
-      Orden, con el contador visible; se toman con la camara del celular o se
-      eligen varias desde la galeria o los archivos, se revisan en una vista
-      previa y se aceptan o descartan una por una (las descartadas no se
-      guardan); las guardadas se ven en miniatura, se abren ampliadas,
-      muestran quien y cuando las cargo y se consultan desde Recepcion y
-      Taller. Quien puede cargarlas y consultarlas es configurable (BR-REP-039).
+      Orden; antes de guardarlas se revisan y se aceptan o descartan una por
+      una (las descartadas no se guardan); cada fotografia guardada conserva
+      quien y cuando la cargo y se consulta desde Recepcion y Taller. Quien
+      puede cargarlas y consultarlas es configurable (BR-REP-039).
       El checklist (DC12) permite registrar verificaciones del equipo y
       distinguir las no realizadas: sus preguntas y opciones dependen del tipo
       de equipo y las configura Administracion (BR-REP-040); todas las
@@ -1525,9 +1540,12 @@ rules:
       restricciones de contexto de cada regla (por ejemplo, el titular de la
       toma, el tecnico de la Ejecucion en curso, el estado de la Orden o su
       origen) y ningun permiso habilita a saltear una regla de negocio (por
-      ejemplo, entregar con saldo distinto de cero). Un usuario puede tener
-      varios roles: sus permisos efectivos son la union de los permisos de sus
-      roles, siempre sujeta a esas restricciones de contexto (DC27A). Tambien
+      ejemplo, entregar con saldo distinto de cero). Excepcion especifica: la
+      liberacion de una Orden tomada por otro tecnico incluye la interrupcion
+      de su Ejecucion en curso (BR-REP-018); el permiso de liberar no concede
+      un permiso general para interrumpir Ejecuciones ajenas. Un usuario puede
+      tener varios roles: sus permisos efectivos son la union de los permisos de
+      sus roles, siempre sujeta a esas restricciones de contexto (DC27A). Tambien
       son configurables los permisos de consulta de Ordenes, Clientes,
       fotografias, documentos, pagos y reportes (DC27B). La cancelacion se
       distingue en tres tipos con permiso propio (DC08): cancelacion
@@ -1537,8 +1555,9 @@ rules:
       (PROC-REP-046/047 y 056). Predeterminados confirmados: definir prioridad
       (PROC-REP-150) Coordinacion o Recepcion (DC03); cambiar la prioridad
       Tecnico, Recepcion y Coordinacion; liberar la Orden tomada por otro
-      tecnico Tecnico y Coordinacion; entregar (PROC-REP-270) Administracion o
-      Recepcion (DC03); anular pagos Administracion, delegable (DC10, BR-REP-017);
+      tecnico, incluida la interrupcion de una Ejecucion en curso dentro de esa
+      operacion, Tecnico y Coordinacion (BR-REP-018); entregar (PROC-REP-270)
+      Administracion o Recepcion (DC03); anular pagos Administracion, delegable (DC10, BR-REP-017);
       registrar devoluciones de dinero Administracion o Recepcion (DC12C,
       BR-REP-038); definir y redefinir Detalles el Tecnico y gestionar las
       autorizaciones del cliente Recepcion (DC06); registrar el check-in
@@ -1573,9 +1592,7 @@ rules:
       registradas en una reparacion: cada Detalle, Ejecucion y documento
       conserva su copia de lo que se aplico (precio, puntaje, garantia,
       checklist, datos del equipo). El catalogo de equipos lo mantiene Ventas
-      y RMA solo lo sincroniza (BR-REP-048). La administracion de
-      configuraciones nuevas se implementa sobre la persistencia definitiva
-      (DC28), no sobre los archivos JSON del MVP.
+      y RMA solo lo sincroniza (BR-REP-048).
     status: draft
 
   - id: BR-REP-041
@@ -1587,9 +1604,12 @@ rules:
       reparacion y por el resultado del check-in, administrada desde
       Administracion (BR-REP-040); las precedencias entre politicas y sus
       excepciones se definen desde Administracion y su contenido concreto sigue
-      pendiente de decision. Politica vigente confirmada en UAT: con check-in
-      realizado se sugieren 90 dias y sin check-in realizado 30 dias, por cada
-      Detalle no cancelado (BR-REP-045). Se conservan el plazo sugerido y el
+      pendiente de decision. Politica vigente confirmada en UAT: con el
+      check-in registrado como realizado se sugieren 90 dias y con el check-in
+      registrado como no realizado, 30 dias, por cada Detalle no cancelado
+      (BR-REP-045). Que plazo rige mientras no hay un check-in registrado, o en
+      las Ordenes que no lo exigen, forma parte de las precedencias pendientes.
+      Se conservan el plazo sugerido y el
       definitivo; un usuario autorizado puede ajustar el plazo manualmente con
       motivo antes de la entrega, el ajuste queda registrado y una nueva
       sugerencia nunca lo pisa. La vigencia se cuenta desde la entrega del
@@ -1640,9 +1660,8 @@ rules:
       envio asistido queda en el historial de comunicaciones de la Orden, con la
       plantilla, el destinatario, el canal, el documento compartido, el usuario
       y la fecha/hora. Se respeta el consentimiento por finalidad (BR-REP-043).
-      Etapa 2, despues de la migracion a PostgreSQL: proveedor oficial, cola
-      persistente, estados de envio y reintentos. Pendientes: plantillas,
-      disparadores y proveedor.
+      Etapa 2 (DC25): proveedor oficial, con estados de envio y reintentos.
+      Pendientes: plantillas, disparadores y proveedor.
     status: draft
 
   - id: BR-REP-045
@@ -1652,19 +1671,21 @@ rules:
       El check-in registra si se pudieron verificar las funciones basicas del
       equipo: realizado o no realizado. Se registra con la reparacion lista
       (todos los trabajos terminados y aprobados en control) y antes de
-      entregar, y puede volver a registrarse hasta la entrega. Lo registran
-      Recepcion o Administracion (predeterminado, BR-REP-039), con usuario y
-      fecha/hora, en un historial que no se modifica. En CLIENTE_EXTERNO, con
-      trabajos realizados y garantia aplicable, la entrega exige el check-in
-      registrado (PROC-REP-265 -> PROC-REP-269); sin trabajos realizados,
+      entregar. Lo registran Recepcion o Administracion (predeterminado,
+      BR-REP-039), con usuario y fecha/hora, y el registro queda auditado. Si
+      el check-in puede corregirse o registrarse otra vez antes de la entrega,
+      hasta cuando y como afecta eso al comprobante final siguen pendientes de
+      decision. En CLIENTE_EXTERNO, con trabajos realizados y garantia
+      aplicable, la entrega exige el check-in registrado (PROC-REP-265 ->
+      PROC-REP-269); el criterio exacto para determinar cuando la garantia es
+      aplicable sigue pendiente de definicion; sin trabajos realizados,
       RT_INTERNO y la garantia RMA no lo exigen. El ingreso y su comprobante no
       lo piden. Al registrarlo se reasigna la garantia sugerida de cada Detalle
       no cancelado (BR-REP-041) sin pisar los ajustes manuales. La notificacion y
       el cobro no dependen del check-in, y el aviso al cliente no comunica una
       garantia definitiva no confirmada. El comprobante final lleva el
       resultado del check-in. Las Ordenes anteriores con check-in registrado al
-      ingresar conservan su validez. Esta regla formaliza el registro que la
-      implementacion audita temporalmente en la recepcion.
+      ingresar conservan su validez.
     status: draft
 
   - id: BR-REP-046
@@ -1710,7 +1731,7 @@ rules:
       reserva ni consume insumos que no se registren. Decisiones de la
       implementacion pendientes de confirmar: puntaje 0 y compatibilidad con
       cualquier Mesa de trabajo. La futura administracion de tipos de
-      reparacion (BR-REP-040) reemplazara el tipo reservado sin cambiar este
+      reparacion (BR-REP-040) podra administrar esta opcion sin cambiar este
       comportamiento.
     status: draft
 

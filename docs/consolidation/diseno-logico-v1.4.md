@@ -121,7 +121,7 @@ Además:
 - Orden encolada.
 - Orden tomada.
 - Orden liberada.
-- Liberación ajena: titular, quien libera, motivo, Mesa de trabajo y estado.
+- Liberación ajena: quién la realiza, titular, Orden, Ejecución afectada cuando la hay, motivo, fecha/hora, Mesa de trabajo y resultado (estado de la Orden y de sus Detalles).
 
 **Invariantes.**
 
@@ -129,12 +129,14 @@ Además:
 - 150 se recorre una sola vez.
 - Cambiar la prioridad no vuelve a encolar la Orden.
 - No se libera una Orden cerrada o entregada.
-- Una liberación ajena exige advertencia confirmada y motivo.
+- Una liberación ajena exige advertencia confirmada, motivo y el permiso configurado (Técnico y Coordinación por defecto).
+- La interrupción incluida en una liberación ajena es una excepción específica al permiso de interrumpir, que corresponde al técnico de la Ejecución: solo existe dentro de esa operación y no concede un permiso general para interrumpir Ejecuciones ajenas (BR-REP-018, BR-REP-039).
+- El motivo exacto que registra la interrupción derivada de la liberación está pendiente (ABI-36).
 
 **Transacciones.**
 
 - Tomar una Orden: verificación de toma y Ejecución activas, toma e historial. Se bloquea la Orden.
-- Liberación ajena con Ejecución en curso, en una sola transacción: cierre de la Ejecución como Interrumpida, movimientos de 210, cierre de la toma, vuelta a la cola e historial.
+- Liberación ajena con Ejecución en curso, en una sola transacción: cierre de la Ejecución como Interrumpida, movimientos de 210, cierre de la toma, vuelta a la cola e historial con la auditoría de la operación.
 - Cambio de prioridad: valor nuevo y registro del cambio.
 
 ## 3. Permisos y roles (DC08, DC27A, DC27B; arquitectura DC27C)
@@ -334,13 +336,14 @@ Además:
 
 - PoliticaGarantia: por tipo de reparación y resultado del check-in. Las precedencias están pendientes (ABI-03).
 - GarantiaDetalle: política aplicada, sugerido, definitivo, ajustes con motivo y vencimiento desde la entrega.
-- Checkin: realizado o no realizado, usuario y fecha/hora. Es un historial inmodificable.
+- Checkin: realizado o no realizado, usuario y fecha/hora. Cada registro es inmodificable. Si se admite corregirlo o registrarlo otra vez antes de la entrega, y cómo afecta al comprobante final, está pendiente (ABI-32); la implementación actual lo permite hasta entregar, como comportamiento técnico sin aprobación funcional.
 - ExcepcionGarantia: Detalle origen, vencimiento, usuario, fecha/hora y motivo.
+- Intento de reclamo rechazado: si se persiste, qué registra y quién lo consulta, pendiente (ABI-35).
 
 **Relaciones.**
 
 - Detalle 1 GarantiaDetalle.
-- Orden 0..N registros de check-in.
+- Orden 0..1 check-in vigente. Un historial de varios registros depende de ABI-32.
 - Orden de garantía, que referencia la Orden origen y los Detalles origen.
 
 **Estados.**
@@ -359,12 +362,13 @@ Además:
 
 **Invariantes.**
 
-- Sugerencia de 90 días con check-in realizado y de 30 sin realizar, por Detalle no cancelado.
+- Sugerencia de 90 días con el check-in registrado como realizado y de 30 con el check-in registrado como no realizado, por Detalle no cancelado. Qué plazo rige sin check-in registrado forma parte de las precedencias (ABI-03).
 - Un ajuste manual nunca se pisa.
 - La vigencia corre desde la entrega.
-- Una Orden de CLIENTE_EXTERNO con trabajos realizados no se entrega sin check-in.
+- Una Orden de CLIENTE_EXTERNO con trabajos realizados y garantía aplicable no se entrega sin check-in. El criterio exacto de garantía aplicable está pendiente (ABI-02); la implementación lo interpreta provisionalmente como «al menos un trabajo realizado», sin que sea una regla aprobada.
 - Una garantía vencida sin excepción no crea la Orden.
 - Quién autoriza la excepción por defecto: pendiente (ABI-04).
+- Pendientes de la garantía vencida, sin transiciones ni estados nuevos: Detalles origen con situaciones distintas (ABI-33), continuación como reparación paga vinculada al reclamo rechazado (ABI-34) y persistencia y auditoría del intento rechazado (ABI-35).
 
 **Transacciones.**
 

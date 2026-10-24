@@ -10,6 +10,8 @@
 
 No se modificó `rt-rma-mvp` ni el código del producto, no hubo push ni despliegue y no se tocó `main`.
 
+Después de la auditoría focalizada sobre `f70d4f5` se aplicó una **corrección final, solo documental** (sección F). DC01 sigue sin aprobarse.
+
 | Documento | Contenido |
 |---|---|
 | `business/decisions/decision-log-v1.4.yaml` | Registro de decisiones, incorporaciones de UAT (DC16) y pendientes. Fuente de la trazabilidad. |
@@ -155,14 +157,42 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 
 | Impacto | IDs |
 |---|---|
-| Bloquean la aprobación | ABI-01 (aprobación final), ABI-02 (revisión de las elecciones de modelado) |
-| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 04 quién autoriza la excepción de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permisos por tipo de Ajuste Comercial · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 18 reversibilidad · 31 consentimiento: cómo se obtiene |
+| Bloquean la aprobación | ABI-01 (aprobación final), ABI-02 (revisión de las elecciones de modelado, incluido el criterio de garantía aplicable del check-in) |
+| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 04 quién autoriza la excepción de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permisos por tipo de Ajuste Comercial · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 18 reversibilidad · 31 consentimiento: cómo se obtiene · 32 corrección del check-in y comprobante final · 33 garantía parcialmente vigente · 34 continuación como reparación paga · 35 registro del reclamo rechazado |
 | Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 22 tipos de movimiento · 24 DNI duplicados históricos |
-| Posteriores | ABI-07, 08, 11, 14, 15, 17, 19 a 21, 23, 25 a 30 |
+| Posteriores | ABI-07, 08, 11, 14, 15, 17, 19 a 21, 23, 25 a 30, 36 (motivo de la interrupción en una liberación ajena) |
+
+Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
 ## E. Sincronización DC02
 
 Ver [`sincronizacion-dc02.md`](sincronizacion-dc02.md).
+
+## F. Corrección final previa a DC01
+
+Resuelve los cuatro bloqueantes de la auditoría focalizada del 23/10/2026 sobre `f70d4f5`. Es solo documental: no agrega nodos, aristas ni estados y no cambia el código del producto.
+
+| Ítem | Resolución |
+|---|---|
+| B1 · Check-in repetido | BR-REP-045 y los casos funcionales ya no dan por aprobado volver a registrar el check-in. Queda como comportamiento técnico de la implementación en UAT-I01 y como pendiente ABI-32: cuándo se puede corregir y cómo afecta al comprobante final. |
+| B2 · Condición del check-in | BR-REP-045, PROC-REP-265, 269 y 270, FEAT-REP-008, BR-REP-017, los Scenarios y el diseño lógico dicen lo mismo: «con trabajos realizados y garantía aplicable». El criterio exacto de garantía aplicable queda en ABI-02, con la interpretación provisional de la implementación, que no es una regla aprobada. |
+| B3 · Garantía vencida | ABI-33 (garantía parcialmente vigente), ABI-34 (continuación como reparación paga vinculada al reclamo) y ABI-35 (registro del reclamo rechazado), vinculados a PROC-REP-036, EVT-REP-998 y FEAT-REP-001. Bloquean implementar DC15B, no aprobar DC01. |
+| B4 · Liberación ajena | BR-REP-018, BR-REP-039, PROC-REP-212, PROC-REP-213, FEAT-REP-004 y VAR-REP-037: la liberación incluye la interrupción de una Ejecución en curso como excepción específica, sin permiso general para interrumpir, y queda auditada. El motivo exacto de esa interrupción queda en ABI-36. |
+| M2 | BR-REP-041 y el diseño lógico dicen «check-in registrado como no realizado». |
+| M5 | Dos casos funcionales nuevos: liberar antes del primer Detalle y liberar una Orden ajena sin Ejecución en curso. |
+| M7 | Evidencia de cada incorporación de UAT, con la diferencia entre decisión confirmada y aceptación UAT formal (ver abajo). |
+| M8 | ABI-09 conserva que la UAT aprobó aplicar descuentos desde Recepción. |
+| M9 | BR-REP-024, 040, 044, 045 y 047 dejan de describir detalles de almacenamiento o de interfaz; lo retirado quedó en `technical_only` o en las notas de DC23 y DC25. |
+| M1, M3, M4, M6 | Postergadas como MEJ-01 a 04. |
+
+### Evidencia de aprobación de las incorporaciones de UAT (DC16)
+
+- **CONFIRMADO** en `uat_items` significa decisión de negocio confirmada por el responsable funcional. **No es aceptación UAT formal**: los 16 `UAT-REP-XXX` de `rt-rma-mvp` siguen en PENDING (`consolidation.formal_uat_acceptance`).
+- `approval_evidence`: pedidos y decisiones del responsable funcional, por título y fecha. No están versionados en los repositorios.
+- `confirmed_by`: decisiones de este registro que lo confirman, versionadas.
+- `implemented_in`: commits de `rt-rma-mvp` que lo implementaron. Prueban la implementación, no la aprobación.
+
+`validate:decisions:v1.4` exige commits para todo ítem CONFIRMADO y que la aceptación formal esté declarada.
 
 ## Glosario de entidades, estados y actores
 
@@ -218,7 +248,7 @@ Se verifican como casos de prueba de la funcionalidad. No declaran un recorrido 
 | Equipo con IMEI conocido: Recepción confirma la reutilización y se vincula el historial; si no confirma, Equipo nuevo | PROC-REP-030 | BR-REP-022 |
 | Equipo elegido del catálogo (conserva el `tp_id`) o cargado a mano; catálogo sin copia sincronizada | PROC-REP-030 | BR-REP-048 |
 | Checklist con verificaciones sin registrar: advertencia y confirmación de continuar | PROC-REP-032 | BR-REP-024, 025 |
-| Undécima fotografía rechazada; fotografía descartada en la vista previa que no se guarda | PROC-REP-032 | BR-REP-024 |
+| Undécima fotografía rechazada; fotografía descartada antes de guardarla, que no se guarda | PROC-REP-032 | BR-REP-024 |
 | Nota interna que no aparece en el comprobante ING | PROC-REP-032 / 060 | BR-REP-023 |
 | Detalle «Otros» con descripción y precio manual | PROC-REP-070 | BR-REP-047 |
 | Doble clic al generar el comprobante de ingreso: sin documentos ni registros duplicados | PROC-REP-046 / 060 | BR-REP-046 |
@@ -226,7 +256,9 @@ Se verifican como casos de prueba de la funcionalidad. No declaran un recorrido 
 | Corrección de un documento: versión nueva con motivo y referencia; la anterior no se borra | 060 / 280 | BR-REP-031 |
 | Ajuste Comercial DESCUENTO por Detalle (porcentaje o importe) que no supera su importe | 265 / 280 | BR-REP-016 |
 | Cambio de prioridad por un técnico, trazado con valores anterior y nuevo | Orden en cola o en reparación | BR-REP-034 |
-| Check-in no realizado: garantía sugerida de 30 días por Detalle; ajuste manual que no se pisa al volver a registrar | 269 | BR-REP-041, 045 |
+| Liberar la Orden antes de iniciar el primer Detalle: se cierra la toma y la Orden vuelve a la cola | 180 → 212 [No] → 213 | BR-REP-018 |
+| Liberar una Orden tomada por otro técnico sin Ejecución en curso: advertencia con el titular, confirmación, motivo y auditoría; la Orden vuelve a la cola | 212 [No] → 213 | BR-REP-018, 039 |
+| Check-in registrado como no realizado: garantía sugerida de 30 días por Detalle; un ajuste manual previo no se pisa al registrarlo | 269 | BR-REP-041, 045 |
 | Ingreso y ajuste negativo de stock con confirmación; revalidación de una Orden con un Detalle bloqueado por recursos | Inventario / 120 | BR-REP-049 |
 | Inicio de Ejecución rechazado por recepción física sin confirmar, sin movimientos | 185 | BR-REP-033 |
 | Mensaje asistido de aviso: queda en el historial sin marcarse como enviado | 260 | BR-REP-044 |

@@ -16,7 +16,7 @@ import Ajv from "ajv";
 import type { FeatureModel } from "./lib/feature-model";
 import { loadYaml, type BusinessRule, type ProcessModel } from "./lib/process-model";
 import { isProcessEdgeStep, type Scenario, type ScenarioModel } from "./lib/scenario-model";
-import { validateDecisionLog, LOG_FILE, type DecisionLog } from "./validate-decisions";
+import { danglingOpenItemIds, validateDecisionLog, LOG_FILE, type DecisionLog } from "./validate-decisions";
 import { validateProcessIntegrity, type Report } from "./validate-references";
 
 const PROCESS_FILE = "business/processes/repair-management-v1.4.yaml";
@@ -121,7 +121,7 @@ check("DC04: liberar la Orden tomada por otro tecnico (Tecnico y Coordinacion) c
   assert.match(t, /permitida por defecto a Tecnico y Coordinacion, con permiso configurable desde Administracion/);
   assert.match(t, /advertencia que indique quien tiene la Orden, confirmacion explicita, motivo obligatorio y auditoria/);
   assert.match(t, /conserva la trazabilidad de la toma original y de su liberacion/);
-  assert.match(t, /primero se interrumpe con la logica existente \(PROC-REP-200 y PROC-REP-210\)/);
+  assert.match(t, /la operacion de liberacion incluye su interrupcion con la logica existente \(PROC-REP-200 Interrumpido y PROC-REP-210/);
   const s = scenario("VAR-REP-037");
   assert.equal(s.feature, "FEAT-REP-004");
   assert.deepEqual(orderOf(s), ["PROC-REP-190", "PROC-REP-200", "PROC-REP-210", "PROC-REP-211", "PROC-REP-212", "PROC-REP-213", "PROC-REP-170"]);
@@ -208,7 +208,7 @@ check("DC15B: la vigencia de la garantia de origen se valida en PROC-REP-036; ve
 check("DC15A y UAT: garantia por Detalle, 90/30 dias segun el check-in, ajustes que no se pisan, desde la entrega; precedencias pendientes", () => {
   const t = rule("BR-REP-041");
   assert.match(t, /La garantia se asigna a cada Detalle de reparacion/);
-  assert.match(t, /con check-in realizado se sugieren 90 dias y sin check-in realizado 30 dias/);
+  assert.match(t, /con el check-in registrado como realizado se sugieren 90 dias y con el check-in registrado como no realizado, 30 dias/);
   assert.match(t, /una nueva sugerencia nunca lo pisa/);
   assert.match(t, /La vigencia se cuenta desde la entrega del equipo al cliente/);
   assert.match(t, /su contenido concreto sigue pendiente de decision/);
@@ -225,7 +225,7 @@ check("DC12: checklist por tipo de equipo, configurable, opcional y con adverten
 check("UAT-010/011 y UAT iteracion 1: fotografias, notas internas y numero de serie", () => {
   const f = rule("BR-REP-024");
   assert.match(f, /como maximo 10 por Orden/);
-  assert.match(f, /se revisan en una vista previa y se aceptan o descartan una por una/);
+  assert.match(f, /antes de guardarlas se revisan y se aceptan o descartan una por una/);
   assert.match(f, /se agregan solo con la Orden ya creada y nunca son obligatorias/);
   assert.match(rule("BR-REP-023"), /notas internas, que solo se ven dentro de la aplicacion y nunca salen en documentos/);
   assert.match(nodeText("PROC-REP-030"), /El formulario inicial de CLIENTE_EXTERNO no pide numero de serie \(UAT-011\)/);
@@ -321,7 +321,7 @@ check("DC25 etapa 1 y DC30: plantillas, historial de envios asistidos sin darlos
   assert.match(c, /plantillas configurables/);
   assert.match(c, /Abrir WhatsApp no equivale a enviar/);
   assert.match(c, /Cada envio asistido queda en el historial de comunicaciones de la Orden/);
-  assert.match(c, /Etapa 2, despues de la migracion a PostgreSQL: proveedor oficial, cola persistente, estados de envio y reintentos/);
+  assert.match(c, /Etapa 2 \(DC25\): proveedor oficial, con estados de envio y reintentos/);
   const k = rule("BR-REP-043");
   assert.match(k, /distinguen los mensajes operativos \(avisos sobre su Orden\) de los comerciales/);
   assert.match(k, /la finalidad, el canal, la fecha\/hora, el origen \(como se obtuvo\) y, si ocurre, su revocacion/);
@@ -439,6 +439,154 @@ check("registro de decisiones: es consistente y el validador detecta referencias
   for (const fragment of ["Precedencias concretas", "Equipos sin IMEI", "evento de custodia", "devoluciones que el cliente no retira", "firmas", "tipo de Ajuste Comercial", "Reparto de puntaje", "Compras", "WhatsApp", "Capacidades de tecnicos", "Reporting", "AUD-V14-005", "AUD-V14-011"]) {
     assert.ok(titles.toLowerCase().includes(fragment.toLowerCase()), `pendiente registrado: ${fragment}`);
   }
+});
+
+console.log("\nCorreccion final previa a DC01 - B1 a B4 de la auditoria focalizada y M2, M5, M7, M8, M9\n");
+
+const decisionLog = loadYaml<DecisionLog>(LOG_FILE);
+const openItem = (id: string) => {
+  const found = decisionLog.open_items.find((o) => o.id === id);
+  assert.ok(found, `existe ${id}`);
+  return found;
+};
+const uatItem = (id: string) => {
+  const found = decisionLog.uat_items.find((u) => u.id === id);
+  assert.ok(found, `existe ${id}`);
+  return found;
+};
+const README = "docs/consolidation/README.md";
+const DESIGN = "docs/consolidation/diseno-logico-v1.4.md";
+
+check("B1: volver a registrar el check-in no es regla aprobada; queda como comportamiento tecnico y como pendiente ABI-32", () => {
+  assert.doesNotMatch(rule("BR-REP-045"), /volver a registrarse|registrarse de nuevo/);
+  assert.match(rule("BR-REP-045"), /Si el check-in puede corregirse o registrarse otra vez antes de la entrega, hasta cuando y como afecta eso al comprobante final siguen pendientes de decision/);
+  assert.doesNotMatch(readFileSync(README, "utf8"), /al volver a registrar/);
+  const abi = openItem("ABI-32");
+  assert.equal(abi.impact, "BLOQUEA_IMPLEMENTACION");
+  assert.ok(abi.decisions.includes("DC16") && abi.decisions.includes("DC13"));
+  const i01 = uatItem("UAT-I01");
+  assert.ok(i01.pending?.includes("ABI-32"));
+  assert.ok(i01.technical_only?.some((t) => /Volver a registrar el check-in hasta la entrega.*sin aprobacion funcional demostrada/.test(t)));
+});
+
+check("B2: la condicion del check-in es la misma en regla, nodos, Feature, Scenarios y diseno; garantia aplicable pendiente en ABI-02", () => {
+  const WITH = /trabajos realizados y\s+garantia aplicable/;
+  const texts: Array<[string, string]> = [
+    ["BR-REP-045", rule("BR-REP-045")],
+    ["BR-REP-017", rule("BR-REP-017")],
+    ["PROC-REP-265", nodeText("PROC-REP-265")],
+    ["PROC-REP-269", nodeText("PROC-REP-269")],
+    ["PROC-REP-270", nodeText("PROC-REP-270")],
+    ["FEAT-REP-008", flat(feature("FEAT-REP-008").scope?.includes?.join(" "))],
+  ];
+  for (const [id, text] of texts) {
+    assert.match(text, WITH, id);
+    // ninguna mencion de la exigencia la reduce a "cualquier trabajo realizado"
+    assert.doesNotMatch(text, /CLIENTE_EXTERNO,? con trabajos realizados(?! y\s+garantia aplicable)/, id);
+  }
+  assert.match(rule("BR-REP-045"), /el criterio exacto para determinar cuando la garantia es aplicable sigue pendiente de definicion/);
+  const labels = scenarios.flatMap((s) => (s.facts ?? []).filter((f) => f.key === "checkin_required_for_delivery").map((f) => `${s.id}: ${f.label}`));
+  assert.equal(labels.length, 5);
+  for (const label of labels) assert.match(label, /CLIENTE_EXTERNO con trabajos realizados y garantia aplicable/);
+  const abi02 = flat(openItem("ABI-02").needed);
+  assert.match(abi02, /falta definir el criterio exacto para determinar cuando la garantia es aplicable/);
+  assert.match(abi02, /Interpretacion provisional de la implementacion, no aprobada como regla/);
+  assert.match(readFileSync(DESIGN, "utf8"), /trabajos realizados y garantía aplicable no se entrega sin check-in/);
+});
+
+check("B3: garantia vencida con tres pendientes vinculados a 036, EVT-REP-998 y FEAT-REP-001, sin transiciones ni estados nuevos", () => {
+  for (const id of ["ABI-33", "ABI-34", "ABI-35"]) {
+    const abi = openItem(id);
+    assert.equal(abi.impact, "BLOQUEA_IMPLEMENTACION", id);
+    assert.deepEqual(abi.decisions, ["DC15B"], id);
+    assert.ok(abi.nodes?.includes("PROC-REP-036") && abi.nodes.includes("EVT-REP-998"), id);
+    assert.deepEqual(abi.features, ["FEAT-REP-001"], id);
+    assert.ok(decisionLog.decisions.find((d) => d.id === "DC15B")?.open?.includes(id), `DC15B cita ${id}`);
+  }
+  assert.match(openItem("ABI-33").title, /parcialmente vigente/);
+  assert.match(openItem("ABI-34").title, /reparacion paga/);
+  assert.match(openItem("ABI-35").title, /reclamo de garantia rechazado/);
+  // el grafo no cambia: 036 conserva sus tres salidas y EVT-REP-998 sigue siendo un fin sin salidas
+  assert.deepEqual(out("PROC-REP-036"), ["Vencida, excepcion autorizada->PROC-REP-040", "Vencida, sin excepcion->EVT-REP-998", "Vigente->PROC-REP-040"]);
+  assert.deepEqual(out("EVT-REP-998"), []);
+  assert.equal(model.nodes.length, 76);
+  assert.equal(model.edges.length, 142);
+  const t036 = nodeText("PROC-REP-036");
+  assert.match(t036, /Siguen pendientes de decision, sin transiciones ni estados nuevos/);
+  for (const fragment of [/garantia parcialmente vigente/, /reparacion paga que conserve la relacion con el reclamo rechazado/, /se audita el intento de reclamo rechazado/]) assert.match(t036, fragment);
+  assert.match(nodeText("EVT-REP-998"), /siguen pendientes de decision: este fin no los resuelve/);
+  assert.ok(feature("FEAT-REP-001").open_questions?.some((q) => /garantia parcialmente vigente/.test(q) && /reclamo rechazado/.test(q)));
+  assert.equal(expectedOf(scenario("VAR-REP-038"), "next_route_assumed"), false);
+});
+
+check("B4: la liberacion ajena incluye la interrupcion como excepcion especifica, sin permiso general para interrumpir, y queda auditada", () => {
+  const t18 = rule("BR-REP-018");
+  assert.match(t18, /Esa interrupcion es una excepcion especifica al permiso habitual de interrumpir/);
+  assert.match(t18, /no concede un permiso general para interrumpir Ejecuciones ajenas/);
+  assert.match(t18, /registra quien realiza la operacion, el titular, la Orden, la Ejecucion afectada cuando la hay, el motivo, la fecha\/hora, la estacion y el resultado/);
+  assert.match(t18, /En PROC-REP-212 decide el titular de la toma o, en una liberacion ajena, quien libera con ese permiso/);
+  assert.match(t18, /La definicion exacta del motivo de interrupcion que deriva de la liberacion \(BR-REP-004\) sigue pendiente/);
+  const t39 = rule("BR-REP-039");
+  assert.match(t39, /Excepcion especifica: la liberacion de una Orden tomada por otro tecnico incluye la interrupcion de su Ejecucion en curso/);
+  assert.match(t39, /el permiso de liberar no concede un permiso general para interrumpir Ejecuciones ajenas/);
+  assert.match(nodeText("PROC-REP-212"), /decide el tecnico titular de la toma o, cuando se libera una Orden tomada por otro tecnico, quien la libera con el permiso configurado/);
+  assert.match(nodeText("PROC-REP-213"), /la operacion de liberacion incluye su interrupcion/);
+  assert.match(nodeText("PROC-REP-213"), /no le concede un permiso general para interrumpir Ejecuciones ajenas/);
+  // la interrupcion habitual sigue siendo del tecnico: 200 no gana responsables alternativos
+  assert.equal(node("PROC-REP-200").actor, "ACT-TECH");
+  assert.equal(node("PROC-REP-200").actores_alternativos, undefined);
+  const s = scenario("VAR-REP-037");
+  assert.equal(expectedOf(s, "interruption_part_of_release"), true);
+  assert.equal(expectedOf(s, "general_interruption_permission_granted"), false);
+  assert.match(s.expected?.find((e) => e.key === "release_audited")?.label ?? "", /quien la realiza, titular, Orden, Ejecucion afectada, motivo, fecha\/hora, estacion y resultado/);
+  const abi = openItem("ABI-36");
+  assert.ok(abi.decisions.includes("DC04") && abi.rules?.includes("BR-REP-004"));
+  assert.ok(uatItem("UAT-I12").pending?.includes("ABI-36"));
+});
+
+check("M2, M5, M8 y M9: check-in registrado como no realizado, casos de liberacion, descuento por Recepcion y reglas sin detalles tecnicos", () => {
+  assert.match(rule("BR-REP-041"), /check-in registrado como no realizado, 30 dias/);
+  assert.doesNotMatch(rule("BR-REP-041"), /sin check-in realizado 30 dias/);
+  const readme = readFileSync(README, "utf8");
+  assert.match(readme, /\| Liberar la Orden antes de iniciar el primer Detalle: .* \| 180 → 212 \[No\] → 213 \| BR-REP-018 \|/);
+  assert.match(readme, /\| Liberar una Orden tomada por otro técnico sin Ejecución en curso: .* \| 212 \[No\] → 213 \| BR-REP-018, 039 \|/);
+  assert.match(flat(openItem("ABI-09").needed), /cambio 4\) aprobo aplicar descuentos desde Recepcion/);
+  const technical = /registros_checkin|RecepcionEquipo|archivos JSON|PostgreSQL|cola persistente|tipo reservado|miniatura|camara|galeria|contador visible|audita temporalmente/;
+  for (const r of rules.filter((x) => Number(x.id.slice(-3)) >= 39 || ["BR-REP-024"].includes(x.id))) {
+    assert.doesNotMatch(flat(r.description), technical, r.id);
+  }
+  assert.ok(uatItem("UAT-I02").technical_only?.some((t) => /contador visible, captura con la camara/.test(t)), "la interfaz retirada de BR-REP-024 se conserva en UAT-I02");
+});
+
+check("M7: cada incorporacion CONFIRMADA cita commits de rt-rma-mvp; CONFIRMADO no es aceptacion UAT formal", () => {
+  assert.equal(decisionLog.consolidation.formal_uat_acceptance?.status, "PENDIENTE");
+  for (const u of decisionLog.uat_items.filter((x) => x.status === "CONFIRMADO")) {
+    assert.ok((u.implemented_in ?? []).length > 0, `${u.id} cita su implementacion`);
+  }
+  assert.match(readFileSync("docs/consolidation/matriz-trazabilidad-v1.4.md", "utf8"), /CONFIRMADO significa decision de negocio confirmada por el responsable funcional; no es aceptacion UAT formal/);
+  const broken = structuredClone(decisionLog);
+  delete broken.uat_items[0].implemented_in;
+  broken.uat_items[1].implemented_in = ["3b31d35"];
+  broken.uat_items[2].confirmed_by = ["DC99"];
+  delete broken.consolidation.formal_uat_acceptance;
+  const errors = validateDecisionLog(broken);
+  for (const fragment of ["CONFIRMADO sin commit de rt-rma-mvp", "no es rt-rma-mvp@<commit>", "confirmed_by cita una decision inexistente DC99", "falta formal_uat_acceptance"]) {
+    assert.ok(errors.some((e) => e.includes(fragment)), fragment);
+  }
+});
+
+check("mejoras posteriores M1, M3, M4 y M6 trazadas; el validador rechaza referencias rotas en pendientes, mejoras y documentos", () => {
+  assert.deepEqual((decisionLog.improvements ?? []).map((m) => `${m.id}:${m.audit_ref}`), ["MEJ-01:M1", "MEJ-02:M3", "MEJ-03:M4", "MEJ-04:M6"]);
+  assert.ok(decisionLog.improvements?.find((m) => m.audit_ref === "M4")?.open?.includes("ABI-32"));
+  const broken = structuredClone(decisionLog);
+  broken.open_items.find((o) => o.id === "ABI-33")!.nodes = ["PROC-REP-999"];
+  broken.improvements![0].files = ["scripts/no-existe.ts"];
+  broken.improvements![1].open = ["ABI-99"];
+  const errors = validateDecisionLog(broken);
+  for (const fragment of ["ABI-33: nodo inexistente PROC-REP-999", "MEJ-01: archivo inexistente scripts/no-existe.ts", "MEJ-02: pendiente inexistente ABI-99"]) {
+    assert.ok(errors.some((e) => e.includes(fragment)), fragment);
+  }
+  assert.deepEqual(danglingOpenItemIds("ver ABI-02, ABI-36 y ABI-77", new Set(decisionLog.open_items.map((o) => o.id))), ["ABI-77"]);
 });
 
 if (failures > 0) {

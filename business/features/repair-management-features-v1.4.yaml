@@ -226,7 +226,8 @@ features:
         - Administrar las preguntas del checklist, el catalogo de equipos y las
           politicas de garantia (FEAT-REP-010)
         - Definir como sigue la atencion de un cliente cuya garantia RMA esta
-          vencida y no tiene excepcion
+          vencida y no tiene excepcion, mientras siga pendiente de decision
+          (ver open_questions)
         - Validar factibilidad o disponibilidad de recursos
         - Ejecutar Detalles de Reparacion
         - Gestionar comercialmente la Orden (precio, pagos, saldo)
@@ -257,6 +258,14 @@ features:
         Precedencias concretas entre politicas de garantia y responsable
         predeterminado de la excepcion de garantia vencida (BR-REP-041,
         PROC-REP-036): pendientes de decision.
+      - >
+        Garantia RMA vencida (PROC-REP-036, EVT-REP-998), pendientes de
+        decision que bloquean la implementacion completa de la validacion de
+        vigencia: el resultado cuando los Detalles origen tienen situaciones
+        distintas (garantia parcialmente vigente); la continuacion como
+        reparacion paga, conservando la relacion con el reclamo rechazado; y la
+        persistencia y auditoria del intento de reclamo rechazado. No se
+        modelan transiciones ni estados nuevos hasta decidirlos.
 
   - id: FEAT-REP-002
     name: Diagnostico y gestion de Detalles de Reparacion
@@ -654,7 +663,7 @@ features:
       - Orden de vuelta en EN_COLA cuando se libera y sigue trabajable
       - Historial de participaciones conservado
       - Cambio de prioridad registrado (usuario, fecha/hora y valores anterior y nuevo)
-      - Liberacion de una Orden tomada por otro tecnico auditada (titular, quien libera, motivo y estado)
+      - Liberacion de una Orden tomada por otro tecnico auditada (quien la realiza, titular, Ejecucion afectada, motivo, fecha/hora y resultado)
 
     process_nodes:
       - PROC-REP-150
@@ -702,8 +711,10 @@ features:
           antes de iniciar el primer Detalle (PROC-REP-180 -> PROC-REP-212)
         - Liberar una Orden tomada por otro tecnico (Tecnico o Coordinacion por
           defecto) con advertencia de quien la tiene, confirmacion, motivo y
-          auditoria, interrumpiendo antes una Ejecucion en curso con la logica
-          existente (BR-REP-018)
+          auditoria; si hay una Ejecucion en curso, la liberacion incluye su
+          interrupcion con la logica existente, como excepcion especifica que
+          no concede un permiso general para interrumpir (BR-REP-018,
+          BR-REP-039)
         - Conservar el historial completo de participaciones
 
       excludes:
@@ -1157,7 +1168,8 @@ features:
       includes:
         - Registrar el check-in (Recepcion o Administracion) desde que la
           reparacion esta lista y exigirlo para entregar una Orden de
-          CLIENTE_EXTERNO con trabajos realizados (PROC-REP-269, BR-REP-045)
+          CLIENTE_EXTERNO con trabajos realizados y garantia aplicable, cuyo
+          criterio exacto sigue pendiente (PROC-REP-269, BR-REP-045)
         - Reasignar la garantia sugerida de cada Detalle segun el check-in, sin
           pisar ajustes manuales, y contar la vigencia desde la entrega
           (BR-REP-041)
