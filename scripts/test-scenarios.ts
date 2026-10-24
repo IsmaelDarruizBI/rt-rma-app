@@ -1153,8 +1153,11 @@ if (REVISION === "v1.4") {
   };
   check(`reglas: BR-REP-001 a 019 identicas a V1.3 salvo las declaradas (${Object.keys(V13_RULES_CHANGED_IN_V14).join(", ")}); +19 nuevas (020 a 038)`, () => {
     const v13ById = new Map(v13Rules.rules.map((r) => [r.id, r]));
+    // aprobar la baseline (DC01, 24/10/2026) cambia el status de las reglas V1.4 de draft a approved, no su contenido
+    const content = (r: object | undefined): object => ({ ...r, status: undefined });
+    assert.ok(rulesModel.rules.every((r) => (r as { status?: string }).status === "approved"), "DC01: todas las reglas V1.4 estan aprobadas");
     for (const r of rulesModel.rules.filter((x) => v13ById.has(x.id) && !(x.id in V13_RULES_CHANGED_IN_V14))) {
-      assert.deepEqual(r, v13ById.get(r.id), r.id);
+      assert.deepEqual(content(r), content(v13ById.get(r.id)), r.id);
     }
     // BR-REP-017 conserva el texto V1.3 y solo agrega el parrafo de saldo a favor (BR-REP-038)
     const r17 = rulesModel.rules.find((x) => x.id === "BR-REP-017");
@@ -1166,7 +1169,7 @@ if (REVISION === "v1.4") {
       .replace("ENTREGADA cuando Saldo = 0 o cuando corresponde cortesia total de Orden;", "ENTREGADA cuando Saldo = 0 (una cortesia total sin Pagos recibidos deja Saldo = 0);");
     assert.ok(flat(r17?.description).startsWith(v17n), "BR-REP-017 conserva el texto V1.3 salvo la formula y la cortesia total");
     assert.match(flat(r17?.description), /BR-REP-038/);
-    assert.deepEqual({ ...r17, description: "" }, { ...v17, description: "" });
+    assert.deepEqual(content({ ...r17, description: "" }), content({ ...v17, description: "" }));
     // BR-REP-019 solo cambia el responsable de PROC-REP-075 (Recepcion -> tecnico)
     const r19 = rulesModel.rules.find((x) => x.id === "BR-REP-019");
     const v19 = v13ById.get("BR-REP-019");
@@ -1177,7 +1180,7 @@ if (REVISION === "v1.4") {
     assert.ok(v19After !== undefined, "V1.3 declaraba pendiente la garantia vencida");
     assert.ok(r19n.startsWith(v19Before) && r19n.endsWith(v19After), "BR-REP-019 conserva el texto V1.3 salvo el pendiente que resuelve DC15B");
     assert.match(r19n, /se advierte y se bloquea el ingreso en garantia, salvo una excepcion autorizada/);
-    assert.deepEqual({ ...r19, description: "" }, { ...v19, description: "" });
+    assert.deepEqual(content({ ...r19, description: "" }), content({ ...v19, description: "" }));
     // +19 de las iteraciones V1.4 (020 a 038) y las nuevas de la consolidacion desde BR-REP-039
     assert.equal(rulesModel.rules.length, v13Rules.rules.length + 19 + CONSOLIDATION_RULES.length);
     assert.deepEqual(rulesModel.rules.slice(v13Rules.rules.length + 19).map((r) => r.id), CONSOLIDATION_RULES);

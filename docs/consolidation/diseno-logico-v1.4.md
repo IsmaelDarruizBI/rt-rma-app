@@ -1,4 +1,4 @@
-# Diseño lógico funcional — consolidación V1.4 (baseline candidata)
+# Diseño lógico funcional — consolidación V1.4 (baseline vigente)
 
 Este documento cumple el principio de desarrollo confirmado el 23/10/2026. Cada funcionalidad nueva o ampliada define seis cosas:
 
@@ -365,7 +365,7 @@ Además:
 - Sugerencia de 90 días con el check-in registrado como realizado y de 30 con el check-in registrado como no realizado, por Detalle no cancelado. Qué plazo rige sin check-in registrado forma parte de las precedencias (ABI-03).
 - Un ajuste manual nunca se pisa.
 - La vigencia corre desde la entrega.
-- Una Orden de CLIENTE_EXTERNO con trabajos realizados y garantía aplicable no se entrega sin check-in. El criterio exacto de garantía aplicable está pendiente (ABI-02); la implementación lo interpreta provisionalmente como «al menos un trabajo realizado», sin que sea una regla aprobada.
+- Una Orden de CLIENTE_EXTERNO con trabajos realizados y garantía aplicable no se entrega sin check-in. El criterio exacto de garantía aplicable está pendiente (ABI-37); la implementación lo interpreta provisionalmente como «al menos un trabajo realizado», sin que sea una regla aprobada.
 - Una garantía vencida sin excepción no crea la Orden.
 - Quién autoriza la excepción por defecto: pendiente (ABI-04).
 - Pendientes de la garantía vencida, sin transiciones ni estados nuevos: Detalles origen con situaciones distintas (ABI-33), continuación como reparación paga vinculada al reclamo rechazado (ABI-34) y persistencia y auditoría del intento rechazado (ABI-35).

@@ -1,7 +1,8 @@
 # Registro de decisiones de la consolidacion V1.4 de PROC-REP.
 #
 # Fuente de verdad de la trazabilidad decision -> regla -> Feature -> nodo ->
-# Scenario -> estado de implementacion de la baseline V1.4 CANDIDATA. Lo valida
+# Scenario -> estado de implementacion de la baseline V1.4, VIGENTE desde la
+# aprobacion de DC01 (consolidation.approval). Lo valida
 # scripts/validate-decisions.ts (npm run validate:decisions:v1.4): IDs unicos,
 # referencias existentes en los YAML V1.4, cobertura de todo lo nuevo de la
 # consolidacion y matriz generada al dia (docs/consolidation/matriz-trazabilidad-v1.4.md).
@@ -21,6 +22,10 @@
 #               funcionalidad afectada), BLOQUEA_MIGRACION (debe resolverse antes
 #               del esquema PostgreSQL) o POSTERIOR (puede resolverse despues).
 #               Pueden citar las reglas, nodos, Features y Scenarios afectados.
+#               status ABIERTO (por omision) o CERRADO; uno cerrado conserva su
+#               texto y registra la decision que lo cerro, la fecha y la
+#               resolucion. Una baseline VIGENTE no tiene pendientes abiertos que
+#               bloqueen la aprobacion.
 #   improvements mejoras documentales o de pruebas que se postergan, con la
 #               referencia de la auditoria que las identifico.
 #
@@ -46,15 +51,28 @@ consolidation:
   id: CONS-V1.4
   process: PROC-REP
   version: "1.4"
-  status: CANDIDATA
+  status: VIGENTE
   decided_on: "2026-10-23"
   base_tag: v1.4-pre-consolidacion
+  approval:
+    decision: DC01
+    approved_commit: b6cc3a53587376213cb3bbdaea66e13b5488e5c3
+    approved_on: "2026-10-24"
+    approved_by: Ismael Darruiz, responsable de producto
+    tag: v1.4-baseline
+    scope: >
+      La V1.4 consolidada de PROC-REP (proceso, reglas, Features, Scenarios y
+      este registro) tal como esta en el commit aprobado de consolidacion/v1.4.
+      El cierre agrega solo gobierno (estado de aprobacion, pendientes cerrados
+      y ABI-37) sin cambiar el contenido funcional. No aprueba los casos de UAT
+      pendientes ni la aceptacion UAT formal.
   sources:
     - "Rosario Tecno RMA - Devolucion de decisiones funcionales para V1.4 (23/10/2026)"
     - "Rosario Tecno RMA - Ejecutar consolidacion documental V1.4 (23/10/2026)"
     - "Propuesta de consolidacion V1.4 (23/10/2026), revisada"
     - "Auditoria funcional focalizada de la baseline candidata (23/10/2026, commit f70d4f5): B1 a B4 y M1 a M9"
     - "Rosario Tecno RMA - Correccion final de baseline candidata V1.4 (23/10/2026)"
+    - "Rosario Tecno RMA - Cierre de DC01 y publicacion de baseline V1.4 (24/10/2026)"
   formal_uat_acceptance:
     status: PENDIENTE
     evidence: "rt-rma-mvp traceability/IMPLEMENTATION.md, seccion \"UAT: ninguno aprobado\": 0 de 16 UAT-REP-XXX aprobados"
@@ -243,7 +261,7 @@ decisions:
       status: PARCIAL
       evidence: domain/garantia.py:15-18 (90/30 fijo, maximo de ajuste 730 dias); garantia sugerida y definitiva por Detalle
       gap: politica configurable y precedencias.
-    open: [ABI-03]
+    open: [ABI-03, ABI-37]
 
   - id: DC15B
     block: 3
@@ -563,13 +581,18 @@ decisions:
   # ------------------------------------------------------------------ Baseline y sincronizacion
   - id: DC01
     block: BASELINE
-    title: Preparar una baseline candidata V1.4 consolidada; la aprobacion final es posterior
-    status: APROBADA_COMO_CANDIDATA
+    title: Baseline V1.4 consolidada, aprobada como baseline funcional vigente
+    status: APROBADA
     documented_in: [docs/consolidation/README.md]
+    notes: >
+      Preparada como candidata el 23/10/2026 y aprobada el 24/10/2026 sobre el
+      commit b6cc3a5 de consolidacion/v1.4 (consolidation.approval). Cierra
+      ABI-01 y ABI-02; antes de cerrar ABI-02 se separo el criterio de garantia
+      aplicable en ABI-37. No aprueba los casos de UAT pendientes ni la
+      aceptacion UAT formal.
     implementation:
       status: NO_APLICA
-      evidence: rama consolidacion/v1.4 de rt-rma-app
-    open: [ABI-01, ABI-02]
+      evidence: rama consolidacion/v1.4 de rt-rma-app, etiqueta v1.4-baseline
 
   - id: DC02
     block: BASELINE
@@ -610,9 +633,9 @@ uat_items:
       - Situacion visible PENDIENTE_CHECKIN (solo presentacion)
       - Ajuste manual por RECEPCION o COORDINADOR_RMA (roles de la implementacion; predeterminado provisional en BR-REP-039)
       - "Volver a registrar el check-in hasta la entrega (repetir el mismo resultado no agrega un registro): comportamiento tecnico implementado en 547e64c, sin aprobacion funcional demostrada; no es regla de negocio (ABI-32)"
-      - "Interpretacion provisional de garantia aplicable: la politica del origen requiere_checkin_en_entrega lo exige en CLIENTE_EXTERNO con al menos un trabajo realizado, sin evaluar la garantia de cada Detalle; no es regla aprobada (ABI-02)"
+      - "Interpretacion provisional de garantia aplicable: la politica del origen requiere_checkin_en_entrega lo exige en CLIENTE_EXTERNO con al menos un trabajo realizado, sin evaluar la garantia de cada Detalle; no es regla aprobada (ABI-37)"
       - "Hasta registrar el check-in rige como provisorio el plazo del tipo de reparacion: comportamiento tecnico sin aprobacion funcional, dentro de las precedencias pendientes (ABI-03)"
-    pending: [ABI-02, ABI-03, ABI-23, ABI-32]
+    pending: [ABI-03, ABI-23, ABI-32, ABI-37]
 
   - id: UAT-I02
     title: Fotografias del equipo
@@ -843,28 +866,30 @@ open_items:
   - id: ABI-01
     title: Aprobacion final de la baseline consolidada (DC01)
     impact: BLOQUEA_APROBACION
+    status: CERRADO
+    closed_by: DC01
+    closed_on: "2026-10-24"
+    resolution: Aprobada por el responsable de producto sobre el commit b6cc3a5 de consolidacion/v1.4 (consolidation.approval).
     decisions: [DC01]
     needed: Revision de los cambios y de las validaciones por el responsable de producto.
 
   - id: ABI-02
     title: Revision de las elecciones de modelado de la consolidacion
     impact: BLOQUEA_APROBACION
+    status: CERRADO
+    closed_by: DC01
+    closed_on: "2026-10-24"
+    resolution: >
+      Las elecciones listadas quedan aprobadas con la baseline (DC01). Antes del
+      cierre se separo el criterio de garantia aplicable del check-in de entrega
+      en ABI-37, que sigue abierto.
     decisions: [DC01, DC12, DC15B, DC07B, DC07C, DC16]
-    rules: [BR-REP-045]
-    nodes: [PROC-REP-265, PROC-REP-269]
     needed: >
       Confirmar PROC-REP-269 como entrega bloqueada hasta el check-in; EVT-REP-998
       como fin del ingreso en garantia no admitido; las salidas 211 -> 300/305 del
       desistimiento solicitado; la advertencia por verificaciones faltantes del
       checklist; las Features TRANSVERSALES; y catalogar como casos funcionales,
-      no como Scenarios, los que se resuelven dentro de un nodo. Ademas, todavia
-      falta definir el criterio exacto para determinar cuando la garantia es
-      aplicable a efectos del check-in de entrega (BR-REP-045, PROC-REP-265 y
-      269): la condicion funcional se conserva como "trabajos realizados y
-      garantia aplicable" (UAT-009). Interpretacion provisional de la
-      implementacion, no aprobada como regla: la politica del origen
-      requiere_checkin_en_entrega lo exige en CLIENTE_EXTERNO con al menos un
-      trabajo realizado, sin evaluar la garantia de cada Detalle.
+      no como Scenarios, los que se resuelven dentro de un nodo.
 
   - id: ABI-03
     title: Precedencias concretas entre politicas de garantia
@@ -1112,6 +1137,25 @@ open_items:
       ajena (BR-REP-004 exige motivo para Interrumpido). La implementacion usa
       provisionalmente el de la liberacion, con quien libera y el titular; no
       es una regla aprobada.
+
+  # ---------------------------------------- cierre de DC01 (24/10/2026)
+  - id: ABI-37
+    title: Criterio de garantia aplicable para exigir el check-in de entrega
+    impact: BLOQUEA_IMPLEMENTACION
+    decisions: [DC15A, DC16]
+    rules: [BR-REP-041, BR-REP-045]
+    nodes: [PROC-REP-265, PROC-REP-269]
+    features: [FEAT-REP-008, FEAT-REP-010]
+    needed: >
+      Separado de ABI-02 antes de su cierre. Definir el criterio exacto para
+      determinar cuando la garantia es aplicable a efectos del check-in de
+      entrega (BR-REP-045, PROC-REP-265 y 269); la condicion funcional se
+      conserva como "trabajos realizados y garantia aplicable" (UAT-009).
+      Bloquea implementar la politica de garantia (BR-REP-041), no la
+      aprobacion de DC01. Interpretacion provisional de la implementacion, no
+      aprobada como regla: la politica del origen requiere_checkin_en_entrega lo
+      exige en CLIENTE_EXTERNO con al menos un trabajo realizado, sin evaluar la
+      garantia de cada Detalle.
 
 improvements:
 

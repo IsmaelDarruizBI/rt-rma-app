@@ -1,5 +1,5 @@
-# CONSOLIDACION V1.4 - BASELINE CANDIDATA (23/10/2026), pendiente de aprobacion
-# final (DC01). Aplica las decisiones confirmadas de los siete bloques, DC07, los
+# CONSOLIDACION V1.4 - BASELINE FUNCIONAL VIGENTE, aprobada el 24/10/2026 (DC01)
+# sobre el commit b6cc3a5 de consolidacion/v1.4 (etiqueta v1.4-baseline). Aplica las decisiones confirmadas de los siete bloques, DC07, los
 # permisos predeterminados del 23/10/2026, DC14 y las incorporaciones de UAT
 # (DC16). Cada cambio cita su decision (DCxx o UAT-xxx) y el registro completo
 # esta en business/decisions/decision-log-v1.4.yaml; la matriz de trazabilidad y
@@ -200,7 +200,7 @@ process:
   id: PROC-REP
   name: Gestion de Ordenes de Reparacion
   version: "1.4"
-  status: draft
+  status: approved
 
 nodes:
 

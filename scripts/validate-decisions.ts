@@ -20,6 +20,10 @@
  *     A CONFIRMADO UAT item names the rt-rma-mvp commits that implemented it,
  *     every `confirmed_by` is a decision of the log, and the log declares the
  *     status of the formal UAT acceptance (CONFIRMADO is not that acceptance).
+ *     A VIGENTE consolidation names its approval (decision APROBADA, full
+ *     commit hash, date, approver and tag) and has no open item that blocks
+ *     the approval; a CERRADO open item names the decision that closed it,
+ *     the date and the resolution, and nothing cites it as still open.
  *  4. Coverage: every rule, node and Scenario created by the consolidation,
  *     and every rule or node whose text says "Consolidacion V1.4", is cited
  *     by at least one decision or UAT item.
@@ -44,7 +48,9 @@ const V14 = {
   scenarios: "business/scenarios/repair-management-scenarios-v1.4.yaml",
 };
 
-const DECISION_STATUS = ["CONFIRMADA", "APROBADA_COMO_CANDIDATA"];
+const DECISION_STATUS = ["CONFIRMADA", "APROBADA"];
+const CONSOLIDATION_STATUS = ["CANDIDATA", "VIGENTE"];
+const OPEN_STATUS = ["ABIERTO", "CERRADO"];
 const IMPLEMENTATION_STATUS = ["IMPLEMENTADO", "PARCIAL", "NO_IMPLEMENTADO", "CONTRARIO", "NO_APLICA"];
 const UAT_STATUS = ["CONFIRMADO", "PENDIENTE", "NO_FUNCIONAL"];
 const IMPACT = ["BLOQUEA_APROBACION", "BLOQUEA_IMPLEMENTACION", "BLOQUEA_MIGRACION", "POSTERIOR"];
@@ -76,6 +82,10 @@ interface UatItem extends Traced {
 }
 interface OpenItem extends Traced {
   impact: string;
+  status?: string;
+  closed_by?: string;
+  closed_on?: string;
+  resolution?: string;
   decisions: string[];
   needed: string;
 }
@@ -91,6 +101,7 @@ export interface DecisionLog {
     status: string;
     decided_on: string;
     base_tag: string;
+    approval?: { decision: string; approved_commit: string; approved_on: string; approved_by: string; tag: string; scope?: string };
     formal_uat_acceptance?: { status: string; evidence: string };
   };
   decisions: Decision[];
@@ -108,6 +119,9 @@ export const CONSOLIDATION_NEW = {
 
 const ID_IN_TEXT = /\b(?:BR-REP|PROC-REP|EVT-REP|FEAT-REP|HP-REP|VAR-REP|EXC-REP)-\d{3}\b/g;
 const MVP_COMMIT = /^rt-rma-mvp@[0-9a-f]{7,40}$/;
+const FULL_COMMIT = /^[0-9a-f]{40}$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const statusOf = (o: OpenItem): string => o.status ?? "ABIERTO";
 /** Hand-written consolidation documents that cite open items (the matrix is generated from the log). */
 export const DOCS_CITING_OPEN_ITEMS = [
   "docs/consolidation/README.md",
@@ -154,7 +168,11 @@ export function validateDecisionLog(log: DecisionLog, models = loadModels()): st
     if (!IMPLEMENTATION_STATUS.includes(d.implementation?.status)) errors.push(`${d.id}: implementation.status desconocido "${d.implementation?.status}"`);
   }
   for (const u of log.uat_items) if (!UAT_STATUS.includes(u.status)) errors.push(`${u.id}: status desconocido "${u.status}"`);
-  for (const o of log.open_items) if (!IMPACT.includes(o.impact)) errors.push(`${o.id}: impact desconocido "${o.impact}"`);
+  for (const o of log.open_items) {
+    if (!IMPACT.includes(o.impact)) errors.push(`${o.id}: impact desconocido "${o.impact}"`);
+    if (!OPEN_STATUS.includes(statusOf(o))) errors.push(`${o.id}: status desconocido "${o.status}"`);
+  }
+  if (!CONSOLIDATION_STATUS.includes(log.consolidation.status)) errors.push(`consolidation: status desconocido "${log.consolidation.status}"`);
 
   // 2. references
   const checkRefs = (owner: Traced): void => {
@@ -163,14 +181,21 @@ export function validateDecisionLog(log: DecisionLog, models = loadModels()): st
     for (const id of owner.features ?? []) if (!featureIds.has(id)) errors.push(`${owner.id}: Feature inexistente ${id}`);
     for (const id of owner.scenarios ?? []) if (!scenarioIds.has(id)) errors.push(`${owner.id}: Scenario inexistente ${id}`);
   };
+  const closedIds = new Set(log.open_items.filter((o) => statusOf(o) === "CERRADO").map((o) => o.id));
+  const checkOpenRefs = (owner: string, ids: string[] | undefined): void => {
+    for (const id of ids ?? []) {
+      if (!openIds.has(id)) errors.push(`${owner}: pendiente inexistente ${id}`);
+      else if (closedIds.has(id)) errors.push(`${owner}: cita como abierto el pendiente cerrado ${id}`);
+    }
+  };
   for (const d of log.decisions) {
     checkRefs(d);
-    for (const id of d.open ?? []) if (!openIds.has(id)) errors.push(`${d.id}: pendiente inexistente ${id}`);
+    checkOpenRefs(d.id, d.open);
     for (const path of d.documented_in ?? []) if (!existsSync(path)) errors.push(`${d.id}: documento inexistente ${path}`);
   }
   for (const u of log.uat_items) {
     checkRefs(u);
-    for (const id of u.pending ?? []) if (!openIds.has(id)) errors.push(`${u.id}: pendiente inexistente ${id}`);
+    checkOpenRefs(u.id, u.pending);
     for (const id of u.confirmed_by ?? []) if (!decisionIds.has(id)) errors.push(`${u.id}: confirmed_by cita una decision inexistente ${id}`);
     for (const ref of u.implemented_in ?? []) if (!MVP_COMMIT.test(ref)) errors.push(`${u.id}: implemented_in "${ref}" no es rt-rma-mvp@<commit>`);
     if (u.approval_evidence.length === 0) errors.push(`${u.id}: sin evidencia de aprobacion`);
@@ -183,11 +208,36 @@ export function validateDecisionLog(log: DecisionLog, models = loadModels()): st
     checkRefs(o);
     if (o.decisions.length === 0) errors.push(`${o.id}: no cita ninguna decision`);
     for (const id of o.decisions) if (!decisionIds.has(id)) errors.push(`${o.id}: decision inexistente ${id}`);
+    if (statusOf(o) === "CERRADO") {
+      if (!o.closed_by || !decisionIds.has(o.closed_by)) errors.push(`${o.id}: CERRADO sin una decision existente en closed_by`);
+      if (!DATE.test(o.closed_on ?? "")) errors.push(`${o.id}: CERRADO sin fecha de cierre (closed_on AAAA-MM-DD)`);
+      if (!o.resolution) errors.push(`${o.id}: CERRADO sin resolucion`);
+    } else if (o.closed_by || o.closed_on || o.resolution) {
+      errors.push(`${o.id}: ABIERTO con datos de cierre`);
+    }
+  }
+  // the approval of the baseline
+  const approval = log.consolidation.approval;
+  const approvedDecisions = log.decisions.filter((d) => d.status === "APROBADA").map((d) => d.id);
+  if (log.consolidation.status === "VIGENTE") {
+    if (!approval) errors.push("consolidation: VIGENTE sin approval");
+    else {
+      if (!approvedDecisions.includes(approval.decision)) errors.push(`consolidation.approval: la decision ${approval.decision} no esta APROBADA`);
+      if (!FULL_COMMIT.test(approval.approved_commit ?? "")) errors.push("consolidation.approval: approved_commit debe ser el hash completo del commit aprobado");
+      if (!DATE.test(approval.approved_on ?? "")) errors.push("consolidation.approval: approved_on debe ser una fecha AAAA-MM-DD");
+      if (!approval.approved_by) errors.push("consolidation.approval: falta approved_by");
+      if (!approval.tag) errors.push("consolidation.approval: falta la etiqueta de la baseline");
+    }
+    for (const o of log.open_items.filter((x) => x.impact === "BLOQUEA_APROBACION" && statusOf(x) === "ABIERTO")) {
+      errors.push(`${o.id}: bloquea la aprobacion y sigue ABIERTO en una baseline VIGENTE`);
+    }
+  } else if (approvedDecisions.length > 0) {
+    errors.push(`${approvedDecisions.join(", ")}: APROBADA en una consolidacion ${log.consolidation.status}`);
   }
   for (const m of improvements) {
     checkRefs(m);
     if (!m.audit_ref) errors.push(`${m.id}: sin referencia a la auditoria`);
-    for (const id of m.open ?? []) if (!openIds.has(id)) errors.push(`${m.id}: pendiente inexistente ${id}`);
+    checkOpenRefs(m.id, m.open);
     for (const path of m.files ?? []) if (!existsSync(path)) errors.push(`${m.id}: archivo inexistente ${path}`);
   }
 
@@ -241,16 +291,25 @@ const cell = (text: string | undefined): string => (text ?? "").replace(/\s+/g, 
 /** Markdown traceability matrix generated from the log (never edited by hand). */
 export function renderMatrix(log: DecisionLog): string {
   const byImpl = (s: string): number => log.decisions.filter((d) => d.implementation.status === s).length;
+  const approval = log.consolidation.approval;
+  const open = log.open_items.filter((o) => statusOf(o) === "ABIERTO");
+  const closed = log.open_items.filter((o) => statusOf(o) === "CERRADO");
   const lines: string[] = [
-    "# Matriz de trazabilidad - consolidacion V1.4 (baseline candidata)",
+    `# Matriz de trazabilidad - consolidacion V1.4 (baseline ${log.consolidation.status === "VIGENTE" ? "vigente" : "candidata"})`,
     "",
     `> Generada desde \`${LOG_FILE}\` con \`npm run generate:decision-matrix:v1.4\`. No editar a mano:`,
     "> `npm run validate:decisions:v1.4` falla si este archivo no coincide con el registro.",
     "",
     `Estado: **${log.consolidation.status}** (${log.consolidation.id}, decisiones del ${log.consolidation.decided_on}, punto de partida \`${log.consolidation.base_tag}\`).`,
+    ...(approval
+      ? [
+          "",
+          `Aprobacion: ${approval.decision}, el ${approval.approved_on}, por ${cell(approval.approved_by)}, sobre el commit \`${approval.approved_commit}\` (etiqueta \`${approval.tag}\`).`,
+        ]
+      : []),
     "",
     `Decisiones: ${log.decisions.length}. Implementacion en el producto: ${IMPLEMENTATION_STATUS.map((s) => `${IMPL_LABEL[s]} ${byImpl(s)}`).join(", ")}.`,
-    `Incorporaciones de UAT (DC16): ${log.uat_items.length}. Pendientes registrados: ${log.open_items.length}. Mejoras posteriores: ${(log.improvements ?? []).length}.`,
+    `Incorporaciones de UAT (DC16): ${log.uat_items.length}. Pendientes registrados: ${log.open_items.length} (${open.length} abiertos, ${closed.length} cerrados). Mejoras posteriores: ${(log.improvements ?? []).length}.`,
     "",
     "En las incorporaciones de UAT, CONFIRMADO significa decision de negocio confirmada por el responsable funcional; no es aceptacion UAT formal.",
     `Aceptacion UAT formal: **${log.consolidation.formal_uat_acceptance?.status ?? "sin declarar"}** (${cell(log.consolidation.formal_uat_acceptance?.evidence)}).`,
@@ -273,7 +332,11 @@ export function renderMatrix(log: DecisionLog): string {
   }
   const artifacts = (x: Traced): string[] => [...(x.rules ?? []), ...(x.nodes ?? []), ...(x.features ?? []), ...(x.scenarios ?? [])];
   lines.push("", "## Decisiones abiertas", "", "| ID | Pendiente | Impacto | Decisiones | Artefactos | Que falta |", "|---|---|---|---|---|---|");
-  for (const o of log.open_items) lines.push(`| ${o.id} | ${cell(o.title)} | ${o.impact} | ${list(o.decisions)} | ${list(artifacts(o))} | ${cell(o.needed)} |`);
+  for (const o of open) lines.push(`| ${o.id} | ${cell(o.title)} | ${o.impact} | ${list(o.decisions)} | ${list(artifacts(o))} | ${cell(o.needed)} |`);
+  if (closed.length > 0) {
+    lines.push("", "## Pendientes cerrados", "", "| ID | Pendiente | Impacto | Cerrado por | Fecha | Resolucion |", "|---|---|---|---|---|---|");
+    for (const o of closed) lines.push(`| ${o.id} | ${cell(o.title)} | ${o.impact} | ${o.closed_by} | ${o.closed_on} | ${cell(o.resolution)} |`);
+  }
   lines.push("", "## Mejoras posteriores", "", "| ID | Auditoria | Mejora | Artefactos | Pendientes | Que falta |", "|---|---|---|---|---|---|");
   for (const m of log.improvements ?? []) {
     lines.push(`| ${m.id} | ${m.audit_ref} | ${cell(m.title)} | ${list([...artifacts(m), ...(m.files ?? [])])} | ${list(m.open)} | ${cell(m.needed)} |`);

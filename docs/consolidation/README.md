@@ -1,16 +1,18 @@
-# Consolidación V1.4 — baseline funcional candidata
+# Consolidación V1.4 — baseline funcional vigente
 
-**Estado: CANDIDATA**, pendiente de aprobación final (DC01). No se declaró vigente.
+**Estado: VIGENTE.** DC01 se aprobó el 24/10/2026 (sección G). La V1.4 consolidada es la baseline funcional de PROC-REP.
 
 | Ítem | Valor |
 |---|---|
-| Rama | `consolidacion/v1.4` de `rt-rma-app` |
+| Rama | `consolidacion/v1.4` de `rt-rma-app` (sin merge a `main`) |
 | Punto de partida | Tag `v1.4-pre-consolidacion`: la V1.4 tal como estaba, sin commitear, sobre `main` `6c82639` |
 | Decisiones | Del 23/10/2026, confirmadas por el responsable de producto |
+| Commit aprobado | `b6cc3a5` (`b6cc3a53587376213cb3bbdaea66e13b5488e5c3`) |
+| Etiqueta | `v1.4-baseline`, sobre el commit de cierre de DC01 |
 
 No se modificó `rt-rma-mvp` ni el código del producto, no hubo push ni despliegue y no se tocó `main`.
 
-Después de la auditoría focalizada sobre `f70d4f5` se aplicó una **corrección final, solo documental** (sección F). DC01 sigue sin aprobarse.
+Después de la auditoría focalizada sobre `f70d4f5` se aplicó una **corrección final, solo documental** (sección F), y sobre ese resultado se aprobó DC01.
 
 | Documento | Contenido |
 |---|---|
@@ -24,7 +26,7 @@ Después de la auditoría focalizada sobre `f70d4f5` se aplicó una **correcció
 
 ### Alcance, antes y después
 
-| | Antes (`v1.4-pre-consolidacion`) | Candidata |
+| | Antes (`v1.4-pre-consolidacion`) | Consolidada |
 |---|---|---|
 | Nodos (funcionales) | 73 (69) | 76 (71) |
 | Aristas | 135 | 142 |
@@ -117,7 +119,7 @@ En BR-REP-003, BR-REP-006 y EXC-REP-002 se conservó la redacción de V1.4, que 
 4. **Validador de Scenarios.** Ahora acepta cualquier nodo final para un Happy Path. Los tests siguen exigiendo que los tres Happy Paths terminen en EVT-REP-999.
 5. **Reglas nuevas por DC16.** Se agregaron BR-REP-045 a 049, que la propuesta no preveía.
 
-Estas elecciones se registran para revisión en ABI-02.
+Estas elecciones se registraron para revisión en ABI-02, que se cerró al aprobar DC01.
 
 ## B. Matriz de trazabilidad
 
@@ -145,7 +147,7 @@ Las vistas generadas (`generated/`) se regeneraron.
 **Diferencias esperadas respecto del estado previo:**
 
 - **Tests de identidad contra V1.3** (`test-scenarios.ts`): ahora comparan aplicando el renombre DC17 y declaran cada regla, nodo, arista y Scenario que cambia, con su motivo. Todo lo no declarado sigue identico a V1.3.
-- **Conteos fijos** (44 Scenarios, salidas de 211 y 265, visitas de 265): actualizados a la candidata.
+- **Conteos fijos** (44 Scenarios, salidas de 211 y 265, visitas de 265): actualizados a la consolidación.
 - **Mecánica multidetalle:** VAR-REP-037 es la única excepción declarada.
 - **Textos que la consolidación reemplazó a propósito** (BR-REP-025 sobre el checklist, BR-REP-038 sobre quién devuelve, BR-REP-019): sus aserciones se actualizaron.
 - **Replay comercial:** suma check-in, anulación y cortesía, y verifica la entrada a 266 en lugar de la salida.
@@ -157,8 +159,8 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 
 | Impacto | IDs |
 |---|---|
-| Bloquean la aprobación | ABI-01 (aprobación final), ABI-02 (revisión de las elecciones de modelado, incluido el criterio de garantía aplicable del check-in) |
-| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 04 quién autoriza la excepción de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permisos por tipo de Ajuste Comercial · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 18 reversibilidad · 31 consentimiento: cómo se obtiene · 32 corrección del check-in y comprobante final · 33 garantía parcialmente vigente · 34 continuación como reparación paga · 35 registro del reclamo rechazado |
+| Bloquean la aprobación | Ninguno abierto. ABI-01 (aprobación final) y ABI-02 (revisión de las elecciones de modelado) se cerraron con DC01 |
+| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 04 quién autoriza la excepción de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permisos por tipo de Ajuste Comercial · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 18 reversibilidad · 31 consentimiento: cómo se obtiene · 32 corrección del check-in y comprobante final · 33 garantía parcialmente vigente · 34 continuación como reparación paga · 35 registro del reclamo rechazado · 37 criterio de garantía aplicable del check-in |
 | Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 22 tipos de movimiento · 24 DNI duplicados históricos |
 | Posteriores | ABI-07, 08, 11, 14, 15, 17, 19 a 21, 23, 25 a 30, 36 (motivo de la interrupción en una liberación ajena) |
 
@@ -175,7 +177,7 @@ Resuelve los cuatro bloqueantes de la auditoría focalizada del 23/10/2026 sobre
 | Ítem | Resolución |
 |---|---|
 | B1 · Check-in repetido | BR-REP-045 y los casos funcionales ya no dan por aprobado volver a registrar el check-in. Queda como comportamiento técnico de la implementación en UAT-I01 y como pendiente ABI-32: cuándo se puede corregir y cómo afecta al comprobante final. |
-| B2 · Condición del check-in | BR-REP-045, PROC-REP-265, 269 y 270, FEAT-REP-008, BR-REP-017, los Scenarios y el diseño lógico dicen lo mismo: «con trabajos realizados y garantía aplicable». El criterio exacto de garantía aplicable queda en ABI-02, con la interpretación provisional de la implementación, que no es una regla aprobada. |
+| B2 · Condición del check-in | BR-REP-045, PROC-REP-265, 269 y 270, FEAT-REP-008, BR-REP-017, los Scenarios y el diseño lógico dicen lo mismo: «con trabajos realizados y garantía aplicable». El criterio exacto de garantía aplicable quedó en ABI-02 y, al cerrarlo, se separó en ABI-37, con la interpretación provisional de la implementación, que no es una regla aprobada. |
 | B3 · Garantía vencida | ABI-33 (garantía parcialmente vigente), ABI-34 (continuación como reparación paga vinculada al reclamo) y ABI-35 (registro del reclamo rechazado), vinculados a PROC-REP-036, EVT-REP-998 y FEAT-REP-001. Bloquean implementar DC15B, no aprobar DC01. |
 | B4 · Liberación ajena | BR-REP-018, BR-REP-039, PROC-REP-212, PROC-REP-213, FEAT-REP-004 y VAR-REP-037: la liberación incluye la interrupción de una Ejecución en curso como excepción específica, sin permiso general para interrumpir, y queda auditada. El motivo exacto de esa interrupción queda en ABI-36. |
 | M2 | BR-REP-041 y el diseño lógico dicen «check-in registrado como no realizado». |
@@ -193,6 +195,32 @@ Resuelve los cuatro bloqueantes de la auditoría focalizada del 23/10/2026 sobre
 - `implemented_in`: commits de `rt-rma-mvp` que lo implementaron. Prueban la implementación, no la aprobación.
 
 `validate:decisions:v1.4` exige commits para todo ítem CONFIRMADO y que la aceptación formal esté declarada.
+
+## G. Aprobación de la baseline (DC01)
+
+| Ítem | Valor |
+|---|---|
+| Decisión | DC01, APROBADA |
+| Fecha | 24/10/2026 |
+| Responsable | Ismael Darruiz, responsable de producto |
+| Commit aprobado | `b6cc3a5` de `consolidacion/v1.4` |
+| Etiqueta | `v1.4-baseline`, sobre el commit de cierre |
+| Registro | `consolidation.approval` en `business/decisions/decision-log-v1.4.yaml` |
+
+El commit de cierre solo agrega gobierno; el contenido funcional es el del commit aprobado:
+
+- estado VIGENTE y datos de la aprobación;
+- `status: approved` en el proceso y en las 49 reglas de V1.4, como en V1.2;
+- ABI-01 y ABI-02 cerrados con su resolución;
+- ABI-37 separado de ABI-02 antes del cierre: el criterio de garantía aplicable del check-in. Bloquea implementar la política de garantía, no la aprobación.
+
+Las Features y los Scenarios conservan `status: draft`. En este repositorio ese campo describe su propio ciclo de definición, igual que con V1.2.
+
+La aprobación **no** aprueba:
+
+- los casos de UAT pendientes: UAT-I18 sigue PENDIENTE y UAT-I19 NO_FUNCIONAL;
+- la aceptación UAT formal, que sigue PENDIENTE;
+- ninguno de los pendientes abiertos, ABI-03 a 37.
 
 ## Glosario de entidades, estados y actores
 

@@ -469,7 +469,7 @@ check("B1: volver a registrar el check-in no es regla aprobada; queda como compo
   assert.ok(i01.technical_only?.some((t) => /Volver a registrar el check-in hasta la entrega.*sin aprobacion funcional demostrada/.test(t)));
 });
 
-check("B2: la condicion del check-in es la misma en regla, nodos, Feature, Scenarios y diseno; garantia aplicable pendiente en ABI-02", () => {
+check("B2: la condicion del check-in es la misma en regla, nodos, Feature, Scenarios y diseno; garantia aplicable pendiente en ABI-37", () => {
   const WITH = /trabajos realizados y\s+garantia aplicable/;
   const texts: Array<[string, string]> = [
     ["BR-REP-045", rule("BR-REP-045")],
@@ -488,9 +488,11 @@ check("B2: la condicion del check-in es la misma en regla, nodos, Feature, Scena
   const labels = scenarios.flatMap((s) => (s.facts ?? []).filter((f) => f.key === "checkin_required_for_delivery").map((f) => `${s.id}: ${f.label}`));
   assert.equal(labels.length, 5);
   for (const label of labels) assert.match(label, /CLIENTE_EXTERNO con trabajos realizados y garantia aplicable/);
-  const abi02 = flat(openItem("ABI-02").needed);
-  assert.match(abi02, /falta definir el criterio exacto para determinar cuando la garantia es aplicable/);
-  assert.match(abi02, /Interpretacion provisional de la implementacion, no aprobada como regla/);
+  // separado de ABI-02 antes de cerrarlo con DC01
+  const abi37 = flat(openItem("ABI-37").needed);
+  assert.match(abi37, /Definir el criterio exacto para determinar cuando la garantia es aplicable/);
+  assert.match(abi37, /Interpretacion provisional de la implementacion, no aprobada como regla/);
+  assert.doesNotMatch(flat(openItem("ABI-02").needed), /garantia aplicable/);
   assert.match(readFileSync(DESIGN, "utf8"), /trabajos realizados y garantía aplicable no se entrega sin check-in/);
 });
 
@@ -587,6 +589,79 @@ check("mejoras posteriores M1, M3, M4 y M6 trazadas; el validador rechaza refere
     assert.ok(errors.some((e) => e.includes(fragment)), fragment);
   }
   assert.deepEqual(danglingOpenItemIds("ver ABI-02, ABI-36 y ABI-77", new Set(decisionLog.open_items.map((o) => o.id))), ["ABI-77"]);
+});
+
+console.log("\nCierre de DC01 - baseline V1.4 vigente\n");
+
+check("DC01 aprobada: baseline VIGENTE sobre b6cc3a5, con fecha, responsable y etiqueta; proceso y reglas V1.4 aprobados", () => {
+  const dc01 = decisionLog.decisions.find((d) => d.id === "DC01");
+  assert.equal(dc01?.status, "APROBADA");
+  assert.equal(dc01?.open, undefined, "DC01 no deja pendientes abiertos");
+  assert.equal(decisionLog.consolidation.status, "VIGENTE");
+  const approval = decisionLog.consolidation.approval;
+  assert.equal(approval?.decision, "DC01");
+  assert.equal(approval?.approved_commit, "b6cc3a53587376213cb3bbdaea66e13b5488e5c3");
+  assert.equal(approval?.approved_on, "2026-10-24");
+  assert.match(approval?.approved_by ?? "", /responsable de producto/);
+  assert.equal(approval?.tag, "v1.4-baseline");
+  assert.equal(model.process.status, "approved");
+  assert.ok(rules.every((r) => r.status === "approved"), "las 49 reglas V1.4 estan aprobadas");
+  // Features y Scenarios conservan su propio ciclo de definicion, como con V1.2
+  assert.ok(features.every((f) => f.status === "draft") && scenarios.every((s) => s.status === "draft"));
+});
+
+check("ABI-01 y ABI-02 cerrados por DC01; ABI-37 separado como bloqueante de implementacion; ABI-32 a 36 siguen abiertos", () => {
+  for (const id of ["ABI-01", "ABI-02"]) {
+    const o = openItem(id);
+    assert.equal(o.status, "CERRADO", id);
+    assert.equal(o.closed_by, "DC01", id);
+    assert.equal(o.closed_on, "2026-10-24", id);
+    assert.ok(o.resolution, id);
+  }
+  assert.match(flat(openItem("ABI-02").resolution), /se separo el criterio de garantia aplicable del check-in de entrega en ABI-37/);
+  const abi37 = openItem("ABI-37");
+  assert.equal(abi37.status, undefined, "ABI-37 esta abierto");
+  assert.equal(abi37.impact, "BLOQUEA_IMPLEMENTACION");
+  assert.deepEqual(abi37.rules, ["BR-REP-041", "BR-REP-045"]);
+  assert.deepEqual(abi37.nodes, ["PROC-REP-265", "PROC-REP-269"]);
+  assert.deepEqual(abi37.features, ["FEAT-REP-008", "FEAT-REP-010"]);
+  assert.ok(decisionLog.decisions.find((d) => d.id === "DC15A")?.open?.includes("ABI-37"));
+  assert.ok(uatItem("UAT-I01").pending?.includes("ABI-37") && !uatItem("UAT-I01").pending?.includes("ABI-02"));
+  for (let n = 3; n <= 37; n++) {
+    const id = `ABI-${String(n).padStart(2, "0")}`;
+    assert.equal(openItem(id).status, undefined, `${id} sigue abierto`);
+  }
+  assert.ok(!decisionLog.open_items.some((o) => o.impact === "BLOQUEA_APROBACION" && o.status !== "CERRADO"));
+});
+
+check("la aprobacion no aprueba la UAT: UAT-I18 sigue PENDIENTE, UAT-I19 NO_FUNCIONAL y la aceptacion formal PENDIENTE", () => {
+  assert.equal(uatItem("UAT-I18").status, "PENDIENTE");
+  assert.equal(uatItem("UAT-I19").status, "NO_FUNCIONAL");
+  assert.equal(decisionLog.consolidation.formal_uat_acceptance?.status, "PENDIENTE");
+  assert.match(flat(decisionLog.consolidation.approval?.scope), /No aprueba los casos de UAT pendientes ni la aceptacion UAT formal/);
+});
+
+check("el validador rechaza una baseline VIGENTE incompleta, un pendiente cerrado sin resolucion y citar como abierto un pendiente cerrado", () => {
+  const broken = structuredClone(decisionLog);
+  broken.consolidation.approval!.approved_commit = "b6cc3a5";
+  broken.open_items.find((o) => o.id === "ABI-02")!.status = undefined;
+  delete broken.open_items.find((o) => o.id === "ABI-01")!.resolution;
+  broken.decisions.find((d) => d.id === "DC04")!.open = ["ABI-36", "ABI-01"];
+  const errors = validateDecisionLog(broken);
+  for (const fragment of ["approved_commit debe ser el hash completo", "ABI-02: ABIERTO con datos de cierre", "ABI-01: CERRADO sin resolucion", "DC04: cita como abierto el pendiente cerrado ABI-01"]) {
+    assert.ok(errors.some((e) => e.includes(fragment)), fragment);
+  }
+  const reopened = structuredClone(decisionLog);
+  for (const o of reopened.open_items.filter((x) => x.id === "ABI-02")) {
+    delete o.status;
+    delete o.closed_by;
+    delete o.closed_on;
+    delete o.resolution;
+  }
+  assert.ok(validateDecisionLog(reopened).some((e) => e.includes("ABI-02: bloquea la aprobacion y sigue ABIERTO en una baseline VIGENTE")));
+  const candidate = structuredClone(decisionLog);
+  candidate.consolidation.status = "CANDIDATA";
+  assert.ok(validateDecisionLog(candidate).some((e) => e.includes("DC01: APROBADA en una consolidacion CANDIDATA")));
 });
 
 if (failures > 0) {

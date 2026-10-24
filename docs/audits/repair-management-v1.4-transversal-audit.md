@@ -5,7 +5,7 @@
 - Esta auditoria NO modifica el Source of Truth ni implementa correcciones. Las propuestas son minimas y quedan para decidir en conjunto.
 - Metodo: lectura integral de nodos, aristas, reglas, Features y Scenarios; scripts de analisis sobre el modelo parseado (aristas no recorridas, referencias, actores, trazabilidad); recorrido de los tres Happy Paths arista por arista; combinacion de variantes y casos limite contra las reglas citadas; revision del README contra el YAML y de los Scenarios y tests contra las reglas y el grafo (ambas con subagentes de lectura; todo hallazgo se verifico contra el YAML antes de incluirlo).
 
-## Estado tras la consolidacion V1.4 (23/10/2026, baseline candidata)
+## Estado tras la consolidacion V1.4 (23/10/2026; baseline aprobada el 24/10/2026, DC01)
 
 La consolidacion aplico las decisiones confirmadas. Ver `business/decisions/decision-log-v1.4.yaml` y `docs/consolidation/`.
 

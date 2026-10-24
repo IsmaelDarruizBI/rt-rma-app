@@ -1137,12 +1137,13 @@ ningun Scenario real declare esos edges como propios.
 Scenarios de MVP v2 se representan integramente con el Process Graph
 V1.3 existente, sin modificar nodos ni edges.
 
-## V1.4 consolidada - baseline candidata (23/10/2026)
+## V1.4 consolidada - baseline vigente (aprobada el 24/10/2026)
 
 La V1.4 se consolido con las decisiones confirmadas por el responsable de
 producto: los siete bloques, DC07, los permisos predeterminados, DC14 y las
-incorporaciones de UAT (DC16). Es una baseline CANDIDATA: su aprobacion final
-(DC01) queda pendiente. Donde las secciones de V1.4 que siguen contradigan la
+incorporaciones de UAT (DC16). Es la baseline funcional VIGENTE: DC01 se aprobo
+el 24/10/2026 sobre el commit b6cc3a5 de consolidacion/v1.4 (etiqueta
+v1.4-baseline). Donde las secciones de V1.4 que siguen contradigan la
 consolidacion, rige la consolidacion.
 
 - Registro de decisiones, incorporaciones de UAT y pendientes:

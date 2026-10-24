@@ -232,7 +232,8 @@ UAT-REP-001
 
 ## Estado actual
 
-Consolidacion V1.4 (23/10/2026, baseline candidata): la trazabilidad de cada
+Consolidacion V1.4 (23/10/2026), baseline vigente desde la aprobacion de DC01
+(24/10/2026, commit b6cc3a5, etiqueta v1.4-baseline): la trazabilidad de cada
 decision confirmada hasta las reglas, Features, nodos y Scenarios, con el estado
 de implementacion en el producto, vive en
 `business/decisions/decision-log-v1.4.yaml` y se publica como matriz generada

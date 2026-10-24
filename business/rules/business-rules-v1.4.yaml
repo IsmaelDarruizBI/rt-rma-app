@@ -1,5 +1,5 @@
-# CONSOLIDACION V1.4 - BASELINE CANDIDATA (23/10/2026), pendiente de aprobacion
-# final (DC01). Aplica las decisiones confirmadas de los siete bloques, DC07, los
+# CONSOLIDACION V1.4 - BASELINE FUNCIONAL VIGENTE, aprobada el 24/10/2026 (DC01)
+# sobre el commit b6cc3a5 de consolidacion/v1.4 (etiqueta v1.4-baseline). Aplica las decisiones confirmadas de los siete bloques, DC07, los
 # permisos predeterminados del 23/10/2026, DC14 y las incorporaciones de UAT
 # (DC16). Cada cambio cita su decision (DCxx o UAT-xxx) y el registro completo
 # esta en business/decisions/decision-log-v1.4.yaml; la matriz de trazabilidad y
@@ -52,7 +52,7 @@ rules:
       el proceso, excepto mientras se encuentra en estado EN_REVISION (sin
       ningun Detalle con Tipo definido todavia). Reemplaza el enfoque
       singular de V1.2 ("una reparacion requerida") por uno plural.
-    status: draft
+    status: approved
 
   - id: BR-REP-002
     name: Validacion previa de recursos
@@ -62,7 +62,7 @@ rules:
       Tipo de Reparacion. La Orden puede habilitarse mientras exista al
       menos un Detalle trabajable, sin exigir que todos los Detalles sean
       factibles. Un Detalle no factible no bloquea a los demas.
-    status: draft
+    status: approved
 
   - id: BR-REP-003
     name: Override justificado
@@ -105,7 +105,7 @@ rules:
       RMA (ACT-COORD) puede autorizarla y el motivo es obligatorio. Es una
       unica capacidad con una unica validacion y una unica forma de determinar
       su vigencia, cualquiera sea el momento en que ocurre.
-    status: draft
+    status: approved
 
   - id: BR-REP-004
     name: Registro de ejecucion real
@@ -130,7 +130,7 @@ rules:
       utilizados y si el trabajo puede revertirse, antes de que se resuelva la
       cancelacion (BR-REP-014). Que opciones admite la reversibilidad y como
       se usa despues siguen pendientes de definicion.
-    status: draft
+    status: approved
 
   - id: BR-REP-005
     name: Inventario consecuencia de ejecucion
@@ -140,7 +140,7 @@ rules:
       cuando corresponda) deben originarse a partir de los repuestos y
       cantidades registrados en ella, y deben quedar trazados hasta el
       Detalle que la origino (Orden -> Detalle -> Insumo -> Movimiento).
-    status: draft
+    status: approved
 
   - id: BR-REP-006
     name: Reserva de insumos al iniciar Ejecucion del Detalle
@@ -156,7 +156,7 @@ rules:
       "al tomar la Orden". Excepcion: si el Detalle tiene un override de
       recursos autorizado (BR-REP-003), la reserva puede exceder el stock
       disponible y no cuenta como falla por falta de stock.
-    status: draft
+    status: approved
 
   - id: BR-REP-007
     name: Concurrencia de Ejecucion en la Orden
@@ -169,7 +169,7 @@ rules:
       distintos momentos, sin sobrescribir el historial de Ejecuciones
       anteriores. Reemplaza por completo al modo EXCLUSIVA/ABIERTA de
       V1.2.
-    status: draft
+    status: approved
 
   - id: BR-REP-008
     name: Control tecnico por Recepcion y retrabajo por Detalle
@@ -183,7 +183,7 @@ rules:
       observacion, resultado), y el estado de la Orden se recalcula
       mediante el resolver de estado de Orden (BR-REP-012): no se asume
       automaticamente que la Orden vuelve a EN_COLA.
-    status: draft
+    status: approved
 
   - id: BR-REP-009
     name: Puntaje por Detalle
@@ -204,7 +204,7 @@ rules:
       participaron de un mismo Detalle sigue pendiente de definicion
       funcional. Consolidacion V1.4 (DC05): texto del MVP confirmado; cada
       Ejecucion conserva su tecnico, base de cualquier reparto futuro.
-    status: draft
+    status: approved
 
   - id: BR-REP-010
     name: Finalizacion sin reparacion trazable
@@ -223,7 +223,7 @@ rules:
       implica que el trabajo o el proceso fue cancelado. Si en el futuro
       Rosario Tecno decide cobrar el diagnostico, sera una nueva regla o
       capacidad a diseñar, fuera de alcance de V1.3.
-    status: draft
+    status: approved
 
   - id: BR-REP-011
     name: Compatibilidad de estacion de trabajo
@@ -254,7 +254,7 @@ rules:
       configurable desde Administracion; por defecto, Coordinacion
       (PROC-REP-179, BR-REP-039). Las capacidades de los tecnicos y los
       recursos distintos de los insumos siguen pendientes de definicion.
-    status: draft
+    status: approved
 
   - id: BR-REP-012
     name: Estado agregado de la Orden como calculo derivado
@@ -394,7 +394,7 @@ rules:
       Ejecucion (PROC-REP-185). Cierre: la Orden termina operativamente solo en
       EVT-REP-999, siempre despues de PROC-REP-268 (BR-REP-038), con la custodia
       determinada (BR-REP-033); el estado terminal de RT_INTERNO sigue pendiente.
-    status: draft
+    status: approved
 
   - id: BR-REP-013
     name: Orden sin Detalles (caso inicial)
@@ -420,7 +420,7 @@ rules:
       invocacion futura del resolver (por ejemplo desde una UI o
       herramienta que no respete esa precondicion) tenga un resultado
       deterministico y nunca ambiguo.
-    status: draft
+    status: approved
 
   - id: BR-REP-014
     name: Cancelacion de Detalle y de Orden
@@ -480,7 +480,7 @@ rules:
       Recepcion), cada uno con permiso configurable (BR-REP-039); por eso
       PROC-REP-300/305/306 no declaran un unico actor. El catalogo de motivos de
       cancelacion sigue pendiente.
-    status: draft
+    status: approved
 
   - id: BR-REP-015
     name: Precio snapshot y Subtotal
@@ -514,7 +514,7 @@ rules:
       todo cambio de configuracion (BR-REP-040); un cambio posterior no altera
       las condiciones ya registradas en los Detalles. La reparacion no
       tipificada "Otros" toma un precio manual por Detalle (BR-REP-047).
-    status: draft
+    status: approved
 
   - id: BR-REP-016
     name: Ajustes Comerciales y Cortesia
@@ -555,7 +555,7 @@ rules:
       PROC-REP-266. El precio snapshot de sus Detalles
       existe igual (dato historico, de costo y de valoracion del trabajo):
       precio registrado no implica pago requerido.
-    status: draft
+    status: approved
 
   - id: BR-REP-017
     name: Registrar Pago (transversal) y Completar Cobro (secuencial)
@@ -630,7 +630,7 @@ rules:
       CLIENTE_EXTERNO con trabajos realizados y garantia aplicable la entrega
       exige ademas el check-in registrado (BR-REP-045), sin que condicione el
       cobro.
-    status: draft
+    status: approved
 
   - id: BR-REP-018
     name: Toma y liberacion de Orden (participacion activa)
@@ -686,7 +686,7 @@ rules:
       del motivo de interrupcion que deriva de la liberacion (BR-REP-004)
       sigue pendiente. No se libera una Orden cerrada o entregada ni se
       admiten dos tomas simultaneas.
-    status: draft
+    status: approved
 
   - id: BR-REP-019
     name: Garantia RMA - Orden nueva vinculada y Detalle origen
@@ -720,7 +720,7 @@ rules:
       por Detalle). Cada Detalle nuevo referencia uno de los Detalles origen
       identificados; no se impone una relacion 1:1 (un Detalle origen puede
       originar mas de un Detalle nuevo).
-    status: draft
+    status: approved
 
   - id: BR-REP-020
     name: Identificacion y reutilizacion de Cliente existente
@@ -746,7 +746,7 @@ rules:
       cambiar precios automaticamente; reglas comerciales por clasificacion
       podran definirse en el futuro. La busqueda nunca bloquea la creacion de
       la Orden. La busqueda por telefono no esta implementada.
-    status: draft
+    status: approved
 
   - id: BR-REP-021
     name: Consulta externa opcional por DNI y carga manual alternativa
@@ -764,7 +764,7 @@ rules:
       consultar, se respetan limites de consultas y no se guardan respuestas
       completas con datos personales (UAT-010). No hay hoy ninguna fuente
       externa habilitada y esta consolidacion no implementa integraciones.
-    status: draft
+    status: approved
 
   - id: BR-REP-022
     name: Identidad fisica del Equipo y reutilizacion confirmada por IMEI
@@ -784,7 +784,7 @@ rules:
       siendo un dato del Equipo, opcional, para todos los origenes. Pendiente
       de definicion: como se identifica un equipo sin IMEI disponible o legible
       y como se resuelven las coincidencias ambiguas.
-    status: draft
+    status: approved
 
   - id: BR-REP-023
     name: Diagnostico inicial y observaciones sobre la Orden ya creada
@@ -808,7 +808,7 @@ rules:
       del equipo, visibles para Recepcion y Taller e incluidas en el
       comprobante inicial, de las notas internas, que solo se ven dentro de la
       aplicacion y nunca salen en documentos, PDF ni mensajes al cliente.
-    status: draft
+    status: approved
 
   - id: BR-REP-024
     name: Fotografias y checklist de recepcion opcionales
@@ -828,7 +828,7 @@ rules:
       de equipo y las configura Administracion (BR-REP-040); todas las
       verificaciones son opcionales y un checklist incompleto no bloquea la
       recepcion. Lo cargado se puede guardar y recuperar posteriormente.
-    status: draft
+    status: approved
 
   - id: BR-REP-025
     name: Advertencia no bloqueante por evidencias faltantes al avanzar desde la carga inicial
@@ -852,7 +852,7 @@ rules:
       semantica ni nodo. Se aplica como regla de PROC-REP-032; no existe un
       nodo propio para la advertencia ni un estado de negocio para un
       formulario incompleto.
-    status: draft
+    status: approved
 
   - id: BR-REP-026
     name: Orden creada con cero Detalles y reparaciones diagnosticadas por Recepcion
@@ -881,7 +881,7 @@ rules:
       PENDIENTE, CONFIRMADA ni DESCARTADA en el Detalle: la evaluacion tecnica
       de los Detalles de origen RECEPCION se define en BR-REP-035 y BR-REP-036
       como un registro de evaluacion, no como estados operativos.
-    status: draft
+    status: approved
 
   - id: BR-REP-027
     name: Cancelacion temprana por desistimiento del cliente (Orden sin Detalles)
@@ -910,7 +910,7 @@ rules:
       Ordenes que ya poseen Detalles ni de trabajos completados (BR-REP-014).
       Es un desistimiento solicitado por el cliente: lo registra Recepcion y el
       permiso de la cancelacion es configurable (BR-REP-014, BR-REP-039).
-    status: draft
+    status: approved
 
   - id: BR-REP-028
     name: Autorizacion del cliente por Detalle y definicion vigente (CLIENTE_EXTERNO)
@@ -966,7 +966,7 @@ rules:
       despues, en PROC-REP-211 (BR-REP-034). Si el cliente no responde no se registra
       ninguna decision: la solicitud queda sin resolver (PROC-REP-046 -> 211) y los
       Detalles siguen PENDIENTE_AUTORIZACION.
-    status: draft
+    status: approved
 
   - id: BR-REP-029
     name: Revalidacion de la autorizacion ante Detalles nuevos o modificados
@@ -1006,7 +1006,7 @@ rules:
       PENDIENTE_AUTORIZACION (la ausencia de respuesta no equivale a
       autorizacion ni a rechazo) y los demas Detalles habilitados siguen su
       ejecucion (BR-REP-037).
-    status: draft
+    status: approved
 
   - id: BR-REP-030
     name: Desistimiento por Detalle, masivo y sin Detalles
@@ -1054,7 +1054,7 @@ rules:
       Detalles afectados, el motivo y la resolucion de cada uno, y no se cierra
       la Orden con Ejecuciones sin resolver. Los Detalles completos conservan su
       resultado.
-    status: draft
+    status: approved
 
   - id: BR-REP-031
     name: Comprobante de recepcion despues de la decision inicial del cliente
@@ -1090,7 +1090,7 @@ rules:
       autoriza otro trabajo y evita duplicados involuntarios. Generar un
       documento no equivale a enviarlo ni registra que el cliente lo recibio o
       firmo (BR-REP-042, BR-REP-044).
-    status: draft
+    status: approved
 
   - id: BR-REP-032
     name: Alta de Detalles por el tecnico durante la ejecucion
@@ -1131,7 +1131,7 @@ rules:
       el alta y se RESUELVE de forma diferida por Recepcion (PROC-REP-046/047,
       EVT-REP-003): el tecnico no espera la respuesta del cliente ni se bloquea
       por ella (BR-REP-037).
-    status: draft
+    status: approved
 
   - id: BR-REP-033
     name: Custodia fisica del equipo y devolucion obligatoria en la cancelacion
@@ -1194,7 +1194,7 @@ rules:
       cuya recepcion no esta confirmada o que se registro como no recibido; el
       rechazo no genera Ejecucion, reservas ni movimientos (PROC-REP-185).
       RT_INTERNO conserva su politica de recepcion.
-    status: draft
+    status: approved
 
   - id: BR-REP-034
     name: Enrutamiento del workflow separado del resolver
@@ -1296,7 +1296,7 @@ rules:
       habilitada no omite la factibilidad de los Detalles autorizados y los demas
       Detalles ejecutables no se bloquean (BR-REP-037). La factibilidad sigue siendo
       del sistema por Detalle: no la decide ni la evalua Recepcion.
-    status: draft
+    status: approved
 
   - id: BR-REP-035
     name: Evaluacion tecnica obligatoria de Detalles diagnosticados por Recepcion
@@ -1339,7 +1339,7 @@ rules:
       se modifica el ciclo operativo del Detalle; el modelo tecnico de
       versiones de la definicion se resolvera mas adelante. Aplica a todos los
       origenes de Orden cuando Recepcion diagnostica el Detalle.
-    status: draft
+    status: approved
 
   - id: BR-REP-036
     name: Resultado principal de la evaluacion tecnica y reparaciones adicionales
@@ -1413,7 +1413,7 @@ rules:
       casos se respeta la toma activa, la prioridad de la Orden y las Ejecuciones
       de otros Detalles, y no se repiten PROC-REP-140/150 en una Orden ya
       habilitada. Pendiente: el catalogo de motivos tecnicos.
-    status: draft
+    status: approved
 
   - id: BR-REP-037
     name: Independencia operativa entre Detalles y autorizacion diferida
@@ -1464,7 +1464,7 @@ rules:
       ninguna arista del hilo tecnico pasa obligatoriamente por PROC-REP-046/047.
       La autorizacion comercial sigue siendo de Recepcion y la definicion
       tecnica del tecnico (PROC-REP-075, 127 y 128).
-    status: draft
+    status: approved
 
   - id: BR-REP-038
     name: Devolucion de dinero y saldo a favor del cliente
@@ -1525,7 +1525,7 @@ rules:
       total con Pagos recibidos tambien genera saldo a favor (DC11). Pendientes:
       plazo o abandono si el cliente no retira el dinero y devoluciones
       posteriores a ENTREGADA.
-    status: draft
+    status: approved
 
   - id: BR-REP-039
     name: Permisos configurables por accion y contexto
@@ -1575,7 +1575,7 @@ rules:
       (BR-REP-033) y los permisos iniciales por tipo de Ajuste Comercial
       (BR-REP-016). La autenticacion y el almacenamiento de usuarios, roles y
       permisos son una decision de arquitectura (DC27C), no de esta regla.
-    status: draft
+    status: approved
 
   - id: BR-REP-040
     name: Administracion de configuracion y auditoria de cambios
@@ -1593,7 +1593,7 @@ rules:
       conserva su copia de lo que se aplico (precio, puntaje, garantia,
       checklist, datos del equipo). El catalogo de equipos lo mantiene Ventas
       y RMA solo lo sincroniza (BR-REP-048).
-    status: draft
+    status: approved
 
   - id: BR-REP-041
     name: Politica de garantia configurable y garantia por Detalle
@@ -1619,7 +1619,7 @@ rules:
       trazabilidad, y esa condicion es la que valida PROC-REP-036 en un
       reclamo de garantia RMA (BR-REP-019). El comprobante final informa el
       plazo definitivo y el vencimiento de cada Detalle.
-    status: draft
+    status: approved
 
   - id: BR-REP-042
     name: Firma y evidencia de los documentos
@@ -1632,7 +1632,7 @@ rules:
       firma, segun el documento, sigue pendiente de decision; el comprobante de
       autorizacion (AUT) se definio en UAT sin firma obligatoria. Registrar la
       evidencia nunca se infiere de haber generado o compartido el documento.
-    status: draft
+    status: approved
 
   - id: BR-REP-043
     name: Consentimiento y preferencias de comunicacion
@@ -1646,7 +1646,7 @@ rules:
       finalidad y canal. Como se obtiene el consentimiento en el ingreso y que
       mensajes concretos requiere cada finalidad se definen con las plantillas
       y disparadores (pendientes, DC25).
-    status: draft
+    status: approved
 
   - id: BR-REP-044
     name: Comunicaciones asistidas con plantillas e historial
@@ -1662,7 +1662,7 @@ rules:
       y la fecha/hora. Se respeta el consentimiento por finalidad (BR-REP-043).
       Etapa 2 (DC25): proveedor oficial, con estados de envio y reintentos.
       Pendientes: plantillas, disparadores y proveedor.
-    status: draft
+    status: approved
 
   - id: BR-REP-045
     name: Check-in de entrega
@@ -1686,7 +1686,7 @@ rules:
       garantia definitiva no confirmada. El comprobante final lleva el
       resultado del check-in. Las Ordenes anteriores con check-in registrado al
       ingresar conservan su validez.
-    status: draft
+    status: approved
 
   - id: BR-REP-046
     name: Ingreso inicial simplificado y comprobante de ingreso y autorizacion
@@ -1716,7 +1716,7 @@ rules:
       el camino de revision tecnica y las autorizaciones posteriores conservan
       su circuito explicito. El check-in no forma parte del ingreso (UAT-009,
       BR-REP-045).
-    status: draft
+    status: approved
 
   - id: BR-REP-047
     name: Reparacion no tipificada "Otros"
@@ -1733,7 +1733,7 @@ rules:
       cualquier Mesa de trabajo. La futura administracion de tipos de
       reparacion (BR-REP-040) podra administrar esta opcion sin cambiar este
       comportamiento.
-    status: draft
+    status: approved
 
   - id: BR-REP-048
     name: Catalogo de equipos de Ventas
@@ -1753,7 +1753,7 @@ rules:
       falla y registra fecha, usuario y resultado de cada intento. El alta de
       una Orden nunca consulta el origen de Ventas en linea, y un cambio
       posterior del catalogo no reescribe Ordenes ni documentos.
-    status: draft
+    status: approved
 
   - id: BR-REP-049
     name: Gestion operativa del stock
@@ -1781,4 +1781,4 @@ rules:
       DC24LOT) e inventarios fisicos periodicos. Pendiente de decision: el
       catalogo de tipos de movimiento (DESPERDICIO de BR-REP-005 frente a
       DEVOLUCION de la implementacion).
-    status: draft
+    status: approved
