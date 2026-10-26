@@ -1,8 +1,10 @@
 /**
  * Validates business/decisions/decision-log-v1.4.yaml against the V1.4
- * process, rules, Features and Scenarios, and keeps the generated
- * traceability matrix (docs/consolidation/matriz-trazabilidad-v1.4.md) in
- * sync with it.
+ * process, rules, Features and Scenarios, and the implementation status of
+ * its decisions in the product (traceability/estado-implementacion-v1.4.yaml,
+ * kept outside business/ so that updating it never changes the functional
+ * copy exported to rt-rma-mvp), and keeps the generated traceability matrix
+ * (docs/consolidation/matriz-trazabilidad-v1.4.md) in sync with both.
  *
  * Run:
  *   npm run validate:decisions:v1.4            validate and check the matrix is up to date
@@ -16,10 +18,12 @@
  *     existing decisions and every `open`/`pending` reference points to an
  *     existing open item.
  *  3. A CONFIRMADA decision cites at least one artifact (or the document
- *     that records it), and IMPLEMENTADO/PARCIAL/CONTRARIO carry evidence.
- *     A CONFIRMADO UAT item names the rt-rma-mvp commits that implemented it,
- *     every `confirmed_by` is a decision of the log, and the log declares the
- *     status of the formal UAT acceptance (CONFIRMADO is not that acceptance).
+ *     that records it) and every `confirmed_by` is a decision of the log.
+ *     The implementation status has exactly one entry per decision, with
+ *     evidence for IMPLEMENTADO/PARCIAL/CONTRARIO, names the rt-rma-mvp
+ *     commits of every CONFIRMADO UAT item and declares the formal UAT
+ *     acceptance (CONFIRMADO is not that acceptance); none of it may appear
+ *     inside the log, which is part of the exported functional copy.
  *     A VIGENTE consolidation names its approval (decision APROBADA, full
  *     commit hash, date, approver and tag) and has no open item that blocks
  *     the approval; a CERRADO open item names the decision that closed it,
@@ -40,6 +44,7 @@ import { loadYaml, type BusinessRule, type ProcessModel } from "./lib/process-mo
 import type { ScenarioModel } from "./lib/scenario-model";
 
 export const LOG_FILE = "business/decisions/decision-log-v1.4.yaml";
+export const IMPLEMENTATION_FILE = "traceability/estado-implementacion-v1.4.yaml";
 export const MATRIX_FILE = "docs/consolidation/matriz-trazabilidad-v1.4.md";
 const V14 = {
   process: "business/processes/repair-management-v1.4.yaml",
@@ -68,14 +73,12 @@ interface Decision extends Traced {
   status: string;
   notes?: string;
   documented_in?: string[];
-  implementation: { status: string; evidence?: string; gap?: string };
   open?: string[];
 }
 interface UatItem extends Traced {
   status: string;
   approval_evidence: string[];
   confirmed_by?: string[];
-  implemented_in?: string[];
   technical_only?: string[];
   notes?: string;
   pending?: string[];
@@ -102,12 +105,25 @@ export interface DecisionLog {
     decided_on: string;
     base_tag: string;
     approval?: { decision: string; approved_commit: string; approved_on: string; approved_by: string; tag: string; scope?: string };
-    formal_uat_acceptance?: { status: string; evidence: string };
   };
   decisions: Decision[];
   uat_items: UatItem[];
   open_items: OpenItem[];
   improvements?: Improvement[];
+}
+interface ImplementationEntry {
+  id: string;
+  status: string;
+  evidence?: string;
+  gap?: string;
+}
+/** Implementation status of the log's decisions in the product (outside business/). */
+export interface ImplementationStatus {
+  baseline: { tag: string; commit: string; decision_log: string };
+  product: { repository: string; branch: string; evaluated_commit: string; updated_on: string };
+  formal_uat_acceptance?: { status: string; evidence: string };
+  decisions: ImplementationEntry[];
+  uat_items: { id: string; implemented_in: string[] }[];
 }
 
 /** IDs created by the consolidation of 23/10/2026: each must be traced to a decision or UAT item. */
@@ -144,8 +160,47 @@ export function loadModels() {
   };
 }
 
-export function validateDecisionLog(log: DecisionLog, models = loadModels()): string[] {
+export function loadImplementation(): ImplementationStatus {
+  return loadYaml<ImplementationStatus>(IMPLEMENTATION_FILE);
+}
+
+/** Problems of the implementation status against the log (empty when consistent). */
+export function validateImplementation(log: DecisionLog, implementation: ImplementationStatus): string[] {
   const errors: string[] = [];
+  const decisionIds = new Set(log.decisions.map((d) => d.id));
+  const uatIds = new Set(log.uat_items.map((u) => u.id));
+  const where = IMPLEMENTATION_FILE;
+  if (implementation.baseline?.decision_log !== LOG_FILE) errors.push(`${where}: baseline.decision_log debe ser ${LOG_FILE}`);
+  if (!/^[0-9a-f]{7,40}$/.test(implementation.product?.evaluated_commit ?? "")) errors.push(`${where}: product.evaluated_commit debe ser un commit de rt-rma-mvp`);
+  if (!DATE.test(implementation.product?.updated_on ?? "")) errors.push(`${where}: product.updated_on debe ser una fecha AAAA-MM-DD`);
+  if (!implementation.formal_uat_acceptance?.status) errors.push(`${where}: falta formal_uat_acceptance (CONFIRMADO no es aceptacion UAT formal)`);
+  const seen = new Set<string>();
+  for (const entry of implementation.decisions ?? []) {
+    if (seen.has(entry.id)) errors.push(`${where}: ${entry.id} repetida`);
+    seen.add(entry.id);
+    if (!decisionIds.has(entry.id)) errors.push(`${where}: ${entry.id} no es una decision del registro`);
+    if (!IMPLEMENTATION_STATUS.includes(entry.status)) errors.push(`${where}: ${entry.id} con status desconocido "${entry.status}"`);
+    if (["IMPLEMENTADO", "PARCIAL", "CONTRARIO"].includes(entry.status) && !entry.evidence) errors.push(`${where}: ${entry.id} ${entry.status} sin evidencia en el codigo`);
+  }
+  for (const id of decisionIds) if (!seen.has(id)) errors.push(`${where}: falta el estado de implementacion de ${id}`);
+  const commits = new Map((implementation.uat_items ?? []).map((u) => [u.id, u.implemented_in ?? []]));
+  for (const [id, refs] of commits) {
+    if (!uatIds.has(id)) errors.push(`${where}: ${id} no es una incorporacion de UAT del registro`);
+    for (const ref of refs) if (!MVP_COMMIT.test(ref)) errors.push(`${where}: ${id} implemented_in "${ref}" no es rt-rma-mvp@<commit>`);
+  }
+  for (const u of log.uat_items) {
+    if (u.status === "CONFIRMADO" && (commits.get(u.id) ?? []).length === 0) errors.push(`${u.id}: CONFIRMADO sin commit de rt-rma-mvp que lo implemente`);
+  }
+  // the log travels in the functional copy: implementation data must stay out of it
+  const outside = `vive en ${where}, fuera de la copia funcional`;
+  if ("formal_uat_acceptance" in log.consolidation) errors.push(`consolidation: formal_uat_acceptance ${outside}`);
+  for (const d of log.decisions) if ("implementation" in d) errors.push(`${d.id}: implementation ${outside}`);
+  for (const u of log.uat_items) if ("implemented_in" in u) errors.push(`${u.id}: implemented_in ${outside}`);
+  return errors;
+}
+
+export function validateDecisionLog(log: DecisionLog, models = loadModels(), implementation = loadImplementation()): string[] {
+  const errors: string[] = [...validateImplementation(log, implementation)];
   const ruleIds = new Set(models.rules.map((r) => r.id));
   const nodeIds = new Set(models.process.nodes.map((n) => n.id));
   const featureIds = new Set(models.features.map((f) => f.id));
@@ -165,7 +220,6 @@ export function validateDecisionLog(log: DecisionLog, models = loadModels()): st
   for (const id of all.filter((id, i) => all.indexOf(id) !== i)) errors.push(`id duplicado: ${id}`);
   for (const d of log.decisions) {
     if (!DECISION_STATUS.includes(d.status)) errors.push(`${d.id}: status desconocido "${d.status}"`);
-    if (!IMPLEMENTATION_STATUS.includes(d.implementation?.status)) errors.push(`${d.id}: implementation.status desconocido "${d.implementation?.status}"`);
   }
   for (const u of log.uat_items) if (!UAT_STATUS.includes(u.status)) errors.push(`${u.id}: status desconocido "${u.status}"`);
   for (const o of log.open_items) {
@@ -197,13 +251,10 @@ export function validateDecisionLog(log: DecisionLog, models = loadModels()): st
     checkRefs(u);
     checkOpenRefs(u.id, u.pending);
     for (const id of u.confirmed_by ?? []) if (!decisionIds.has(id)) errors.push(`${u.id}: confirmed_by cita una decision inexistente ${id}`);
-    for (const ref of u.implemented_in ?? []) if (!MVP_COMMIT.test(ref)) errors.push(`${u.id}: implemented_in "${ref}" no es rt-rma-mvp@<commit>`);
     if (u.approval_evidence.length === 0) errors.push(`${u.id}: sin evidencia de aprobacion`);
     if (u.status === "CONFIRMADO" && (u.rules ?? []).length === 0) errors.push(`${u.id}: CONFIRMADO sin regla que lo formalice`);
-    if (u.status === "CONFIRMADO" && (u.implemented_in ?? []).length === 0) errors.push(`${u.id}: CONFIRMADO sin commit de rt-rma-mvp que lo implemente`);
     if (u.status !== "CONFIRMADO" && (u.rules ?? []).length > 0) errors.push(`${u.id}: ${u.status} no puede formalizarse como regla`);
   }
-  if (!log.consolidation.formal_uat_acceptance?.status) errors.push("consolidation: falta formal_uat_acceptance (CONFIRMADO no es aceptacion UAT formal)");
   for (const o of log.open_items) {
     checkRefs(o);
     if (o.decisions.length === 0) errors.push(`${o.id}: no cita ninguna decision`);
@@ -245,9 +296,6 @@ export function validateDecisionLog(log: DecisionLog, models = loadModels()): st
   for (const d of log.decisions) {
     const artifacts = [...(d.rules ?? []), ...(d.nodes ?? []), ...(d.features ?? []), ...(d.scenarios ?? []), ...(d.documented_in ?? [])];
     if (artifacts.length === 0) errors.push(`${d.id}: decision sin artefactos ni documento`);
-    if (["IMPLEMENTADO", "PARCIAL", "CONTRARIO"].includes(d.implementation.status) && !d.implementation.evidence) {
-      errors.push(`${d.id}: ${d.implementation.status} sin evidencia en el codigo`);
-    }
   }
 
   // 4. coverage of what the consolidation created or changed
@@ -288,16 +336,18 @@ const IMPL_LABEL: Record<string, string> = {
 const list = (ids: string[] | undefined): string => (ids && ids.length > 0 ? ids.join(", ") : "-");
 const cell = (text: string | undefined): string => (text ?? "").replace(/\s+/g, " ").replace(/\|/g, "/").trim();
 
-/** Markdown traceability matrix generated from the log (never edited by hand). */
-export function renderMatrix(log: DecisionLog): string {
-  const byImpl = (s: string): number => log.decisions.filter((d) => d.implementation.status === s).length;
+/** Markdown traceability matrix generated from the log and the implementation status (never edited by hand). */
+export function renderMatrix(log: DecisionLog, implementation = loadImplementation()): string {
+  const implOf = new Map(implementation.decisions.map((entry) => [entry.id, entry]));
+  const commitsOf = new Map(implementation.uat_items.map((u) => [u.id, u.implemented_in]));
+  const byImpl = (s: string): number => log.decisions.filter((d) => implOf.get(d.id)?.status === s).length;
   const approval = log.consolidation.approval;
   const open = log.open_items.filter((o) => statusOf(o) === "ABIERTO");
   const closed = log.open_items.filter((o) => statusOf(o) === "CERRADO");
   const lines: string[] = [
     `# Matriz de trazabilidad - consolidacion V1.4 (baseline ${log.consolidation.status === "VIGENTE" ? "vigente" : "candidata"})`,
     "",
-    `> Generada desde \`${LOG_FILE}\` con \`npm run generate:decision-matrix:v1.4\`. No editar a mano:`,
+    `> Generada desde \`${LOG_FILE}\` y \`${IMPLEMENTATION_FILE}\` con \`npm run generate:decision-matrix:v1.4\`. No editar a mano:`,
     "> `npm run validate:decisions:v1.4` falla si este archivo no coincide con el registro.",
     "",
     `Estado: **${log.consolidation.status}** (${log.consolidation.id}, decisiones del ${log.consolidation.decided_on}, punto de partida \`${log.consolidation.base_tag}\`).`,
@@ -308,11 +358,11 @@ export function renderMatrix(log: DecisionLog): string {
         ]
       : []),
     "",
-    `Decisiones: ${log.decisions.length}. Implementacion en el producto: ${IMPLEMENTATION_STATUS.map((s) => `${IMPL_LABEL[s]} ${byImpl(s)}`).join(", ")}.`,
+    `Decisiones: ${log.decisions.length}. Implementacion en el producto (${implementation.product.repository} ${implementation.product.branch}, evaluada sobre \`${implementation.product.evaluated_commit}\`, actualizada el ${implementation.product.updated_on}): ${IMPLEMENTATION_STATUS.map((s) => `${IMPL_LABEL[s]} ${byImpl(s)}`).join(", ")}.`,
     `Incorporaciones de UAT (DC16): ${log.uat_items.length}. Pendientes registrados: ${log.open_items.length} (${open.length} abiertos, ${closed.length} cerrados). Mejoras posteriores: ${(log.improvements ?? []).length}.`,
     "",
     "En las incorporaciones de UAT, CONFIRMADO significa decision de negocio confirmada por el responsable funcional; no es aceptacion UAT formal.",
-    `Aceptacion UAT formal: **${log.consolidation.formal_uat_acceptance?.status ?? "sin declarar"}** (${cell(log.consolidation.formal_uat_acceptance?.evidence)}).`,
+    `Aceptacion UAT formal: **${implementation.formal_uat_acceptance?.status ?? "sin declarar"}** (${cell(implementation.formal_uat_acceptance?.evidence)}).`,
     "La evidencia de aprobacion son pedidos y decisiones del responsable funcional, no versionados; \"Confirmada en\" cita decisiones de este registro y \"Implementado en\" los commits de rt-rma-mvp, que prueban la implementacion, no la aprobacion.",
     "",
     "## Decision -> regla -> Feature -> nodo -> Scenario -> implementacion",
@@ -321,13 +371,16 @@ export function renderMatrix(log: DecisionLog): string {
     "|---|---|---|---|---|---|---|---|---|",
   ];
   for (const d of log.decisions) {
-    const impl = `${IMPL_LABEL[d.implementation.status]}${d.implementation.evidence ? `: ${cell(d.implementation.evidence)}` : ""}${d.implementation.gap ? `. Falta: ${cell(d.implementation.gap)}` : ""}`;
+    const entry = implOf.get(d.id);
+    const impl = entry
+      ? `${IMPL_LABEL[entry.status] ?? entry.status}${entry.evidence ? `: ${cell(entry.evidence)}` : ""}${entry.gap ? `. Falta: ${cell(entry.gap)}` : ""}`
+      : "-";
     const nodes = [...(d.nodes ?? []), ...(d.documented_in ?? [])];
     lines.push(`| ${d.id} | ${d.block} | ${cell(d.title)} | ${list(d.rules)} | ${list(d.features)} | ${list(nodes)} | ${list(d.scenarios)} | ${impl} | ${list(d.open)} |`);
   }
   lines.push("", "## Incorporaciones de UAT (DC16)", "", "| ID | Comportamiento | Estado | Evidencia de aprobacion | Confirmada en | Implementado en | Reglas | Nodos | Solo implementacion tecnica | Pendientes |", "|---|---|---|---|---|---|---|---|---|---|");
   for (const u of log.uat_items) {
-    const commits = (u.implemented_in ?? []).map((c) => c.replace("rt-rma-mvp@", ""));
+    const commits = (commitsOf.get(u.id) ?? []).map((c) => c.replace("rt-rma-mvp@", ""));
     lines.push(`| ${u.id} | ${cell(u.title)} | ${u.status} | ${u.approval_evidence.map(cell).join("; ")} | ${list(u.confirmed_by)} | ${list(commits)} | ${list(u.rules)} | ${list(u.nodes)} | ${cell([...(u.technical_only ?? []), ...(u.notes ? [u.notes] : [])].join("; ")) || "-"} | ${list(u.pending)} |`);
   }
   const artifacts = (x: Traced): string[] => [...(x.rules ?? []), ...(x.nodes ?? []), ...(x.features ?? []), ...(x.scenarios ?? [])];
@@ -347,8 +400,9 @@ export function renderMatrix(log: DecisionLog): string {
 
 export function main(): void {
   const log = loadYaml<DecisionLog>(LOG_FILE);
-  const errors = validateDecisionLog(log);
-  const matrix = renderMatrix(log);
+  const implementation = loadImplementation();
+  const errors = validateDecisionLog(log, loadModels(), implementation);
+  const matrix = renderMatrix(log, implementation);
   if (process.argv.includes("--write")) {
     writeFileSync(MATRIX_FILE, matrix);
     console.log(`Matriz generada: ${MATRIX_FILE}`);

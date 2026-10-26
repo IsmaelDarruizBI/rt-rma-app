@@ -1,0 +1,6 @@
+# Las vistas generadas y los fuentes que el generador embebe se extraen con LF:
+# las pruebas del explorador y de la vista de CLIENTE_EXTERNO comparan el HTML
+# versionado con lo que produce el generador a partir de scripts/, y un
+# checkout con core.autocrlf no debe romper esa comparacion.
+generated/** text eol=lf
+scripts/** text eol=lf

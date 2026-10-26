@@ -5,7 +5,22 @@
 - `rt-rma-app` es la fuente única de verdad funcional.
 - `rt-rma-mvp/business` es una **copia generada** que identifica el commit exacto de origen, con verificación automática de sincronización y sin modificaciones manuales.
 
-En esta etapa el mecanismo solo se **define y prepara**: `rt-rma-mvp` no se modificó.
+**Estado: implementada.** La copia se aplicó el 24/10/2026 y se publicó el 26/10/2026 (ver «Aplicación»). Las secciones «Comprobación hecha en esta consolidación» y «Cómo se aplicará» describen el plan del 23/10/2026.
+
+## Aplicación (24 a 26/10/2026)
+
+| Ítem | Valor |
+|---|---|
+| Fuente | `rt-rma-app`, etiqueta `v1.4-baseline`, commit `e99b28386695df537aabd02d7068c0102de09eae`, publicada el 26/10/2026 |
+| Producto | `rt-rma-mvp` `mvp-v2` en `fe560dd` (rama de trabajo `sync/functional-v1.4`), por avance directo desde `f270a84`, publicado el 26/10/2026 |
+| Verificación | `npm run verify:functional-copy` corre en `validate:all`. `verify:functional-copy:source` verifica contra un clon de `rt-rma-app`; se comprobó con el clon público |
+| Fines de línea | `.gitattributes`: `business/** text eol=lf` |
+| Herramientas | Los validadores y pruebas compartidos son copias idénticas de esta fuente |
+| Discrepancias | `rt-rma-mvp/traceability/discrepancias-baseline-v1.4.md` |
+
+El producto no cambió de comportamiento: pytest, las pruebas y el build del frontend dieron lo mismo antes y después.
+
+La resincronización por cambios administrativos se pospuso: el manifiesto del MVP sigue apuntando a `e99b283`. Por eso el estado de implementación se mantiene fuera de `business/` (`traceability/estado-implementacion-v1.4.yaml`).
 
 ## Piezas
 
@@ -37,7 +52,7 @@ El verificador termina con código 1 y la lista de problemas si algo no coincide
 
 ## Cómo se aplicará, después de aprobar la baseline (DC01)
 
-Estos pasos **no se ejecutaron**:
+Plan original del 23/10/2026. Se aplicó con la etiqueta `v1.4-baseline` en lugar de `v1.4`; el resultado está en «Aplicación».
 
 1. Etiquetar en `rt-rma-app` el commit aprobado (por ejemplo `v1.4`) y publicarlo.
 2. En `rt-rma-mvp`, en una rama:

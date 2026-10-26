@@ -234,11 +234,12 @@ UAT-REP-001
 
 Consolidacion V1.4 (23/10/2026), baseline vigente desde la aprobacion de DC01
 (24/10/2026, commit b6cc3a5, etiqueta v1.4-baseline): la trazabilidad de cada
-decision confirmada hasta las reglas, Features, nodos y Scenarios, con el estado
-de implementacion en el producto, vive en
-`business/decisions/decision-log-v1.4.yaml` y se publica como matriz generada
-en `docs/consolidation/matriz-trazabilidad-v1.4.md`. La copia de `business/`
-que usa `rt-rma-mvp` pasara a ser generada con el commit de origen (DC02,
+decision confirmada hasta las reglas, Features, nodos y Scenarios vive en
+`business/decisions/decision-log-v1.4.yaml`. El estado de implementacion en el
+producto vive fuera de la copia funcional, en
+`traceability/estado-implementacion-v1.4.yaml`. Ambos se publican como matriz
+generada en `docs/consolidation/matriz-trazabilidad-v1.4.md`. La copia de
+`business/` que usa `rt-rma-mvp` es generada con el commit de origen (DC02,
 `docs/consolidation/sincronizacion-dc02.md`). Las User Stories siguen viviendo en
 los specs del producto, no en este repositorio.
 

@@ -116,7 +116,7 @@ En BR-REP-003, BR-REP-006 y EXC-REP-002 se conservó la redacción de V1.4, que 
 1. **Casos dentro de un nodo.** La reutilización del Equipo por IMEI, el ajuste por Detalle, la versión nueva de un documento y el checklist con faltantes se resuelven dentro de un nodo o de una acción transversal. Por la convención del repositorio quedan como **casos funcionales** (ver más abajo), no como Scenarios. Por eso los IDs VAR-REP-037 a 043 se asignaron por orden de bloque.
 2. **Check-in.** La UAT confirmó el check-in de entrega. Se modeló como el nodo PROC-REP-269, análogo a 266, más la acción transversal «Registrar check-in».
 3. **Garantía vencida.** Se agregó el fin EVT-REP-998. La garantía vencida sin excepción no crea una Orden y no corresponde pasar por PROC-REP-268.
-4. **Validador de Scenarios.** Ahora acepta cualquier nodo final para un Happy Path. Los tests siguen exigiendo que los tres Happy Paths terminen en EVT-REP-999.
+4. **Validador de Scenarios.** Ahora acepta cualquier nodo final para un Happy Path. `test-end-events` (en `validate:v1.4`) exige que los tres Happy Paths terminen en EVT-REP-999 y distingue los dos fines: EVT-REP-999 solo desde 268 y EVT-REP-998 solo desde 036, únicamente en VAR-REP-038.
 5. **Reglas nuevas por DC16.** Se agregaron BR-REP-045 a 049, que la propuesta no preveía.
 
 Estas elecciones se registraron para revisión en ABI-02, que se cerró al aprobar DC01.
@@ -134,7 +134,8 @@ Ver [`matriz-trazabilidad-v1.4.md`](matriz-trazabilidad-v1.4.md). Es la misma in
 - tests de Scenarios, de cierre comercial y de decisión del cliente;
 - **`test:consolidation:v1.4`** (nuevo): una verificación por cada decisión y casos negativos de los validadores;
 - **`validate:decisions:v1.4`** (nuevo): registro de decisiones, cobertura de lo nuevo, referencias en el texto y matriz al día;
-- **`test:functional-copy`** (nuevo, DC02).
+- **`test:functional-copy`** (nuevo, DC02);
+- **`test:end-events`**: el fin de cada recorrido (ver el desvío 4).
 
 También pasan:
 
@@ -192,7 +193,7 @@ Resuelve los cuatro bloqueantes de la auditoría focalizada del 23/10/2026 sobre
 - **CONFIRMADO** en `uat_items` significa decisión de negocio confirmada por el responsable funcional. **No es aceptación UAT formal**: los 16 `UAT-REP-XXX` de `rt-rma-mvp` siguen en PENDING (`consolidation.formal_uat_acceptance`).
 - `approval_evidence`: pedidos y decisiones del responsable funcional, por título y fecha. No están versionados en los repositorios.
 - `confirmed_by`: decisiones de este registro que lo confirman, versionadas.
-- `implemented_in`: commits de `rt-rma-mvp` que lo implementaron. Prueban la implementación, no la aprobación.
+- Commits de `rt-rma-mvp` que lo implementaron: en `traceability/estado-implementacion-v1.4.yaml` (sección H). Prueban la implementación, no la aprobación.
 
 `validate:decisions:v1.4` exige commits para todo ítem CONFIRMADO y que la aceptación formal esté declarada.
 
@@ -221,6 +222,16 @@ La aprobación **no** aprueba:
 - los casos de UAT pendientes: UAT-I18 sigue PENDIENTE y UAT-I19 NO_FUNCIONAL;
 - la aceptación UAT formal, que sigue PENDIENTE;
 - ninguno de los pendientes abiertos, ABI-03 a 37.
+
+## H. Estado de implementación, fuera de la copia funcional
+
+El estado de cada decisión en el producto está en `traceability/estado-implementacion-v1.4.yaml`, fuera de `business/`. Incluye la evidencia en el código, lo que falta, los commits de cada incorporación de UAT y la aceptación UAT formal. Así, actualizarlo no cambia la copia funcional que se exporta a `rt-rma-mvp` ni obliga a resincronizarla (DC02).
+
+- El registro de decisiones conserva las decisiones, reglas, pendientes y la aprobación.
+- `validate:decisions:v1.4` exige una entrada por decisión. También rechaza que el estado de implementación vuelva a aparecer dentro del registro.
+- La matriz combina ambos archivos.
+- **DC02 está implementada:** `rt-rma-mvp` `mvp-v2` en `fe560dd` (ver [`sincronizacion-dc02.md`](sincronizacion-dc02.md)).
+- La copia del MVP sigue siendo la de `e99b283`. Ahí el registro todavía lleva el estado anterior, con DC02 NO_IMPLEMENTADO, hasta la próxima resincronización.
 
 ## Glosario de entidades, estados y actores
 

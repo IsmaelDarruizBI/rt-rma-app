@@ -1,13 +1,13 @@
 # Matriz de trazabilidad - consolidacion V1.4 (baseline vigente)
 
-> Generada desde `business/decisions/decision-log-v1.4.yaml` con `npm run generate:decision-matrix:v1.4`. No editar a mano:
+> Generada desde `business/decisions/decision-log-v1.4.yaml` y `traceability/estado-implementacion-v1.4.yaml` con `npm run generate:decision-matrix:v1.4`. No editar a mano:
 > `npm run validate:decisions:v1.4` falla si este archivo no coincide con el registro.
 
 Estado: **VIGENTE** (CONS-V1.4, decisiones del 2026-10-23, punto de partida `v1.4-pre-consolidacion`).
 
 Aprobacion: DC01, el 2026-10-24, por Ismael Darruiz, responsable de producto, sobre el commit `b6cc3a53587376213cb3bbdaea66e13b5488e5c3` (etiqueta `v1.4-baseline`).
 
-Decisiones: 43. Implementacion en el producto: Implementado 9, Parcial 14, No implementado 13, Contrario (el codigo hace lo opuesto) 3, No aplica 4.
+Decisiones: 43. Implementacion en el producto (rt-rma-mvp mvp-v2, evaluada sobre `f270a84`, actualizada el 2026-10-26): Implementado 10, Parcial 14, No implementado 12, Contrario (el codigo hace lo opuesto) 3, No aplica 4.
 Incorporaciones de UAT (DC16): 19. Pendientes registrados: 37 (35 abiertos, 2 cerrados). Mejoras posteriores: 4.
 
 En las incorporaciones de UAT, CONFIRMADO significa decision de negocio confirmada por el responsable funcional; no es aceptacion UAT formal.
@@ -59,7 +59,7 @@ La evidencia de aprobacion son pedidos y decisiones del responsable funcional, n
 | DC07D | DC07 | Un Detalle COMPLETO nunca se cancela retroactivamente; se resuelve con ajustes o devoluciones | BR-REP-014 | FEAT-REP-009 | PROC-REP-200, PROC-REP-305 | VAR-REP-009 | Implementado: services/cancelaciones.py (solo cancela Detalles no terminales) | - |
 | DC07 | DC07 | Solicitud de desistimiento y cancelacion efectiva registradas por separado, con usuario y fecha | BR-REP-030 | FEAT-REP-002, FEAT-REP-009 | PROC-REP-211 | VAR-REP-042, VAR-REP-043 | Contrario (el codigo hace lo opuesto): la decision del cliente cancela en el mismo acto (services/decision_cliente.py) | - |
 | DC01 | BASELINE | Baseline V1.4 consolidada, aprobada como baseline funcional vigente | - | - | docs/consolidation/README.md | - | No aplica: rama consolidacion/v1.4 de rt-rma-app, etiqueta v1.4-baseline | - |
-| DC02 | BASELINE | rt-rma-app es la fuente unica; rt-rma-mvp/business es una copia generada con el commit de origen y verificacion automatica | - | - | docs/consolidation/sincronizacion-dc02.md | - | No implementado: mecanismo preparado en rt-rma-app (scripts/export-functional-copy.ts y scripts/verify-functional-copy.mjs); rt-rma-mvp no se modifico | - |
+| DC02 | BASELINE | rt-rma-app es la fuente unica; rt-rma-mvp/business es una copia generada con el commit de origen y verificacion automatica | - | - | docs/consolidation/sincronizacion-dc02.md | - | Implementado: rt-rma-mvp mvp-v2 fe560dd (24/10/2026, publicado el 26/10/2026): business/ es la copia generada de rt-rma-app e99b283 (v1.4-baseline) con business/FUNCTIONAL_SOURCE.json; npm run verify:functional-copy corre en validate:all y la copia verifica contra el clon publico de rt-rma-app. Falta: La copia del MVP conserva el registro de e99b283, donde DC02 figura NO_IMPLEMENTADO, hasta la proxima resincronizacion. | - |
 | DC16 | BASELINE | Formalizar en la baseline las funcionalidades aprobadas e implementadas durante UAT | - | - | business/decisions/decision-log-v1.4.yaml | - | Implementado: ver uat_items | - |
 
 ## Incorporaciones de UAT (DC16)

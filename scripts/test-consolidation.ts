@@ -16,7 +16,14 @@ import Ajv from "ajv";
 import type { FeatureModel } from "./lib/feature-model";
 import { loadYaml, type BusinessRule, type ProcessModel } from "./lib/process-model";
 import { isProcessEdgeStep, type Scenario, type ScenarioModel } from "./lib/scenario-model";
-import { danglingOpenItemIds, validateDecisionLog, LOG_FILE, type DecisionLog } from "./validate-decisions";
+import {
+  danglingOpenItemIds,
+  loadImplementation,
+  validateDecisionLog,
+  IMPLEMENTATION_FILE,
+  LOG_FILE,
+  type DecisionLog,
+} from "./validate-decisions";
 import { validateProcessIntegrity, type Report } from "./validate-references";
 
 const PROCESS_FILE = "business/processes/repair-management-v1.4.yaml";
@@ -444,6 +451,7 @@ check("registro de decisiones: es consistente y el validador detecta referencias
 console.log("\nCorreccion final previa a DC01 - B1 a B4 de la auditoria focalizada y M2, M5, M7, M8, M9\n");
 
 const decisionLog = loadYaml<DecisionLog>(LOG_FILE);
+const implementation = loadImplementation();
 const openItem = (id: string) => {
   const found = decisionLog.open_items.find((o) => o.id === id);
   assert.ok(found, `existe ${id}`);
@@ -561,18 +569,20 @@ check("M2, M5, M8 y M9: check-in registrado como no realizado, casos de liberaci
 });
 
 check("M7: cada incorporacion CONFIRMADA cita commits de rt-rma-mvp; CONFIRMADO no es aceptacion UAT formal", () => {
-  assert.equal(decisionLog.consolidation.formal_uat_acceptance?.status, "PENDIENTE");
+  assert.equal(implementation.formal_uat_acceptance?.status, "PENDIENTE");
+  const commits = new Map(implementation.uat_items.map((u) => [u.id, u.implemented_in]));
   for (const u of decisionLog.uat_items.filter((x) => x.status === "CONFIRMADO")) {
-    assert.ok((u.implemented_in ?? []).length > 0, `${u.id} cita su implementacion`);
+    assert.ok((commits.get(u.id) ?? []).length > 0, `${u.id} cita su implementacion`);
   }
   assert.match(readFileSync("docs/consolidation/matriz-trazabilidad-v1.4.md", "utf8"), /CONFIRMADO significa decision de negocio confirmada por el responsable funcional; no es aceptacion UAT formal/);
   const broken = structuredClone(decisionLog);
-  delete broken.uat_items[0].implemented_in;
-  broken.uat_items[1].implemented_in = ["3b31d35"];
   broken.uat_items[2].confirmed_by = ["DC99"];
-  delete broken.consolidation.formal_uat_acceptance;
-  const errors = validateDecisionLog(broken);
-  for (const fragment of ["CONFIRMADO sin commit de rt-rma-mvp", "no es rt-rma-mvp@<commit>", "confirmed_by cita una decision inexistente DC99", "falta formal_uat_acceptance"]) {
+  const brokenImplementation = structuredClone(implementation);
+  brokenImplementation.uat_items = brokenImplementation.uat_items.filter((u) => u.id !== "UAT-I01");
+  brokenImplementation.uat_items[0].implemented_in = ["3b31d35"];
+  delete brokenImplementation.formal_uat_acceptance;
+  const errors = validateDecisionLog(broken, undefined, brokenImplementation);
+  for (const fragment of ["UAT-I01: CONFIRMADO sin commit de rt-rma-mvp", "no es rt-rma-mvp@<commit>", "confirmed_by cita una decision inexistente DC99", "falta formal_uat_acceptance"]) {
     assert.ok(errors.some((e) => e.includes(fragment)), fragment);
   }
 });
@@ -637,7 +647,7 @@ check("ABI-01 y ABI-02 cerrados por DC01; ABI-37 separado como bloqueante de imp
 check("la aprobacion no aprueba la UAT: UAT-I18 sigue PENDIENTE, UAT-I19 NO_FUNCIONAL y la aceptacion formal PENDIENTE", () => {
   assert.equal(uatItem("UAT-I18").status, "PENDIENTE");
   assert.equal(uatItem("UAT-I19").status, "NO_FUNCIONAL");
-  assert.equal(decisionLog.consolidation.formal_uat_acceptance?.status, "PENDIENTE");
+  assert.equal(implementation.formal_uat_acceptance?.status, "PENDIENTE");
   assert.match(flat(decisionLog.consolidation.approval?.scope), /No aprueba los casos de UAT pendientes ni la aceptacion UAT formal/);
 });
 
@@ -662,6 +672,34 @@ check("el validador rechaza una baseline VIGENTE incompleta, un pendiente cerrad
   const candidate = structuredClone(decisionLog);
   candidate.consolidation.status = "CANDIDATA";
   assert.ok(validateDecisionLog(candidate).some((e) => e.includes("DC01: APROBADA en una consolidacion CANDIDATA")));
+});
+
+console.log("\nEstado de implementacion fuera de la copia funcional y DC02 implementada\n");
+
+check("el estado de implementacion vive fuera de business/: el registro no lo contiene y cada decision tiene una entrada", () => {
+  assert.ok(!IMPLEMENTATION_FILE.startsWith("business/"), "no se exporta con la copia funcional (DC02)");
+  assert.ok(!("formal_uat_acceptance" in decisionLog.consolidation));
+  for (const d of decisionLog.decisions) assert.ok(!("implementation" in d), `${d.id} sin implementation en el registro`);
+  for (const u of decisionLog.uat_items) assert.ok(!("implemented_in" in u), `${u.id} sin implemented_in en el registro`);
+  assert.deepEqual(implementation.decisions.map((e) => e.id), decisionLog.decisions.map((d) => d.id));
+  assert.equal(implementation.baseline.commit, "e99b28386695df537aabd02d7068c0102de09eae");
+  assert.equal(implementation.baseline.tag, decisionLog.consolidation.approval?.tag);
+  const reintroduced = structuredClone(decisionLog) as DecisionLog & { decisions: Record<string, unknown>[] };
+  reintroduced.decisions[0].implementation = { status: "PARCIAL" };
+  const missing = structuredClone(implementation);
+  missing.decisions = missing.decisions.filter((e) => e.id !== "DC04");
+  const errors = validateDecisionLog(reintroduced, undefined, missing);
+  for (const fragment of [`DC03: implementation vive en ${IMPLEMENTATION_FILE}`, "falta el estado de implementacion de DC04"]) {
+    assert.ok(errors.some((e) => e.includes(fragment)), fragment);
+  }
+});
+
+check("DC02 implementada en rt-rma-mvp mvp-v2 (fe560dd); la etiqueta v1.4-baseline no cambia", () => {
+  const dc02 = implementation.decisions.find((e) => e.id === "DC02");
+  assert.equal(dc02?.status, "IMPLEMENTADO");
+  assert.match(dc02?.evidence ?? "", /rt-rma-mvp mvp-v2 fe560dd/);
+  assert.match(dc02?.evidence ?? "", /FUNCTIONAL_SOURCE\.json/);
+  assert.match(readFileSync("docs/consolidation/sincronizacion-dc02.md", "utf8"), /mvp-v2.*fe560dd/);
 });
 
 if (failures > 0) {

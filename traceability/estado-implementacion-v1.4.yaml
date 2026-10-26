@@ -1,0 +1,244 @@
+# Estado de implementacion en el producto de la baseline V1.4 de PROC-REP.
+#
+# Vive FUERA de business/: no forma parte de la copia funcional que se exporta a
+# rt-rma-mvp (DC02), de modo que actualizarlo no exige resincronizar el producto.
+# Las decisiones, reglas y pendientes siguen en
+# business/decisions/decision-log-v1.4.yaml; lo valida
+# scripts/validate-decisions.ts junto con ese registro.
+#
+#   decisions       una entrada por decision del registro. status: IMPLEMENTADO,
+#                   PARCIAL, NO_IMPLEMENTADO, CONTRARIO (el codigo hace lo
+#                   opuesto) o NO_APLICA (decision de plan o de gobierno).
+#                   IMPLEMENTADO, PARCIAL y CONTRARIO llevan evidencia. Las rutas
+#                   de evidencia son relativas a app/backend/app salvo que digan
+#                   otra cosa.
+#   uat_items       commits de rt-rma-mvp que implementaron cada incorporacion de
+#                   UAT: prueban la implementacion, no la aprobacion. Las fechas
+#                   de los commits son locales (-03:00).
+#   formal_uat_acceptance  aceptacion UAT formal en el producto. CONFIRMADO en las
+#                   incorporaciones de UAT del registro no equivale a ella.
+#
+# product.evaluated_commit es el codigo contra el que se evaluaron las
+# decisiones; una entrada que se evaluo despues lo dice en su evidencia.
+
+baseline:
+  tag: v1.4-baseline
+  commit: e99b28386695df537aabd02d7068c0102de09eae
+  decision_log: business/decisions/decision-log-v1.4.yaml
+product:
+  repository: rt-rma-mvp
+  branch: mvp-v2
+  evaluated_commit: f270a84
+  updated_on: 2026-10-26
+formal_uat_acceptance:
+  status: PENDIENTE
+  evidence: 'rt-rma-mvp traceability/IMPLEMENTATION.md, seccion "UAT: ninguno aprobado": 0 de 16 UAT-REP-XXX aprobados'
+decisions:
+  - id: DC03
+    status: PARCIAL
+    evidence: services/ordenes.py:74 (ROLES_PRIORIZACION COORD y RECEP), services/ordenes.py:79 (ROLES_ENTREGA ADMIN y RECEP)
+    gap: los roles son constantes; no son configurables desde Administracion.
+  - id: DP-01
+    status: PARCIAL
+    evidence: services/ordenes.py:694 (ROLES_CAMBIO_PRIORIDAD TECNICO, COORDINADOR_RMA, RECEPCION) y observacion "anterior -> nueva" en el historial
+    gap: rol fijo; sin configuracion.
+  - id: DP-02
+    status: PARCIAL
+    evidence: services/tomas.py:373 (ROLES_LIBERACION_AJENA), confirmacion explicita y motivo (409 CONFIRMACION_REQUERIDA), TomaOrden.liberada_por y motivo_liberacion; services/ejecuciones.py:523 (registrar_interrupcion_por_liberacion, solo dentro de la liberacion ajena)
+    gap: rol fijo; sin configuracion.
+  - id: DC04
+    status: IMPLEMENTADO
+    evidence: services/tomas.py:373-476
+    gap: la configuracion del permiso depende de DC08.
+  - id: DC06
+    status: CONTRARIO
+    evidence: services/reparaciones.py:389 y services/redefinicion.py:207 exigen RECEPCION para definir despues de la revision y para redefinir
+    gap: cambiar el actor de 075 y 127 al tecnico (iteracion 1 del plan).
+  - id: DC08
+    status: PARCIAL
+    evidence: roles fijos por constante (por ejemplo services/cancelaciones.py:66 ROLES_CANCELACION RECEP y COORD); domain/models/enums.py:164-176 OrigenCancelacion sin descarte tecnico
+    gap: permisos configurables (hito M) y tipo descarte tecnico.
+  - id: DC05
+    status: IMPLEMENTADO
+    evidence: domain/models/orden_reparacion.py:166 (puntaje_total calculado)
+  - id: DC17
+    status: IMPLEMENTADO
+    evidence: domain/models/enums.py:70-96 (estados del Detalle), services/ejecuciones.py:168 (EN_REPARACION al iniciar)
+  - id: DC18
+    status: PARCIAL
+    evidence: domain/models/enums.py:303-327 (EstadoCustodia calculado con seis valores, que se corresponden con las cuatro situaciones mas SIN_REGISTRO para Ordenes anteriores)
+    gap: unificar el modelo y registrar cada evento con responsable.
+  - id: DC18B
+    status: NO_IMPLEMENTADO
+    evidence: services/custodia.py:68 (ROLES_RECEPCION_EQUIPO fijo)
+  - id: DC21
+    status: NO_APLICA
+    evidence: plan de consolidacion del 23/10/2026, iteracion 1 (etapas 1a y 1b)
+  - id: DC19
+    status: NO_IMPLEMENTADO
+    evidence: domain/models/personas.py (Cliente sin clasificacion)
+  - id: DC20
+    status: PARCIAL
+    evidence: domain/models/equipos.py:10-63 (tp_id separado del identificador fisico; el Equipo se copia en cada Orden con un identificador nuevo)
+    gap: entidad Equipo con historia propia, busqueda y confirmacion de reutilizacion.
+  - id: DC15A
+    status: PARCIAL
+    evidence: domain/garantia.py:15-18 (90/30 fijo, maximo de ajuste 730 dias); garantia sugerida y definitiva por Detalle
+    gap: politica configurable y precedencias.
+  - id: DC15B
+    status: NO_IMPLEMENTADO
+    evidence: services/ordenes.py:400-401 (la garantia RMA no valida vigencia)
+  - id: DC14
+    status: IMPLEMENTADO
+    evidence: integraciones/personas.py (FuentePersonas sin fuente habilitada), carga manual siempre disponible
+  - id: DC12
+    status: NO_IMPLEMENTADO
+    evidence: no existe checklist en el producto
+  - id: DC23
+    status: NO_IMPLEMENTADO
+    evidence: catalogos en archivos JSON sin administracion
+  - id: DC23AUD
+    status: PARCIAL
+    evidence: snapshots en Detalles y documentos protegen lo historico; el catalogo guarda solo el precio vigente
+    gap: auditoria e historial de precios.
+  - id: GLO-01
+    status: PARCIAL
+    evidence: una sola entidad; la interfaz dice "Estacion de trabajo"
+    gap: texto visible "Mesa de trabajo".
+  - id: DC09
+    status: PARCIAL
+    evidence: services/descuentos.py:54-123 (un descuento por Orden, porcentaje o importe, RECEP o ADMIN; sin cortesia ni ajuste por Detalle)
+  - id: DC10
+    status: PARCIAL
+    evidence: services/pagos.py:386-416 (ADMIN, motivo obligatorio, registro en el historial, el Pago se conserva)
+    gap: la delegacion configurable depende de DC08.
+  - id: DC11
+    status: CONTRARIO
+    evidence: services/descuentos.py:112 (rechaza un total por debajo de lo ya cobrado)
+    gap: admitir el saldo a favor por cortesia total y exigir la devolucion.
+  - id: DC12C
+    status: IMPLEMENTADO
+    evidence: services/pagos.py:79-84 y 491 (ROLES_DEVOLUCION_DINERO ADMIN y RECEP), domain/models/pagos.py:68-83
+  - id: DC13
+    status: IMPLEMENTADO
+    evidence: services/documentos.py:911-952 (versiones, motivo y "reemplaza a")
+  - id: DC26
+    status: NO_IMPLEMENTADO
+    evidence: los documentos no tienen firma ni identificacion digital
+  - id: DC24
+    status: NO_IMPLEMENTADO
+    evidence: no existe modulo de Compras
+  - id: DC24LOT
+    status: NO_IMPLEMENTADO
+    evidence: movimientos sin lote
+  - id: DC25
+    status: PARCIAL
+    evidence: app/frontend/src/features/ordenes-reparacion/whatsapp.ts (comparte sin plantillas ni historial)
+  - id: DC30
+    status: NO_IMPLEMENTADO
+    evidence: no existe registro de consentimiento
+  - id: DC29
+    status: NO_APLICA
+    evidence: historial de la Orden existente
+  - id: DC27A
+    status: NO_IMPLEMENTADO
+    evidence: domain/models/personas.py:45-51 (Usuario.rol unico)
+  - id: DC27B
+    status: NO_IMPLEMENTADO
+    evidence: las consultas GET no estan protegidas
+  - id: DC27C
+    status: NO_IMPLEMENTADO
+    evidence: sin autenticacion en el MVP
+  - id: DC28
+    status: NO_APLICA
+    evidence: plan de consolidacion del 23/10/2026
+  - id: DC07A
+    status: IMPLEMENTADO
+    evidence: services/cancelaciones.py:96-108 y 181 (bloquea solo el Detalle en ejecucion)
+  - id: DC07B
+    status: PARCIAL
+    evidence: exige interrumpir y registra insumos y motivo; no registra estado del trabajo ni reversibilidad
+  - id: DC07C
+    status: PARCIAL
+    evidence: services/decision_cliente.py:337-376 (analisis previo que senala lo que bloquea; sin circuito guiado)
+  - id: DC07D
+    status: IMPLEMENTADO
+    evidence: services/cancelaciones.py (solo cancela Detalles no terminales)
+  - id: DC07
+    status: CONTRARIO
+    evidence: la decision del cliente cancela en el mismo acto (services/decision_cliente.py)
+  - id: DC01
+    status: NO_APLICA
+    evidence: rama consolidacion/v1.4 de rt-rma-app, etiqueta v1.4-baseline
+  - id: DC02
+    status: IMPLEMENTADO
+    evidence: "rt-rma-mvp mvp-v2 fe560dd (24/10/2026, publicado el 26/10/2026): business/ es la copia generada de rt-rma-app e99b283 (v1.4-baseline) con business/FUNCTIONAL_SOURCE.json; npm run verify:functional-copy corre en validate:all y la copia verifica contra el clon publico de rt-rma-app"
+    gap: La copia del MVP conserva el registro de e99b283, donde DC02 figura NO_IMPLEMENTADO, hasta la proxima resincronizacion.
+  - id: DC16
+    status: IMPLEMENTADO
+    evidence: ver uat_items
+uat_items:
+  - id: UAT-I01
+    implemented_in:
+      - rt-rma-mvp@884bf3e
+      - rt-rma-mvp@547e64c
+  - id: UAT-I02
+    implemented_in:
+      - rt-rma-mvp@3b31d35
+  - id: UAT-I03
+    implemented_in:
+      - rt-rma-mvp@3b31d35
+  - id: UAT-I04
+    implemented_in:
+      - rt-rma-mvp@f270a84
+  - id: UAT-I05
+    implemented_in:
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I06
+    implemented_in:
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I07
+    implemented_in:
+      - rt-rma-mvp@86155fe
+      - rt-rma-mvp@25551ab
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I08
+    implemented_in:
+      - rt-rma-mvp@685b14c
+  - id: UAT-I09
+    implemented_in:
+      - rt-rma-mvp@25551ab
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I10
+    implemented_in:
+      - rt-rma-mvp@25551ab
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I11
+    implemented_in:
+      - rt-rma-mvp@3b31d35
+  - id: UAT-I12
+    implemented_in:
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I13
+    implemented_in:
+      - rt-rma-mvp@884bf3e
+  - id: UAT-I14
+    implemented_in:
+      - rt-rma-mvp@25551ab
+  - id: UAT-I15
+    implemented_in:
+      - rt-rma-mvp@685b14c
+  - id: UAT-I16
+    implemented_in:
+      - rt-rma-mvp@25551ab
+  - id: UAT-I17
+    implemented_in:
+      - rt-rma-mvp@8c0d072
+  - id: UAT-I18
+    implemented_in:
+      - rt-rma-mvp@2c5e0de
+  - id: UAT-I19
+    implemented_in:
+      - rt-rma-mvp@ce475fa
+      - rt-rma-mvp@86155fe
+      - rt-rma-mvp@3e718ff
