@@ -7,7 +7,7 @@ Estado: **VIGENTE** (CONS-V1.4, decisiones del 2026-10-23, punto de partida `v1.
 
 Aprobacion: DC01, el 2026-10-24, por Ismael Darruiz, responsable de producto, sobre el commit `b6cc3a53587376213cb3bbdaea66e13b5488e5c3` (etiqueta `v1.4-baseline`).
 
-Decisiones: 43. Implementacion en el producto: Implementado 9, Parcial 14, No implementado 13, Contrario (el codigo hace lo opuesto) 3, No aplica 4.
+Decisiones: 44. Implementacion en el producto: Implementado 10, Parcial 14, No implementado 13, Contrario (el codigo hace lo opuesto) 3, No aplica 4.
 Incorporaciones de UAT (DC16): 19. Pendientes registrados: 37 (35 abiertos, 2 cerrados). Mejoras posteriores: 4.
 
 En las incorporaciones de UAT, CONFIRMADO significa decision de negocio confirmada por el responsable funcional; no es aceptacion UAT formal.
@@ -58,6 +58,7 @@ La evidencia de aprobacion son pedidos y decisiones del responsable funcional, n
 | DC07C | DC07 | Desistimiento total como proceso guiado de interrupcion y desistimiento | BR-REP-030, BR-REP-014 | FEAT-REP-002, FEAT-REP-009 | PROC-REP-047, PROC-REP-211, PROC-REP-305 | VAR-REP-043 | Parcial: services/decision_cliente.py:337-376 (analisis previo que senala lo que bloquea; sin circuito guiado) | - |
 | DC07D | DC07 | Un Detalle COMPLETO nunca se cancela retroactivamente; se resuelve con ajustes o devoluciones | BR-REP-014 | FEAT-REP-009 | PROC-REP-200, PROC-REP-305 | VAR-REP-009 | Implementado: services/cancelaciones.py (solo cancela Detalles no terminales) | - |
 | DC07 | DC07 | Solicitud de desistimiento y cancelacion efectiva registradas por separado, con usuario y fecha | BR-REP-030 | FEAT-REP-002, FEAT-REP-009 | PROC-REP-211 | VAR-REP-042, VAR-REP-043 | Contrario (el codigo hace lo opuesto): la decision del cliente cancela en el mismo acto (services/decision_cliente.py) | - |
+| DC31 | DC07 | Cancelar Detalles no cancela la Orden; la cancelacion de la Orden es explicita y terminal, con custodia, devolucion y saldo resueltos antes | BR-REP-014, BR-REP-027, BR-REP-030, BR-REP-033 | FEAT-REP-002, FEAT-REP-009 | PROC-REP-211, PROC-REP-305, PROC-REP-306, PROC-REP-307, PROC-REP-308, PROC-REP-270, PROC-REP-271, PROC-REP-267 | VAR-REP-004, VAR-REP-006, VAR-REP-007, VAR-REP-015, VAR-REP-018, VAR-REP-032, VAR-REP-033, VAR-REP-043 | Implementado: rt-rma-mvp feat/postgresql-esquema (services/cancelaciones.py, services/ordenes.py evaluar_situacion_orden, application/situacion.py SIN_TRABAJOS_VIGENTES, application/acciones.py y bandejas.py; migracion 20261110000100_dc31_cancelacion.sql) | - |
 | DC01 | BASELINE | Baseline V1.4 consolidada, aprobada como baseline funcional vigente | - | - | docs/consolidation/README.md | - | No aplica: rama consolidacion/v1.4 de rt-rma-app, etiqueta v1.4-baseline | - |
 | DC02 | BASELINE | rt-rma-app es la fuente unica; rt-rma-mvp/business es una copia generada con el commit de origen y verificacion automatica | - | - | docs/consolidation/sincronizacion-dc02.md | - | No implementado: mecanismo preparado en rt-rma-app (scripts/export-functional-copy.ts y scripts/verify-functional-copy.mjs); rt-rma-mvp no se modifico | - |
 | DC16 | BASELINE | Formalizar en la baseline las funcionalidades aprobadas e implementadas durante UAT | - | - | business/decisions/decision-log-v1.4.yaml | - | Implementado: ver uat_items | - |

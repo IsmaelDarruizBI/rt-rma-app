@@ -382,7 +382,8 @@ check("DC07C: desistimiento total guiado; las Ejecuciones se resuelven antes del
   assert.match(rule("BR-REP-030"), /no se cierra la Orden con Ejecuciones sin resolver/);
   assert.ok(out("PROC-REP-211").includes("Desistimiento total solicitado, sin Ejecucion activa->PROC-REP-305"));
   const s = scenario("VAR-REP-043");
-  assert.deepEqual(orderOf(s).slice(-6), ["PROC-REP-211", "PROC-REP-305", "PROC-REP-211", "PROC-REP-270", "PROC-REP-268", "EVT-REP-999"]);
+  // DC31: tras el desistimiento total la Orden queda sin trabajos vigentes; devolucion y cancelacion explicita
+  assert.deepEqual(orderOf(s).slice(-9), ["PROC-REP-211", "PROC-REP-305", "PROC-REP-211", "PROC-REP-307", "PROC-REP-270", "PROC-REP-307", "PROC-REP-308", "PROC-REP-268", "EVT-REP-999"]);
   assert.equal(expectedOf(s, "executions_resolved_before_closure"), true);
 });
 
@@ -511,8 +512,9 @@ check("B3: garantia vencida con tres pendientes vinculados a 036, EVT-REP-998 y 
   // el grafo no cambia: 036 conserva sus tres salidas y EVT-REP-998 sigue siendo un fin sin salidas
   assert.deepEqual(out("PROC-REP-036"), ["Vencida, excepcion autorizada->PROC-REP-040", "Vencida, sin excepcion->EVT-REP-998", "Vigente->PROC-REP-040"]);
   assert.deepEqual(out("EVT-REP-998"), []);
-  assert.equal(model.nodes.length, 76);
-  assert.equal(model.edges.length, 142);
+  // DC31 agrega 307 y 308 y reemplaza las salidas de cancelacion (no toca 036 ni EVT-REP-998)
+  assert.equal(model.nodes.length, 78);
+  assert.equal(model.edges.length, 145);
   const t036 = nodeText("PROC-REP-036");
   assert.match(t036, /Siguen pendientes de decision, sin transiciones ni estados nuevos/);
   for (const fragment of [/garantia parcialmente vigente/, /reparacion paga que conserve la relacion con el reclamo rechazado/, /se audita el intento de reclamo rechazado/]) assert.match(t036, fragment);

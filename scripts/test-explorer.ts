@@ -115,7 +115,8 @@ check("la OR sin Detalles espera el diagnostico de RT sin consultar por Detalle:
   for (const n of ["PROC-REP-046", "PROC-REP-047", "PROC-REP-211", "PROC-REP-090", "PROC-REP-129"]) assert.ok(!nodesOf(run(actions)).includes(n), `sin Detalles no se llega a ${n}`);
   // el desistimiento propio de esta etapa se conserva y lleva a 306 (custodia, saldo y cierre), no a la autorizacion por Detalle
   const desiste = run(choose(actions, "Desiste sin Detalles"));
-  assert.ok(nodesOf(desiste).includes("PROC-REP-306") && !nodesOf(desiste).includes("PROC-REP-047"));
+  // DC31: desistir sin Detalles deja la Orden abierta sin trabajos vigentes (307); cancelarla es explicito
+  assert.ok(nodesOf(desiste).includes("PROC-REP-307") && !nodesOf(desiste).includes("PROC-REP-047"));
   actions = choose(actions, "Acepta la revision tecnica");
   actions = choose(actions, "Aun en revision");
   t = main(run(actions));
@@ -453,8 +454,9 @@ check("13) los nodos nuevos 267 y 268 aparecen cuando corresponde y todo fin pas
   assert.deepEqual(nodes.slice(nodes.indexOf("PROC-REP-265")), ["PROC-REP-265", "PROC-REP-267", "PROC-REP-265", "PROC-REP-280", "PROC-REP-270", "PROC-REP-268", "EVT-REP-999"]);
   assert.equal(main(blocker.result).status, "ENDED");
   const cancel = driveScenario(scenarios.find((s) => s.id === "VAR-REP-032") as Scenario);
-  assert.deepEqual(nodesOf(cancel.result).slice(-5), ["PROC-REP-270", "PROC-REP-268", "PROC-REP-267", "PROC-REP-268", "EVT-REP-999"]);
-  assert.ok(main(cancel.result).visits.filter((v) => v.node === "PROC-REP-268").length === 2, "268 se visita dos veces (antes y despues de devolver)");
+  // DC31: devolucion fisica y de dinero antes de la cancelacion explicita; 268 se visita una sola vez, al cerrar
+  assert.deepEqual(nodesOf(cancel.result).slice(-7), ["PROC-REP-270", "PROC-REP-307", "PROC-REP-267", "PROC-REP-307", "PROC-REP-308", "PROC-REP-268", "EVT-REP-999"]);
+  assert.ok(main(cancel.result).visits.filter((v) => v.node === "PROC-REP-268").length === 1, "268 se visita una vez, al cerrar");
   // property: every random walk that ends does it through 268, and 267 only appears after 265 or 268
   let ended = 0;
   for (let seed = 1; seed <= 200; seed++) {
@@ -468,7 +470,7 @@ check("13) los nodos nuevos 267 y 268 aparecen cuando corresponde y todo fin pas
         else assert.equal(ns[ns.length - 2], "PROC-REP-268", `semilla ${seed}: el fin no pasa por 268`);
       }
       ns.forEach((n, i) => {
-        if (n === "PROC-REP-267") assert.ok(["PROC-REP-265", "PROC-REP-268"].includes(ns[i - 1]), `semilla ${seed}: 267 tras ${ns[i - 1]}`);
+        if (n === "PROC-REP-267") assert.ok(["PROC-REP-265", "PROC-REP-268", "PROC-REP-307"].includes(ns[i - 1]), `semilla ${seed}: 267 tras ${ns[i - 1]}`);
       });
     }
   }
@@ -521,7 +523,7 @@ check("el payload contiene toda la informacion real del nodo (actor, reglas, fea
   assert.ok(data.nodes["PROC-REP-265"].scenarios.includes("VAR-REP-030"));
   assert.ok(data.edges[edgeKey("PROC-REP-265", "No, saldo a favor del cliente", "PROC-REP-267")].scenarios.includes("VAR-REP-031"));
   // variant triggers are exactly the trigger edges declared by the Scenarios
-  const trig = data.edges[edgeKey("PROC-REP-268", "Saldo a favor del cliente pendiente de devolver", "PROC-REP-267")];
+  const trig = data.edges[edgeKey("PROC-REP-307", "Saldo a favor del cliente", "PROC-REP-267")];
   assert.ok(trig.variantTriggers.includes("VAR-REP-032"));
 });
 

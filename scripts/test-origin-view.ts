@@ -155,7 +155,7 @@ check("decision del cliente simplificada (iteracion 10): 047 muestra solo tres d
   assert.ok(keptIds.has("PROC-REP-056"));
   assert.ok(hasEdge("PROC-REP-055", "CLIENTE_EXTERNO", "PROC-REP-056"));
   assert.ok(hasEdge("PROC-REP-056", "Acepta la revision tecnica", "PROC-REP-050"));
-  assert.ok(hasEdge("PROC-REP-056", "Desiste sin Detalles", "PROC-REP-306"));
+  assert.ok(hasEdge("PROC-REP-056", "Desiste sin Detalles", "PROC-REP-307"));
   assert.ok(!view.model.edges.some((e) => e.from === "PROC-REP-055" && e.to === "PROC-REP-046"), "055 ya no consulta por Detalle");
   assert.ok(hasEdge("PROC-REP-046", "Decision del cliente registrada", "PROC-REP-047"));
   // las condiciones internas las enruta el resolver, que ya estaba en la vista
@@ -164,13 +164,14 @@ check("decision del cliente simplificada (iteracion 10): 047 muestra solo tres d
   assert.ok(!view.report.excludedScenarios.some((x) => ["VAR-REP-001", "VAR-REP-004", "VAR-REP-027", "VAR-REP-036"].includes(x.id)), "los Scenarios de la decision del cliente son de Cliente Externo y se conservan");
 });
 
-check("custodia, cancelacion y devolucion presentes: 060, 211/306 -> 270/271/fin, 300, 305, 306", () => {
-  for (const id of ["PROC-REP-060", "PROC-REP-270", "PROC-REP-271", "PROC-REP-300", "PROC-REP-305", "PROC-REP-306"]) assert.ok(keptIds.has(id), id);
-  assert.ok(hasEdge("PROC-REP-211", "Todos cancelados, equipo bajo custodia", "PROC-REP-270"));
-  assert.ok(hasEdge("PROC-REP-211", "Todos cancelados, custodia sin confirmar", "PROC-REP-271"));
-  assert.ok(hasEdge("PROC-REP-211", "Todos cancelados, sin equipo bajo custodia", "PROC-REP-268"));
-  assert.ok(hasEdge("PROC-REP-306", "Custodia sin confirmar", "PROC-REP-271"));
-  assert.ok(hasEdge("PROC-REP-271", "Equipo bajo custodia", "PROC-REP-270"));
+check("custodia, cancelacion y devolucion presentes (DC31): 060, 211 -> 307 -> 270/271/267 -> 307 -> 306/308, 300, 305", () => {
+  for (const id of ["PROC-REP-060", "PROC-REP-270", "PROC-REP-271", "PROC-REP-300", "PROC-REP-305", "PROC-REP-306", "PROC-REP-307", "PROC-REP-308"]) assert.ok(keptIds.has(id), id);
+  assert.ok(hasEdge("PROC-REP-211", "Todos cancelados, sin trabajos vigentes", "PROC-REP-307"));
+  assert.ok(hasEdge("PROC-REP-307", "Custodia sin confirmar", "PROC-REP-271"));
+  assert.ok(hasEdge("PROC-REP-307", "Equipo bajo custodia, devolucion sin reparar", "PROC-REP-270"));
+  assert.ok(hasEdge("PROC-REP-307", "Cancelar Orden, con Detalles cancelados", "PROC-REP-308"));
+  assert.ok(hasEdge("PROC-REP-307", "Cancelar Orden, sin Detalles", "PROC-REP-306"));
+  assert.ok(hasEdge("PROC-REP-271", "Custodia resuelta, Orden sin trabajos vigentes", "PROC-REP-307"));
 });
 
 check("saldo a favor y devolucion de dinero (AUD-V14-001) presentes en la vista: 265 -> 267, 267 -> 265/268, 268 -> 267/fin, y todo fin pasa por 268", () => {
@@ -181,12 +182,12 @@ check("saldo a favor y devolucion de dinero (AUD-V14-001) presentes en la vista:
   assert.ok(hasEdge("PROC-REP-267", "Devolucion registrada, validar fin de Orden", "PROC-REP-268"));
   assert.ok(hasEdge("PROC-REP-268", "Saldo a favor del cliente pendiente de devolver", "PROC-REP-267"));
   assert.ok(hasEdge("PROC-REP-268", "Sin saldo a favor pendiente", "EVT-REP-999"));
-  for (const from of ["PROC-REP-270", "PROC-REP-306", "PROC-REP-271"]) {
+  for (const from of ["PROC-REP-270", "PROC-REP-306", "PROC-REP-308"]) {
     assert.ok(view.model.edges.some((e) => e.from === from && e.to === "PROC-REP-268"), `${from} -> 268 en la vista`);
   }
   assert.deepEqual(view.model.edges.filter((e) => e.to === "EVT-REP-999").map((e) => e.from), ["PROC-REP-268"], "el unico acceso al fin es 268");
   // las aristas nuevas existen en el modelo completo (la vista no inventa nada) y las recorre un Scenario de Cliente Externo
-  for (const [f, c, t] of [["PROC-REP-265", "No, saldo a favor del cliente", "PROC-REP-267"], ["PROC-REP-268", "Saldo a favor del cliente pendiente de devolver", "PROC-REP-267"]] as const) {
+  for (const [f, c, t] of [["PROC-REP-265", "No, saldo a favor del cliente", "PROC-REP-267"], ["PROC-REP-307", "Saldo a favor del cliente", "PROC-REP-267"]] as const) {
     assert.ok(fullKeys.has(edgeKey(f, c, t)));
     assert.ok(scenarios.some((s) => s.steps.some((st) => st.kind === "PROCESS_EDGE" && st.from === f && st.to === t && st.condition === c)), `${f} -> ${t} lo recorre un Scenario`);
   }

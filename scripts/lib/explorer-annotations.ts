@@ -113,7 +113,9 @@ export const NODE_KINDS: Record<string, NodeKindNote> = {
   "PROC-REP-268": T("SISTEMA", "DOCUMENTADA", "Verificacion del sistema previa al fin: hay o no saldo a favor pendiente de devolver (BR-REP-038)."),
   "PROC-REP-271": T("HUMANA", "DOCUMENTADA", "Recepcion determina que ocurrio con la custodia y lo registra (BR-REP-033)."),
   "PROC-REP-300": T("HUMANA", "INFERIDA", "Cancelacion de un Detalle; la salida depende del contexto (durante la evaluacion tecnica o fuera de ella)."),
-  "PROC-REP-306": T("DERIVADA", "DOCUMENTADA", "La salida se deriva del estado de la custodia del equipo segun el comprobante de recepcion (BR-REP-033)."),
+  "PROC-REP-306": T("DERIVADA", "DOCUMENTADA", "DC31: cancelacion explicita y terminal sin Detalles; la custodia y el dinero ya se resolvieron en PROC-REP-307, asi que solo sigue a la verificacion de saldo."),
+  "PROC-REP-270": T("DERIVADA", "DOCUMENTADA", "DC31: la salida depende del contexto de entrada (devolucion sin reparar de una Orden abierta sin trabajos vigentes, o entrega)."),
+  "PROC-REP-307": T("HUMANA", "DOCUMENTADA", "DC31: Recepcion resuelve lo pendiente de la Orden sin trabajos vigentes (custodia, devolucion fisica o dinero) o la cancela de forma explicita."),
 };
 
 export const NODE_SCOPES: Record<string, NodeScopeNote> = {
@@ -183,6 +185,15 @@ export const CONTEXT_EXITS: ContextExitNote[] = [
     entries: [
       { from: ["PROC-REP-265"], allow: ["Devolucion registrada, validar entrega"] },
       { from: ["PROC-REP-268"], allow: ["Devolucion registrada, validar fin de Orden"] },
+      { from: ["PROC-REP-307"], allow: ["Devolucion registrada, Orden sin trabajos vigentes"] },
+    ],
+  },
+  {
+    node: "PROC-REP-270",
+    basis: "PROC-REP-270 (DC31): la devolucion sin reparar de una Orden abierta sin trabajos vigentes vuelve a PROC-REP-307; la entrega y las Ordenes ya CANCELADA siguen a la verificacion de saldo.",
+    entries: [
+      { from: ["PROC-REP-307"], allow: ["Devolucion sin reparar, Orden sin trabajos vigentes"] },
+      { from: ["PROC-REP-280", "PROC-REP-290"], allow: [""] },
     ],
   },
 ];
