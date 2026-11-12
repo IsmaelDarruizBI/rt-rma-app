@@ -160,9 +160,10 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Impacto | IDs |
 |---|---|
 | Bloquean la aprobación | Ninguno abierto. ABI-01 (aprobación final) y ABI-02 (revisión de las elecciones de modelado) se cerraron con DC01 |
-| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 04 quién autoriza la excepción de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permisos por tipo de Ajuste Comercial · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 18 reversibilidad · 31 consentimiento: cómo se obtiene · 32 corrección del check-in y comprobante final · 33 garantía parcialmente vigente · 34 continuación como reparación paga · 35 registro del reclamo rechazado · 37 criterio de garantía aplicable del check-in |
+| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permiso inicial del DESCUENTO · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 31 consentimiento: cómo se obtiene · 32 corrección del check-in y comprobante final · 34 continuación como reparación paga · 35 registro del reclamo rechazado · 37 criterio de garantía aplicable del check-in |
 | Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 22 tipos de movimiento · 24 DNI duplicados históricos |
-| Posteriores | ABI-07, 08, 11, 14, 15, 17, 19 a 21, 23, 25 a 30, 36 (motivo de la interrupción en una liberación ajena) |
+| Posteriores | ABI-07, 08, 11, 14, 15, 17, 19 a 21, 23, 25, 27 a 30, 36 (motivo de la interrupción en una liberación ajena) |
+| Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1 (sección H) |
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -221,6 +222,21 @@ La aprobación **no** aprueba:
 - los casos de UAT pendientes: UAT-I18 sigue PENDIENTE y UAT-I19 NO_FUNCIONAL;
 - la aceptación UAT formal, que sigue PENDIENTE;
 - ninguno de los pendientes abiertos, ABI-03 a 37.
+
+## H. Decisiones posteriores a la baseline
+
+Se agregan al registro sin cambiar la aprobación de DC01. Cada una cita sus reglas, nodos, Features y Scenarios, y la matriz las incluye.
+
+| Decisión | Fecha | Qué decide | Cierra |
+|---|---|---|---|
+| DC31 | 09/11/2026 | Cancelar Detalles no cancela la Orden; la cancelación de la Orden es explícita y terminal | - |
+| DEC-IT1-01 | 11/11/2026 | La excepción de garantía vencida la autorizan Recepción, Coordinación RMA o Administración; el Técnico no | ABI-04 |
+| DEC-IT1-02 | 11/11/2026 | Cortesía total o parcial, con el mismo Ajuste Comercial; la otorgan, modifican o quitan esos tres roles | ABI-26 y la parte de cortesía de ABI-09 |
+| DEC-IT1-03 | 11/11/2026 | La vigencia de la garantía RMA y su excepción son por Detalle reclamado | ABI-33 |
+| DEC-IT1-04 | 11/11/2026 | Al interrumpir para cancelar: reversibilidad Sí o No y descripción obligatoria del estado del trabajo | ABI-18 |
+| DEC-IT1-05 | 11/11/2026 | Solicitud de desistimiento e interrupción con cancelación efectiva, cada una con su responsable | - |
+
+Las DEC-IT1 se aprobaron para cerrar la iteración 1 de `rt-rma-mvp` (rama `feat/iteracion-1-alineacion-v14`).
 
 ## Glosario de entidades, estados y actores
 

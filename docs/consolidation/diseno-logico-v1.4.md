@@ -337,7 +337,7 @@ Además:
 - PoliticaGarantia: por tipo de reparación y resultado del check-in. Las precedencias están pendientes (ABI-03).
 - GarantiaDetalle: política aplicada, sugerido, definitivo, ajustes con motivo y vencimiento desde la entrega.
 - Checkin: realizado o no realizado, usuario y fecha/hora. Cada registro es inmodificable. Si se admite corregirlo o registrarlo otra vez antes de la entrega, y cómo afecta al comprobante final, está pendiente (ABI-32); la implementación actual lo permite hasta entregar, como comportamiento técnico sin aprobación funcional.
-- ExcepcionGarantia: Detalle origen, vencimiento, usuario, fecha/hora y motivo.
+- ExcepcionGarantia: de UN Detalle origen vencido (DEC-IT1-03): Detalle origen, vencimiento original, usuario, fecha/hora y motivo. La autorizan Recepción, Coordinación RMA o Administración (DEC-IT1-01).
 - Intento de reclamo rechazado: si se persiste, qué registra y quién lo consulta, pendiente (ABI-35).
 
 **Relaciones.**
@@ -345,6 +345,7 @@ Además:
 - Detalle 1 GarantiaDetalle.
 - Orden 0..1 check-in vigente. Un historial de varios registros depende de ABI-32.
 - Orden de garantía, que referencia la Orden origen y los Detalles origen.
+- Detalle origen reclamado 1 evaluación de vigencia, 0..1 ExcepcionGarantia (solo si está vencido).
 
 **Estados.**
 
@@ -366,14 +367,15 @@ Además:
 - Un ajuste manual nunca se pisa.
 - La vigencia corre desde la entrega.
 - Una Orden de CLIENTE_EXTERNO con trabajos realizados y garantía aplicable no se entrega sin check-in. El criterio exacto de garantía aplicable está pendiente (ABI-37); la implementación lo interpreta provisionalmente como «al menos un trabajo realizado», sin que sea una regla aprobada.
-- Una garantía vencida sin excepción no crea la Orden.
-- Quién autoriza la excepción por defecto: pendiente (ABI-04).
-- Pendientes de la garantía vencida, sin transiciones ni estados nuevos: Detalles origen con situaciones distintas (ABI-33), continuación como reparación paga vinculada al reclamo rechazado (ABI-34) y persistencia y auditoría del intento rechazado (ABI-35).
+- La vigencia se evalúa por cada Detalle reclamado, nunca para toda la Orden (DEC-IT1-03).
+- Un Detalle vencido sin excepción no se admite: el pedido que lo incluye no crea la Orden (nunca una Orden con parte de lo pedido) e informa los Detalles elegibles.
+- La excepción aplica solo al Detalle vencido identificado; la autorizan Recepción, Coordinación RMA o Administración, no el Técnico (DEC-IT1-01).
+- Pendientes de la garantía vencida, sin transiciones ni estados nuevos: continuación como reparación paga vinculada al reclamo rechazado (ABI-34) y persistencia y auditoría del intento rechazado (ABI-35).
 
 **Transacciones.**
 
 - Registrar el check-in: el registro y la reasignación de la garantía de cada Detalle, en una transacción.
-- Crear una Orden de garantía: la validación de vigencia, la excepción si la hay y la Orden nueva, en una transacción.
+- Crear una Orden de garantía: la validación de vigencia de cada Detalle, sus excepciones y la Orden nueva, en una transacción. Un rechazo no deja nada.
 
 ## 9. Ingreso inicial simplificado y documentos (UAT-008, DC13, DC26)
 
@@ -452,12 +454,14 @@ Además:
 - Ningún precio original cambia.
 - Un Pago nunca se borra.
 - Una devolución no es un Pago negativo, no supera el saldo a favor y no se computa dos veces por su referencia.
-- Una cortesía total con Pagos previos deja saldo a favor.
+- Un solo Ajuste Comercial vigente por Orden; la CORTESIA puede ser total o parcial (DEC-IT1-02).
+- Una cortesía, total o parcial, que deja el total por debajo de lo cobrado deja saldo a favor.
+- Otorgar, modificar o quitar una cortesía: Recepción, Coordinación RMA o Administración (DEC-IT1-02).
+- Un envío duplicado no registra un segundo ajuste ni una segunda devolución.
 - No hay entrega ni cierre con saldo distinto de 0.
 - Pendientes:
-  - permisos por tipo de ajuste (ABI-09);
+  - permiso inicial del DESCUENTO (ABI-09);
   - DESCUENTO por debajo de lo cobrado (ABI-10);
-  - cortesía parcial (ABI-26);
   - devoluciones no retiradas (ABI-07).
 
 **Transacciones.**
@@ -500,9 +504,9 @@ Además:
 
 **Entidades.**
 
-- SolicitudDesistimiento: alcance (un Detalle o todos), motivo, usuario y fecha/hora.
-- Cancelacion: tipo administrativa, descarte técnico o desistimiento del cliente; Detalle; motivo; usuario y fecha/hora; resolución.
-- RegistroInterrupcion: estado del trabajo, materiales y reversibilidad. Las opciones de reversibilidad están pendientes (ABI-18).
+- SolicitudDesistimiento: alcance (un Detalle o todos), motivo, canal si corresponde, usuario que la registró y fecha/hora.
+- Cancelacion: tipo administrativa, descarte técnico o desistimiento del cliente; Detalle; motivo; usuario y fecha/hora; resolución. La de un Detalle en ejecución lleva como responsable al técnico que interrumpió (DEC-IT1-05).
+- RegistroInterrupcion: técnico, fecha/hora, materiales, reversibilidad Sí o No y descripción obligatoria del estado del trabajo (DEC-IT1-04).
 
 **Relaciones.**
 
@@ -527,7 +531,8 @@ Además:
 - Un COMPLETO nunca se cancela.
 - Cancelar un Detalle libera solo sus recursos.
 - No se cierra la Orden con Ejecuciones o solicitudes sin resolver.
-- La solicitud y la cancelación efectiva son registros distintos.
+- La solicitud y la cancelación efectiva son registros distintos, cada uno con su responsable; la efectiva no se atribuye a Recepción (DEC-IT1-05).
+- Se distinguen el desistimiento de un Detalle, la cancelación efectiva del Detalle y la cancelación de la Orden (DC31).
 
 **Transacciones.**
 

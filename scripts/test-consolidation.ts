@@ -138,7 +138,9 @@ check("DC08 / DC27A / DC27B: permisos configurables, union de roles, consultas y
   assert.match(t, /consulta de Ordenes, Clientes, fotografias, documentos, pagos y reportes/);
   assert.match(t, /cancelacion administrativa \(predeterminado: Recepcion y Coordinacion[^)]*\), descarte tecnico \(Tecnico, PROC-REP-183\) y desistimiento solicitado por el cliente/);
   // lo que sigue abierto se declara como pendiente, sin predeterminado inventado
-  assert.match(t, /Pendientes, sin predeterminado definido: los responsables de cada evento de custodia \(BR-REP-033\) y los permisos iniciales por tipo de Ajuste Comercial/);
+  // DEC-IT1-01/02 fijaron la excepcion de garantia y la cortesia; el DESCUENTO sigue pendiente.
+  assert.match(t, /Pendientes, sin predeterminado definido: los responsables de cada evento de custodia \(BR-REP-033\) y el permiso inicial del DESCUENTO/);
+  assert.match(t, /autorizar la excepcion de garantia vencida de un Detalle origen \(PROC-REP-036\) Recepcion, Coordinacion RMA y Administracion, no el Tecnico/);
   assert.match(t, /Predeterminados provisionales, tomados de la implementacion y a validar/);
 });
 
@@ -274,7 +276,10 @@ check("DC09: un unico Ajuste Comercial (CORTESIA o DESCUENTO) por Orden o por De
   const t = rule("BR-REP-016");
   assert.match(t, /CORTESIA y DESCUENTO se unifican en un unico Ajuste Comercial con tipo \(CORTESIA o DESCUENTO\), aplicable a la Orden o a un Detalle/);
   assert.match(t, /no puede superar el importe al que se aplica/);
-  assert.match(t, /Los permisos iniciales por tipo siguen pendientes de decision/);
+  // DEC-IT1-02: la cortesia tiene permiso decidido y puede ser parcial; el DESCUENTO sigue pendiente.
+  assert.match(t, /la CORTESIA la otorgan, modifican y quitan por defecto Recepcion, Coordinacion RMA y Administracion/);
+  assert.match(t, /el permiso inicial del DESCUENTO sigue pendiente/);
+  assert.match(t, /La CORTESIA puede ser total o parcial/);
   assert.match(t, /como se trata un DESCUENTO que deja el total por debajo de lo ya cobrado/);
   // la condicion comercial por origen no cambia
   assert.match(t, /RMA_GARANTIA_REPARACION \(garantia de una reparacion RMA anterior\) es NO_COBRABLE como consecuencia de su origen/);
@@ -497,8 +502,12 @@ check("B2: la condicion del check-in es la misma en regla, nodos, Feature, Scena
   assert.match(readFileSync(DESIGN, "utf8"), /trabajos realizados y garantía aplicable no se entrega sin check-in/);
 });
 
-check("B3: garantia vencida con tres pendientes vinculados a 036, EVT-REP-998 y FEAT-REP-001, sin transiciones ni estados nuevos", () => {
-  for (const id of ["ABI-33", "ABI-34", "ABI-35"]) {
+check("B3: garantia vencida con dos pendientes vinculados a 036, EVT-REP-998 y FEAT-REP-001, sin transiciones ni estados nuevos; ABI-33 cerrado por DEC-IT1-03", () => {
+  const abi33 = openItem("ABI-33");
+  assert.equal(abi33.status, "CERRADO");
+  assert.equal(abi33.closed_by, "DEC-IT1-03");
+  assert.ok(!decisionLog.decisions.find((d) => d.id === "DC15B")?.open?.includes("ABI-33"));
+  for (const id of ["ABI-34", "ABI-35"]) {
     const abi = openItem(id);
     assert.equal(abi.impact, "BLOQUEA_IMPLEMENTACION", id);
     assert.deepEqual(abi.decisions, ["DC15B"], id);
@@ -517,9 +526,9 @@ check("B3: garantia vencida con tres pendientes vinculados a 036, EVT-REP-998 y 
   assert.equal(model.edges.length, 145);
   const t036 = nodeText("PROC-REP-036");
   assert.match(t036, /Siguen pendientes de decision, sin transiciones ni estados nuevos/);
-  for (const fragment of [/garantia parcialmente vigente/, /reparacion paga que conserve la relacion con el reclamo rechazado/, /se audita el intento de reclamo rechazado/]) assert.match(t036, fragment);
+  for (const fragment of [/Evaluacion por Detalle \(DEC-IT1-03\)/, /reparacion paga que conserve la relacion con el reclamo rechazado/, /se audita el intento de reclamo rechazado/]) assert.match(t036, fragment);
   assert.match(nodeText("EVT-REP-998"), /siguen pendientes de decision: este fin no los resuelve/);
-  assert.ok(feature("FEAT-REP-001").open_questions?.some((q) => /garantia parcialmente vigente/.test(q) && /reclamo rechazado/.test(q)));
+  assert.ok(feature("FEAT-REP-001").open_questions?.some((q) => /DEC-IT1-03/.test(q) && /reclamo rechazado/.test(q)));
   assert.equal(expectedOf(scenario("VAR-REP-038"), "next_route_assumed"), false);
 });
 
@@ -612,7 +621,7 @@ check("DC01 aprobada: baseline VIGENTE sobre b6cc3a5, con fecha, responsable y e
   assert.ok(features.every((f) => f.status === "draft") && scenarios.every((s) => s.status === "draft"));
 });
 
-check("ABI-01 y ABI-02 cerrados por DC01; ABI-37 separado como bloqueante de implementacion; ABI-32 a 36 siguen abiertos", () => {
+check("ABI-01 y ABI-02 cerrados por DC01; ABI-37 separado como bloqueante de implementacion; ABI-04, 18, 26 y 33 cerrados por la iteracion 1; el resto sigue abierto", () => {
   for (const id of ["ABI-01", "ABI-02"]) {
     const o = openItem(id);
     assert.equal(o.status, "CERRADO", id);
@@ -629,9 +638,15 @@ check("ABI-01 y ABI-02 cerrados por DC01; ABI-37 separado como bloqueante de imp
   assert.deepEqual(abi37.features, ["FEAT-REP-008", "FEAT-REP-010"]);
   assert.ok(decisionLog.decisions.find((d) => d.id === "DC15A")?.open?.includes("ABI-37"));
   assert.ok(uatItem("UAT-I01").pending?.includes("ABI-37") && !uatItem("UAT-I01").pending?.includes("ABI-02"));
+  const cerradosIt1: Record<string, string> = { "ABI-04": "DEC-IT1-01", "ABI-18": "DEC-IT1-04", "ABI-26": "DEC-IT1-02", "ABI-33": "DEC-IT1-03" };
   for (let n = 3; n <= 37; n++) {
     const id = `ABI-${String(n).padStart(2, "0")}`;
-    assert.equal(openItem(id).status, undefined, `${id} sigue abierto`);
+    if (id in cerradosIt1) {
+      assert.equal(openItem(id).status, "CERRADO", `${id} cerrado`);
+      assert.equal(openItem(id).closed_by, cerradosIt1[id], id);
+    } else {
+      assert.equal(openItem(id).status, undefined, `${id} sigue abierto`);
+    }
   }
   assert.ok(!decisionLog.open_items.some((o) => o.impact === "BLOQUEA_APROBACION" && o.status !== "CERRADO"));
 });
