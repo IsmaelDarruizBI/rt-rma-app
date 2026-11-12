@@ -238,6 +238,24 @@ Se agregan al registro sin cambiar la aprobación de DC01. Cada una cita sus reg
 
 Las DEC-IT1 se aprobaron para cerrar la iteración 1 de `rt-rma-mvp` (rama `feat/iteracion-1-alineacion-v14`).
 
+## I. Macroiteración de desarrollo funcional (12/11/2026)
+
+Implementación en `rt-rma-mvp` (rama `feat/macro-v14`) sin decisiones nuevas: solo lo que la baseline y el registro ya definen. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
+
+| Módulo | Implementado | Queda pendiente de una decisión |
+|---|---|---|
+| Evaluación técnica | BR-REP-035/036 (182 → 183 → 184), VAR-REP-019, descarte técnico, reparaciones adicionales del técnico (PROC-REP-128, BR-REP-037) | - |
+| Desistimiento total | DC07C y VAR-REP-043: solicitud con una Ejecución activa y cancelación conjunta al interrumpir | - |
+| Garantías | - | ABI-03, ABI-34, ABI-35, ABI-37 |
+| Comercial | - | ABI-09, ABI-10; los DNI duplicados históricos (ABI-24) exigen revisar datos reales |
+| Configuración | DC23 y DC23AUD para Tipos de Reparación y Mesas de trabajo, con auditoría e historial de precios | Delegación por permisos (DC08); políticas de garantía (ABI-03); plantillas (ABI-13) |
+| Antecedentes del equipo | Consulta por IMEI o número de serie (BR-REP-022) | Reutilización confirmada y equipos sin IMEI (ABI-05) |
+| Comunicaciones | - | ABI-13 (plantillas y disparadores) y ABI-31 (consentimiento) |
+| Compras y lotes | - | ABI-12 |
+| Usuarios con varios roles | - | Sin pendiente que lo bloquee (DC27A); no entró en la macroiteración |
+| Recepción y documentación | - | Checklist (DC12) sobre la configuración; firma (DC26, ABI-08); consentimiento (ABI-31); custodia (ABI-06) |
+| Reportes | Primera versión operativa, sin umbrales ni indicadores nuevos (DC29) | Diseño completo (ABI-15) |
+
 ## Glosario de entidades, estados y actores
 
 **Actores** (`business/actors/actors.yaml`, sin cambios): ACT-ADMIN Administración, ACT-RECEP Recepción, ACT-TECH Técnico, ACT-COORD Coordinador RMA, ACT-CLIENT Cliente, ACT-SYSTEM Sistema.
