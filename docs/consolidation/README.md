@@ -160,10 +160,12 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Impacto | IDs |
 |---|---|
 | Bloquean la aprobación | Ninguno abierto. ABI-01 (aprobación final) y ABI-02 (revisión de las elecciones de modelado) se cerraron con DC01 |
-| Bloquean implementar la funcionalidad afectada | ABI-03 precedencias de garantía · 05 equipos sin IMEI o coincidencias ambiguas · 06 responsables por evento de custodia · 09 permiso inicial del DESCUENTO · 10 descuento por debajo de lo cobrado · 12 Compras · 13 WhatsApp: plantillas, disparadores y proveedor · 31 consentimiento: cómo se obtiene · 32 corrección del check-in y comprobante final · 34 continuación como reparación paga · 35 registro del reclamo rechazado · 37 criterio de garantía aplicable del check-in |
-| Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 22 tipos de movimiento · 24 DNI duplicados históricos |
-| Posteriores | ABI-07, 08, 11, 14, 15, 17, 19 a 21, 23, 25, 27 a 30, 36 (motivo de la interrupción en una liberación ajena) |
-| Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1 (sección H) |
+| Bloquean implementar la funcionalidad afectada | ABI-13 proveedor de WhatsApp de la etapa 2 (fuera de la macroiteración integral) · 38 política RMA inicial de cada Tipo de Reparación · 39 plazo de garantía sin check-in exigible fuera de RMA |
+| Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 24 DNI duplicados históricos |
+| Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso |
+| Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1; ABI-03, 05 a 10, 12, 22, 23, 25, 31, 32, 34, 35 y 37, por las de la macroiteración integral (sección H) |
+
+ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen.
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -238,6 +240,32 @@ Se agregan al registro sin cambiar la aprobación de DC01. Cada una cita sus reg
 
 Las DEC-IT1 se aprobaron para cerrar la iteración 1 de `rt-rma-mvp` (rama `feat/iteracion-1-alineacion-v14`).
 
+### Decisiones de la macroiteración integral (12/11/2026)
+
+Aprobadas por el responsable de producto para la macroiteración integral de `rt-rma-mvp` (rama `feat/macro-integral`). Ninguna está implementada todavía: el registro las declara `NO_IMPLEMENTADO` hasta que el equipo de implementación cite su evidencia. No agregan nodos, aristas ni estados: cambian el texto de las reglas, de los nodos, de las Features y de VAR-REP-038.
+
+| Decisión | Qué decide | Cierra | Abre |
+|---|---|---|---|
+| DEC-MI-01 | Garantía por Tipo de Reparación: plazo con check-in realizado y no realizado (90 y 30 días iniciales) y política para trabajos dentro de una garantía RMA (nuevo plazo, tiempo restante o sin garantía). El ajuste manual prevalece. El check-in se exige solo si algún trabajo realizado tiene garantía mayor a cero | ABI-03, 37 | ABI-38, 39 |
+| DEC-MI-02 | Registro independiente de reclamos de garantía; un reclamo rechazado puede continuar como Orden CLIENTE_EXTERNO paga vinculada, sin duplicados | ABI-34, 35 | - |
+| DEC-MI-03 | DESCUENTO y CORTESIA por Recepción, Coordinación RMA y Administración; ajustes por Orden o por Detalle sin prorrateo; un ajuste por debajo de lo cobrado deja saldo a favor | ABI-09, 10 | - |
+| DEC-MI-04 | Recepción y Administración registran recepción física, no recibido, devolución sin reparar y entrega | ABI-06 | - |
+| DEC-MI-05 | El check-in se corrige antes de la entrega con motivo; versiones conservadas, rige la última, comprobante nuevo | ABI-32 | - |
+| DEC-MI-06 | Firma opcional en todos los documentos, en pantalla o foto del documento firmado | ABI-08 | - |
+| DEC-MI-07 | Corrección de los datos del ingreso por Recepción, Coordinación RMA y Administración, con motivo y auditoría; confirma UAT-I18 | ABI-25 | ABI-41 |
+| DEC-MI-08 | WhatsApp asistido con cinco plantillas iniciales, mensaje editable y confirmación manual; consentimiento expreso y revocable para marketing | ABI-31 y la etapa 1 de ABI-13 | - |
+| DEC-MI-09 | Compras: Solicitud → Orden de compra → Recepciones parciales → Ingreso de stock, en un proceso propio fuera de PROC-REP | ABI-12 | - |
+| DEC-MI-10 | Lote por tipo de insumo, serie cuando corresponda; movimientos de reserva, consumo, devolución y desperdicio | ABI-22 | - |
+| DEC-MI-11 | Equipo por IMEI, después por número de serie, si no identidad nueva; nunca por similitud; corrección auditada | ABI-05 | - |
+| DEC-MI-12 | Permisos configurables por rol; rol habilitante registrado; los permisos implementados son la configuración inicial; siempre un administrador | ABI-23 | - |
+| DEC-MI-13 | Catálogos administrados con permisos, auditoría y referencias históricas | - | - |
+| DEC-MI-14 | Retiro demorado a los 30 días de avisar el equipo listo, configurable; alerta sin cerrar la Orden ni disponer del equipo | ABI-07 | ABI-40 |
+| DEC-MI-15 | Catálogos separados de motivos de cancelación y de interrupción; «Otro» con descripción; versión histórica | ABI-29, salvo los medios de devolución | - |
+
+Fuera del alcance: la vinculación o integración de equipos con Gestión RT, la integración con ventas de Gestión RT, el proveedor automático de WhatsApp, los envíos automáticos de marketing, el gemelo digital y Odoo.
+
+Dos lecturas que conviene confirmar: DEC-MI-04 no nombra la regularización de PROC-REP-271, que se trata como el registro de uno de sus eventos, con el permiso de la configuración inicial (DEC-MI-12); y DEC-MI-05 no dice quién corrige el check-in, que también parte de esa configuración inicial.
+
 ## I. Macroiteración de desarrollo funcional (12/11/2026)
 
 Implementación en `rt-rma-mvp` (rama `feat/macro-v14`) sin decisiones nuevas: solo lo que la baseline y el registro ya definen. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
@@ -255,6 +283,19 @@ Implementación en `rt-rma-mvp` (rama `feat/macro-v14`) sin decisiones nuevas: s
 | Usuarios con varios roles | - | Sin pendiente que lo bloquee (DC27A); no entró en la macroiteración |
 | Recepción y documentación | - | Checklist (DC12) sobre la configuración; firma (DC26, ABI-08); consentimiento (ABI-31); custodia (ABI-06) |
 | Reportes | Primera versión operativa, sin umbrales ni indicadores nuevos (DC29) | Diseño completo (ABI-15) |
+
+La columna de pendientes describe el estado al cerrar `feat/macro-v14`. Las decisiones de la macroiteración integral (sección H) resolvieron después casi todos esos pendientes, que pasan a implementarse en `feat/macro-integral`:
+
+| Módulo | Decidido el 12/11/2026 | Sigue abierto |
+|---|---|---|
+| Garantías | DEC-MI-01 (ABI-03, 37) y DEC-MI-02 (ABI-34, 35) | ABI-38 política RMA inicial de cada Tipo; ABI-39 plazo sin check-in exigible fuera de RMA |
+| Comercial | DEC-MI-03 (ABI-09, 10) | ABI-24 (DNI duplicados, datos reales); ABI-40 dinero no retirado y devoluciones posteriores a ENTREGADA |
+| Configuración | DEC-MI-12 (delegación por permisos, ABI-23), DEC-MI-13 (catálogos), DEC-MI-01 (políticas de garantía), DEC-MI-08 (plantillas) y DEC-MI-15 (motivos) | ABI-29, solo los medios de devolución |
+| Antecedentes del equipo | DEC-MI-11 (ABI-05) | - |
+| Comunicaciones | DEC-MI-08 (ABI-31 y la etapa 1 de ABI-13) y DEC-MI-14 (recordatorio y retiro demorado, ABI-07) | ABI-13, solo el proveedor de la etapa 2, fuera de alcance |
+| Compras y lotes | DEC-MI-09 (ABI-12) y DEC-MI-10 (ABI-22) | - |
+| Usuarios con varios roles | DEC-MI-12 | - |
+| Recepción y documentación | DEC-MI-06 (ABI-08), DEC-MI-04 (ABI-06), DEC-MI-05 (ABI-32) y DEC-MI-07 (ABI-25, UAT-I18) | ABI-41 hasta cuándo se corrigen los datos del ingreso |
 
 ## Glosario de entidades, estados y actores
 
@@ -324,3 +365,8 @@ Se verifican como casos de prueba de la funcionalidad. No declaran un recorrido 
 | Ingreso y ajuste negativo de stock con confirmación; revalidación de una Orden con un Detalle bloqueado por recursos | Inventario / 120 | BR-REP-049 |
 | Inicio de Ejecución rechazado por recepción física sin confirmar, sin movimientos | 185 | BR-REP-033 |
 | Mensaje asistido de aviso: queda en el historial sin marcarse como enviado | 260 | BR-REP-044 |
+| Corrección del check-in antes de entregar, con motivo: rige la última versión y el comprobante final se emite como versión nueva (DEC-MI-05) | 269 / 280 | BR-REP-045, 031 |
+| Orden de CLIENTE_EXTERNO cuyos trabajos realizados tienen todos garantía 0: se entrega sin check-in (DEC-MI-01) | 265 | BR-REP-045, 041 |
+| Reclamo de garantía rechazado que Recepción continúa como reparación paga: una sola Orden CLIENTE_EXTERNO nueva, vinculada al reclamo, con cliente, equipo y motivo precargados (DEC-MI-02) | 036 → EVT-REP-998; después 030 de la Orden nueva | BR-REP-019 |
+| Equipo sin IMEI con número de serie conocido; varias coincidencias y Recepción indica «Ninguno» (DEC-MI-11) | 030 | BR-REP-022 |
+| Retiro demorado: vence el plazo desde el aviso de equipo listo, la Orden queda marcada y abierta (DEC-MI-14) | 260 → 265 / 270 | BR-REP-033, 044 |

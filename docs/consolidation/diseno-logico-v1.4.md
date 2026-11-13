@@ -145,11 +145,12 @@ Además:
 
 - Usuario.
 - Rol.
-- AsignacionRol: usuario y rol, varios por usuario.
+- AsignacionRol: usuario y rol, varios por usuario. Solo Administración la gestiona, desde Configuración y con auditoría (DEC-MI-12).
 - Accion: cada nodo con actor y cada capacidad transversal (pago, anulación, devolución, check-in, ajuste comercial, cambio de prioridad, liberación ajena, sincronización, stock, fotografías, eventos de custodia y tipos de cancelación).
 - Permiso: rol, acción y contexto permitido.
-- PermisoConsulta: rol y recurso consultable (Órdenes, Clientes, fotografías, documentos, pagos, reportes).
+- PermisoConsulta: rol y recurso consultable (Órdenes, Clientes, fotografías, documentos, pagos, reportes, antecedentes y operaciones administrativas, DEC-MI-12).
 - CambioPermiso: auditoría (BR-REP-040).
+- Cada acción registrada guarda el usuario y el rol que la habilitó (DEC-MI-12).
 
 **Relaciones.**
 
@@ -170,12 +171,14 @@ Además:
 - Los permisos efectivos son la unión de los roles del usuario.
 - El permiso es necesario pero no suficiente: siempre se evalúan las restricciones de contexto de cada regla.
 - Los predeterminados son los responsables declarados en el proceso (`actor` y `actores_alternativos`).
-- Pendientes: los responsables por evento de custodia (ABI-06) y los permisos por tipo de Ajuste Comercial (ABI-09).
-- Los provisionales tomados de la implementación se validan en ABI-23.
+- Los permisos implementados hoy son la configuración inicial, incluidos inventario, catálogo de equipos, ajuste de garantía y fotografías (DEC-MI-12, cierra ABI-23).
+- Los responsables por evento de custodia los decidió DEC-MI-04 y los del Ajuste Comercial, DEC-MI-03 y DEC-IT1-02.
+- Un técnico puede controlar su propio trabajo si tiene los permisos.
+- Ningún cambio de roles o permisos deja el sistema sin un administrador autorizado: el cambio que lo haría se rechaza completo.
 
 **Transacciones.**
 
-- Cambio de permisos o roles: cambio más auditoría.
+- Cambio de permisos o roles: cambio, verificación de que sigue habiendo un administrador autorizado y auditoría.
 - La evaluación de un permiso ocurre dentro de la transacción de la acción que habilita.
 
 **Arquitectura (DC27C, DC28).**
@@ -190,8 +193,8 @@ Además:
 
 **Entidades.**
 
-- Catálogos: TipoReparacion (precio, puntaje, garantía), Insumo, MesaDeTrabajo (Estación) con sus tipos habilitados, ChecklistTipoEquipo (preguntas y opciones), PoliticaGarantia, PlantillaMensaje.
-- Parámetros.
+- Catálogos (DEC-MI-13): TipoReparacion (precio, puntaje y política de garantía), Insumo (con su control por lote, DEC-MI-10), MesaDeTrabajo (Estación) con sus tipos habilitados, ChecklistTipoEquipo (preguntas y opciones), PoliticaGarantia, PlantillaMensaje, MotivoCancelacion y MotivoInterrupcion (catálogos separados, con versión, DEC-MI-15), precios y costos.
+- Parámetros operativos, entre ellos el plazo del retiro demorado (30 días iniciales, DEC-MI-14).
 - CambioConfiguracion: entidad, clave, valor anterior, valor nuevo, usuario y fecha/hora.
 - HistorialPrecio.
 
@@ -213,8 +216,9 @@ Además:
 
 **Invariantes.**
 
-- Ningún cambio altera lo registrado en Detalles, Ejecuciones o documentos, que conservan su copia (snapshot).
-- Todo cambio queda auditado.
+- Ningún cambio altera lo registrado en Detalles, Ejecuciones o documentos, que conservan su copia (snapshot), ni cambia precios de Órdenes existentes (DEC-MI-13).
+- Todo cambio queda auditado y respeta los permisos.
+- Las referencias históricas se preservan: un registro referenciado pasa a NO_VIGENTE, nunca se borra; un motivo conserva la versión con la que se eligió.
 - La administración es delegable por permiso.
 
 **Transacciones.**
@@ -260,7 +264,8 @@ Además:
 
 **Entidades.**
 
-- Equipo: identificador interno, IMEI y número de serie.
+- Equipo: identificador interno, IMEI y número de serie; historial completo de Órdenes, reparaciones, garantías, reingresos y custodia (DEC-MI-11).
+- CorreccionVinculacionEquipo: Orden, Equipo anterior, Equipo nuevo, motivo, usuario y fecha/hora (DEC-MI-11).
 - ProductoCatalogo: tp_id, marca, modelo, variante, capacidad, color, vigente y seleccionable.
 - SincronizacionCatalogo: usuario, inicio, fin, origen, filtro, resultado y conteos.
 
@@ -278,14 +283,18 @@ Además:
 **Eventos.**
 
 - Equipo registrado.
-- Reutilización confirmada.
+- Reutilización confirmada, o «Ninguno» elegido ante varias coincidencias.
+- Vinculación corregida.
 - Catálogo sincronizado o sincronización fallida.
 
 **Invariantes.**
 
 - El tp_id identifica un tipo de producto, nunca la unidad.
 - La búsqueda por IMEI devuelve coincidencias y Recepción confirma antes de vincular el historial.
-- Sin IMEI o con coincidencias ambiguas: pendiente (ABI-05).
+- Sin IMEI se busca por número de serie; sin ninguno, identidad nueva. Ante varias coincidencias Recepción elige o indica «Ninguno» (DEC-MI-11, cierra ABI-05).
+- Nunca se vincula por similitud de nombre, modelo o cliente.
+- Una vinculación errónea la corrigen Recepción, Coordinación RMA o Administración, con motivo y auditoría.
+- Sin integración con equipos de Gestión RT (fuera de alcance).
 - La sincronización nunca borra y conserva la última copia válida.
 - El alta nunca consulta el origen de Ventas en línea.
 
@@ -293,6 +302,7 @@ Además:
 
 - Sincronización: la fusión completa en una transacción. El registro del intento se confirma aunque la fusión falle.
 - Alta de Orden con Equipo nuevo o reutilizado: una transacción.
+- Corrección de la vinculación: el cambio de Equipo en la Orden y su auditoría, en una transacción.
 
 ## 7. Información inicial de recepción: checklist, fotografías y notas (DC12, UAT-010/011, UAT)
 
@@ -302,6 +312,7 @@ Además:
 - RespuestaChecklist: pregunta, opción o no realizada, según el tipo de equipo.
 - Fotografia: clave del objeto, tipo, tamaño, usuario y fecha/hora.
 - ConfirmacionAdvertencia: qué faltaba, usuario y fecha/hora.
+- CorreccionIngreso: dato corregido, valor anterior, valor nuevo, motivo obligatorio, usuario y fecha/hora (DEC-MI-07). Hasta cuándo se admite está pendiente (ABI-41).
 
 **Relaciones.**
 
@@ -318,6 +329,7 @@ Además:
 - Información inicial guardada.
 - Fotografía agregada.
 - Advertencia confirmada.
+- Datos del ingreso corregidos.
 
 **Invariantes.**
 
@@ -325,57 +337,70 @@ Además:
 - Las fotografías solo se agregan con la Orden creada, y como máximo 10.
 - Las notas internas nunca salen en documentos.
 - La advertencia por información faltante (fotografías, observaciones o verificaciones del checklist) nunca bloquea.
+- Corregir los datos del ingreso: Recepción, Coordinación RMA o Administración, con motivo; no altera los comprobantes ya emitidos (DEC-MI-07).
 
 **Transacciones.**
 
+- Corregir los datos del ingreso: el valor nuevo y su auditoría, en una transacción.
 - Registrar una fotografía: el objeto se sube fuera de la transacción y la referencia se registra dentro. Un fallo deja a lo sumo un objeto huérfano, nunca una referencia rota.
 
-## 8. Garantía: política, check-in y vigencia RMA (DC15A, DC15B, UAT-009)
+## 8. Garantía: política, check-in, vigencia y reclamos RMA (DC15A, DC15B, UAT-009, DEC-MI-01, DEC-MI-02, DEC-MI-05)
 
 **Entidades.**
 
-- PoliticaGarantia: por tipo de reparación y resultado del check-in. Las precedencias están pendientes (ABI-03).
-- GarantiaDetalle: política aplicada, sugerido, definitivo, ajustes con motivo y vencimiento desde la entrega.
-- Checkin: realizado o no realizado, usuario y fecha/hora. Cada registro es inmodificable. Si se admite corregirlo o registrarlo otra vez antes de la entrega, y cómo afecta al comprobante final, está pendiente (ABI-32); la implementación actual lo permite hasta entregar, como comportamiento técnico sin aprobación funcional.
+- PoliticaGarantia, una por Tipo de Reparación (DEC-MI-01): plazo con check-in realizado y plazo con check-in no realizado (90 y 30 días iniciales) y política para los trabajos hechos dentro de una garantía RMA: NUEVO_PLAZO (según el Tipo), TIEMPO_RESTANTE (de la garantía original) o SIN_GARANTIA. Cuál es la inicial de cada Tipo está pendiente (ABI-38).
+- GarantiaDetalle: política y Tipo aplicados, resultado del check-in considerado, plazo calculado, sugerido, definitivo, ajustes con motivo y vencimiento desde la entrega. Es trazable: se puede reconstruir cómo se calculó.
+- Checkin: realizado o no realizado, usuario y fecha/hora, con versiones (DEC-MI-05): cada corrección antes de la entrega es una versión nueva con motivo obligatorio; ninguna versión se modifica ni se borra y rige la última.
 - ExcepcionGarantia: de UN Detalle origen vencido (DEC-IT1-03): Detalle origen, vencimiento original, usuario, fecha/hora y motivo. La autorizan Recepción, Coordinación RMA o Administración (DEC-IT1-01).
-- Intento de reclamo rechazado: si se persiste, qué registra y quién lo consulta, pendiente (ABI-35).
+- ReclamoGarantia (DEC-MI-02): registro independiente de cada pedido de ingreso en garantía, admitido o rechazado. Orden original, Detalles reclamados, Equipo, usuario, fecha/hora, vigencia evaluada de cada Detalle, excepciones autorizadas, motivo y resultado del rechazo, y la Orden paga posterior si se continuó. Lo consultan Recepción, Coordinación RMA y Administración.
 
 **Relaciones.**
 
 - Detalle 1 GarantiaDetalle.
-- Orden 0..1 check-in vigente. Un historial de varios registros depende de ABI-32.
+- TipoReparacion 1 PoliticaGarantia vigente y 0..N versiones anteriores (BR-REP-040).
+- Orden 0..N versiones de check-in; la vigente es la última.
 - Orden de garantía, que referencia la Orden origen y los Detalles origen.
 - Detalle origen reclamado 1 evaluación de vigencia, 0..1 ExcepcionGarantia (solo si está vencido).
+- ReclamoGarantia 1 Orden original, 1..N Detalles reclamados, 0..1 Orden de garantía creada y 0..1 Orden CLIENTE_EXTERNO paga posterior.
 
 **Estados.**
 
 - Garantía de origen: VIGENTE o VENCIDA. Si está vencida, con o sin excepción (PROC-REP-036).
+- ReclamoGarantia: ADMITIDO (crea la Orden de garantía) o RECHAZADO. Un rechazado puede quedar CONTINUADO_COMO_PAGO cuando se crea su Orden paga. Son estados del reclamo, no de la Orden: no agregan estados ni transiciones al proceso.
 - La entrega queda bloqueada por check-in en PROC-REP-269. Es presentación: el workflow sigue en REPARACION_LISTA.
 
 **Eventos.**
 
 - Check-in registrado.
+- Check-in corregido (versión nueva, con motivo).
 - Garantía reasignada.
 - Garantía ajustada.
+- Política de garantía de un Tipo cambiada (BR-REP-040).
 - Vigencia validada.
 - Excepción autorizada.
+- Reclamo de garantía registrado, admitido o rechazado.
 - Ingreso en garantía no admitido (EVT-REP-998).
+- Reclamo rechazado continuado como reparación paga.
 
 **Invariantes.**
 
-- Sugerencia de 90 días con el check-in registrado como realizado y de 30 con el check-in registrado como no realizado, por Detalle no cancelado. Qué plazo rige sin check-in registrado forma parte de las precedencias (ABI-03).
-- Un ajuste manual nunca se pisa.
+- Sugerencia de 90 días con el check-in registrado como realizado y de 30 con el check-in registrado como no realizado, por Detalle no cancelado, según los plazos de su Tipo de Reparación (DEC-MI-01). Qué plazo rige cuando el check-in no es exigible fuera de RMA, o mientras no hay uno registrado, está pendiente (ABI-39).
+- Un trabajo hecho dentro de una garantía RMA recibe la garantía que dicta la política RMA de su Tipo.
+- Un ajuste manual autorizado prevalece sobre el plazo calculado y nunca se pisa; exige motivo y queda auditado.
 - La vigencia corre desde la entrega.
-- Una Orden de CLIENTE_EXTERNO con trabajos realizados y garantía aplicable no se entrega sin check-in. El criterio exacto de garantía aplicable está pendiente (ABI-37); la implementación lo interpreta provisionalmente como «al menos un trabajo realizado», sin que sea una regla aprobada.
+- Una Orden de CLIENTE_EXTERNO con trabajos realizados y garantía aplicable no se entrega sin check-in. La garantía es aplicable cuando al menos un trabajo realizado tiene garantía mayor a cero (DEC-MI-01, cierra ABI-37); si todos tienen garantía 0, no se exige.
+- El check-in se corrige solo antes de la entrega, con motivo; se conservan todas las versiones y rige la última (DEC-MI-05).
 - La vigencia se evalúa por cada Detalle reclamado, nunca para toda la Orden (DEC-IT1-03).
 - Un Detalle vencido sin excepción no se admite: el pedido que lo incluye no crea la Orden (nunca una Orden con parte de lo pedido) e informa los Detalles elegibles.
 - La excepción aplica solo al Detalle vencido identificado; la autorizan Recepción, Coordinación RMA o Administración, no el Técnico (DEC-IT1-01).
-- Pendientes de la garantía vencida, sin transiciones ni estados nuevos: continuación como reparación paga vinculada al reclamo rechazado (ABI-34) y persistencia y auditoría del intento rechazado (ABI-35).
+- Todo pedido queda en el registro de reclamos, también el rechazado; la Orden original entregada nunca se modifica (DEC-MI-02).
+- Un reclamo rechazado origina como máximo una Orden paga: un reintento no crea otra.
 
 **Transacciones.**
 
-- Registrar el check-in: el registro y la reasignación de la garantía de cada Detalle, en una transacción.
-- Crear una Orden de garantía: la validación de vigencia de cada Detalle, sus excepciones y la Orden nueva, en una transacción. Un rechazo no deja nada.
+- Registrar o corregir el check-in: la versión, la reasignación de la garantía de cada Detalle y, si el comprobante final ya existía, su versión nueva, en una transacción.
+- Crear una Orden de garantía: el reclamo, la validación de vigencia de cada Detalle, sus excepciones y la Orden nueva, en una transacción. Un rechazo registra solo el reclamo rechazado.
+- Continuar un reclamo rechazado como reparación paga: la Orden CLIENTE_EXTERNO nueva, con los datos precargados que Recepción confirmó, y su vínculo con el reclamo, en una transacción, idempotente.
 
 ## 9. Ingreso inicial simplificado y documentos (UAT-008, DC13, DC26)
 
@@ -383,7 +408,7 @@ Además:
 
 - Documento: tipo (ING, AUT, recepción, final, garantía) y contexto.
 - VersionDocumento: número, snapshot, motivo, referencia a la versión reemplazada, usuario y fecha/hora.
-- EvidenciaFirma: firma en pantalla o archivo firmado, ligada a una versión, con usuario y fecha/hora.
+- EvidenciaFirma: firma en pantalla o foto del documento firmado, ligada a una versión, con usuario y fecha/hora. Es opcional en todos los documentos (DEC-MI-06).
 
 **Relaciones.**
 
@@ -408,7 +433,8 @@ Además:
 - Un único documento vigente por tipo y contexto.
 - El AUT solo incluye Detalles autorizados y no es comprobante de pago.
 - Generar no equivale a enviar ni a firmar.
-- La obligatoriedad de cada firma está pendiente (ABI-08).
+- Ningún documento exige firma (DEC-MI-06, cierra ABI-08).
+- Corregir el check-in o los datos del ingreso nunca modifica una versión emitida: el check-in genera, cuando corresponde, una versión nueva del comprobante final (DEC-MI-05) y la corrección del ingreso no altera los comprobantes emitidos (DEC-MI-07).
 
 **Transacciones.**
 
@@ -426,7 +452,7 @@ Además:
 
 **Entidades.**
 
-- AjusteComercial: tipo CORTESIA o DESCUENTO; alcance Orden o Detalle; porcentaje o importe; motivo; usuario; fecha/hora; historial de cambios y retiros.
+- AjusteComercial: tipo CORTESIA o DESCUENTO; alcance Orden o Detalle; porcentaje o importe; motivo; usuario; fecha/hora; historial de cambios y retiros. Lo aplican Recepción, Coordinación RMA o Administración (DEC-MI-03).
 - Pago: importe, medio, tipo ANTICIPO o PAGO, referencia, usuario y fecha/hora.
 - AnulacionPago: motivo, usuario y fecha/hora.
 - DevolucionDinero: importe positivo, medio, motivo, referencia, usuario y fecha/hora.
@@ -454,15 +480,15 @@ Además:
 - Ningún precio original cambia.
 - Un Pago nunca se borra.
 - Una devolución no es un Pago negativo, no supera el saldo a favor y no se computa dos veces por su referencia.
-- Un solo Ajuste Comercial vigente por Orden; la CORTESIA puede ser total o parcial (DEC-IT1-02).
-- Una cortesía, total o parcial, que deja el total por debajo de lo cobrado deja saldo a favor.
-- Otorgar, modificar o quitar una cortesía: Recepción, Coordinación RMA o Administración (DEC-IT1-02).
+- La CORTESIA puede ser total o parcial (DEC-IT1-02).
+- Un ajuste general de la Orden y los ajustes de sus Detalles se registran por separado; el general no se prorratea automáticamente entre los Detalles (DEC-MI-03). Las reglas de acumulación no se definieron.
+- Cualquier ajuste, CORTESIA o DESCUENTO, que deja el total por debajo de lo cobrado deja saldo a favor; los pagos y los ajustes históricos se conservan (DEC-MI-03, cierra ABI-10).
+- Otorgar, modificar o quitar un ajuste: Recepción, Coordinación RMA o Administración (DEC-IT1-02 y DEC-MI-03, cierra ABI-09).
 - Un envío duplicado no registra un segundo ajuste ni una segunda devolución.
 - No hay entrega ni cierre con saldo distinto de 0.
 - Pendientes:
-  - permiso inicial del DESCUENTO (ABI-09);
-  - DESCUENTO por debajo de lo cobrado (ABI-10);
-  - devoluciones no retiradas (ABI-07).
+  - dinero no retirado sin un equipo por retirar y devoluciones posteriores a ENTREGADA (ABI-40);
+  - medios de devolución (ABI-29).
 
 **Transacciones.**
 
@@ -472,11 +498,13 @@ Además:
 
 **Entidades.**
 
-- EventoCustodia: recepción confirmada, no recibido, regularización, devolución física o entrega; responsable, fecha/hora y evidencia o referencia.
+- EventoCustodia: recepción confirmada, no recibido, regularización, devolución física (devolución sin reparar) o entrega; responsable, fecha/hora y evidencia o referencia.
+- RetiroDemorado (DEC-MI-14): Orden, fecha de la notificación de equipo listo, plazo aplicado (30 días iniciales, parámetro de Administración), fecha de vencimiento y seguimientos (comunicaciones y gestiones, con usuario y fecha/hora).
 
 **Relaciones.**
 
 - Orden 0..N eventos de custodia. Su situación se deriva de esos eventos.
+- Orden 0..1 retiro demorado vigente, con 0..N seguimientos.
 
 **Estados (situaciones).**
 
@@ -488,25 +516,28 @@ Además:
 **Eventos.**
 
 - Los propios eventos de custodia.
+- Retiro demorado marcado al vencer el plazo; seguimiento registrado.
 
 **Invariantes.**
 
 - No hay fin operativo con la custodia indeterminada.
 - No hay Ejecución sin recepción confirmada cuando el origen la exige.
 - Una devolución física no se duplica.
-- Cada evento tiene un permiso configurable. Los responsables predeterminados están pendientes (ABI-06).
+- Cada evento tiene un permiso configurable. Por defecto registran la recepción física, el no recibido, la devolución sin reparar y la entrega Recepción y Administración (DEC-MI-04, cierra ABI-06); la regularización registra uno de esos eventos con el permiso de la configuración inicial (DEC-MI-12).
+- El vencimiento del retiro nunca cierra la Orden, nunca declara el abandono ni habilita a disponer del equipo: solo marca, alerta en las bandejas y deja registrar seguimientos (DEC-MI-14, cierra ABI-07).
 
 **Transacciones.**
 
 - El evento de custodia junto con la transición que habilita (por ejemplo, la devolución física y el paso a la verificación de saldo).
+- Marcar el retiro demorado es idempotente: un vencimiento se marca una sola vez.
 
 ## 12. Cancelaciones y desistimiento (DC07, DC08)
 
 **Entidades.**
 
 - SolicitudDesistimiento: alcance (un Detalle o todos), motivo, canal si corresponde, usuario que la registró y fecha/hora.
-- Cancelacion: tipo administrativa, descarte técnico o desistimiento del cliente; Detalle; motivo; usuario y fecha/hora; resolución. La de un Detalle en ejecución lleva como responsable al técnico que interrumpió (DEC-IT1-05).
-- RegistroInterrupcion: técnico, fecha/hora, materiales, reversibilidad Sí o No y descripción obligatoria del estado del trabajo (DEC-IT1-04).
+- Cancelacion: tipo administrativa, descarte técnico o desistimiento del cliente; Detalle; motivo del catálogo de cancelación con su versión y, si es «Otro», su descripción (DEC-MI-15); usuario y fecha/hora; resolución. La de un Detalle en ejecución lleva como responsable al técnico que interrumpió (DEC-IT1-05).
+- RegistroInterrupcion: técnico, fecha/hora, materiales, motivo del catálogo de interrupción con su versión (DEC-MI-15), reversibilidad Sí o No y descripción obligatoria del estado del trabajo (DEC-IT1-04).
 
 **Relaciones.**
 
@@ -533,58 +564,77 @@ Además:
 - No se cierra la Orden con Ejecuciones o solicitudes sin resolver.
 - La solicitud y la cancelación efectiva son registros distintos, cada uno con su responsable; la efectiva no se atribuye a Recepción (DEC-IT1-05).
 - Se distinguen el desistimiento de un Detalle, la cancelación efectiva del Detalle y la cancelación de la Orden (DC31).
+- Los catálogos de motivos de cancelación y de interrupción son distintos; «Otro» exige descripción; una cancelación anterior conserva el motivo y la versión con que se registró y no cambia de significado (DEC-MI-15).
 
 **Transacciones.**
 
 - Cancelación efectiva: los Detalles, el resolver, la custodia resultante y el historial, en una transacción.
 - El desistimiento total guiado se confirma por pasos: la solicitud, cada interrupción y la cancelación final. Cada paso es una transacción propia.
 
-## 13. Stock operativo (UAT, gestión de inventario del 14/10/2026)
+## 13. Stock operativo, lotes y Compras (UAT, gestión de inventario del 14/10/2026, DEC-MI-09, DEC-MI-10)
 
 **Entidades.**
 
-- Insumo: físico y reservado; el disponible es derivado.
-- MovimientoInsumo: tipo, cantidad, responsable, Orden y Detalle cuando corresponde, motivo y referencia.
+- Insumo: físico y reservado; el disponible es derivado. Su tipo configura si se controla por lote (DEC-MI-10).
+- Lote: insumo, recepción de compra que lo originó y cantidades. Número de serie de la unidad cuando corresponda.
+- MovimientoInsumo: tipo (ingreso, ajuste, reserva, consumo, devolución de insumo utilizable o desperdicio de material inutilizado, DEC-MI-10, cierra ABI-22), cantidad, lote o serie cuando corresponde, responsable, Orden y Detalle cuando corresponde, motivo y referencia.
 - RevalidacionRecursos: resultado por Orden.
+- Compras, proceso propio fuera de PROC-REP (DC24, DEC-MI-09, cierra ABI-12):
+  - Proveedor: datos básicos.
+  - SolicitudCompra: manual o sugerida ante un faltante; insumos y cantidades.
+  - OrdenCompra: proveedor, insumos, cantidades y costos; quién la crea y quién la confirma. Sin aprobación.
+  - RecepcionCompra: Orden de compra, cantidades recibidas, diferencias, costo real y quién recibe; varias por Orden de compra.
 
 **Relaciones.**
 
-- Insumo 0..N movimientos.
+- Insumo 0..N movimientos y 0..N lotes.
 - Detalle 0..N movimientos.
+- SolicitudCompra 0..N Órdenes de compra; OrdenCompra 0..N recepciones; RecepcionCompra 1..N ingresos de stock (y lotes cuando corresponde).
+- Trazabilidad de la compra al consumo: recepción → lote → movimiento → Detalle.
 
 **Estados.**
 
 - Movimiento inmutable.
 - Faltante visible cuando el disponible es menor que 0.
+- OrdenCompra: creada, confirmada, recibida en parte o recibida por completo, según lo recibido frente a lo pedido.
 
 **Eventos.**
 
 - Ingreso de stock.
 - Ajuste positivo o negativo.
 - Revalidación ejecutada.
+- Reserva, consumo, devolución y desperdicio de insumo.
+- Solicitud de compra registrada o sugerida.
+- Orden de compra creada y confirmada.
+- Recepción de compra registrada, con sus diferencias.
 
 **Invariantes.**
 
 - Ningún ingreso ni ajuste modifica reservas.
 - Ningún ajuste deja stock físico negativo.
 - Todo ajuste negativo exige confirmación.
-- No se duplican movimientos.
+- No se duplican movimientos ni recepciones: un reintento es idempotente.
+- El stock disponible y el reservado son coherentes con los movimientos.
+- La devolución (insumo utilizable que vuelve) y el desperdicio (material inutilizado) son movimientos distintos.
 - La revalidación no reserva, no repite la habilitación y no cambia prioridades.
-- Pendientes: el catálogo de tipos de movimiento (ABI-22) y los permisos provisionales (ABI-23).
-- Lotes, unidades y costos llegan con el proceso de Compras (DC24, DC24LOT, ABI-12).
+- Nunca hay una compra automática sin confirmación.
+- El último costo de compra es la referencia operativa; cada recepción conserva su costo histórico; solo Administración configura precios.
+- Los permisos implementados son la configuración inicial (DEC-MI-12); crean y confirman Órdenes de compra y registran recepciones Recepción, Coordinación RMA y Administración.
+- La contabilidad de stock existente pasa a este modelo con una transición controlada.
 
 **Transacciones.**
 
 - Cada ingreso o ajuste, con bloqueo del insumo.
 - La revalidación: una transacción por Orden, de modo que un fallo no deshaga las demás.
+- Registrar una recepción de compra: la recepción, sus diferencias, los ingresos de stock y los lotes, en una transacción, con bloqueo de la Orden de compra y de los insumos.
 
-## 14. Comunicaciones asistidas y consentimiento (DC25 etapa 1, DC30, UAT)
+## 14. Comunicaciones asistidas y consentimiento (DC25 etapa 1, DC30, UAT, DEC-MI-08)
 
 **Entidades.**
 
-- PlantillaMensaje (configuración).
-- EnvioAsistido: plantilla, destinatario, canal, documento compartido, usuario y fecha/hora.
-- Consentimiento: cliente, finalidad (operativa o comercial), canal, fecha/hora, origen y revocación.
+- PlantillaMensaje (configuración de Administración, DEC-MI-08): texto con variables de la Orden. Las cinco iniciales: ingreso de equipo, autorización pendiente, equipo listo para retirar, recordatorio de retiro y garantía.
+- EnvioAsistido: Orden, plantilla, mensaje preparado (editado o no por el usuario), destinatario, canal, documento compartido, usuario, fecha/hora, intento de apertura de WhatsApp y confirmación manual del envío.
+- Consentimiento: cliente, finalidad (operativa o comercial), canal, fecha/hora, usuario, origen y revocación. El comercial (marketing) exige consentimiento expreso.
 
 **Relaciones.**
 
@@ -594,19 +644,23 @@ Además:
 **Estados.**
 
 - Consentimiento VIGENTE o REVOCADO.
-- El envío asistido es PREPARADO; no hay "enviado" sin confirmación. Los estados de envío llegan en la etapa 2.
+- El envío asistido es PREPARADO, ABIERTO (se intentó abrir WhatsApp) o CONFIRMADO_POR_USUARIO (confirmación manual). Nunca "entregado" ni "leído": esos estados solo llegarían con la evidencia de un proveedor, en la etapa 2.
 
 **Eventos.**
 
 - Mensaje preparado.
+- Apertura de WhatsApp intentada.
+- Envío confirmado manualmente.
 - Documento compartido.
 - Consentimiento otorgado o revocado.
 
 **Invariantes.**
 
 - Abrir WhatsApp no equivale a enviar.
-- El envío respeta el consentimiento vigente para su finalidad.
-- Plantillas, disparadores y proveedor están pendientes (ABI-13), y también cómo se obtiene el consentimiento (ABI-31).
+- El usuario revisa y puede editar el mensaje antes de abrir WhatsApp.
+- El envío respeta el consentimiento vigente para su finalidad y las preferencias del cliente; el marketing exige consentimiento expreso (DEC-MI-08, cierra ABI-31).
+- Sin envíos automáticos de marketing (fuera de alcance).
+- El proveedor de la etapa 2 sigue pendiente (ABI-13).
 
 **Transacciones.**
 
@@ -643,5 +697,6 @@ Además:
 
 ## Fuera de este diseño
 
-- **Compras**: tendrá su propio proceso funcional, distinto de PROC-REP, a definir (DC24, ABI-12). No hay nodos de Compras en PROC-REP.
+- **Compras**: es un proceso funcional propio, distinto de PROC-REP (DC24). Su contenido lo decidió DEC-MI-09 y su modelo lógico está en la sección 13; no hay nodos de Compras en PROC-REP.
+- **Integraciones excluidas de la macroiteración integral**: equipos y ventas de Gestión RT, proveedor automático de WhatsApp, envíos automáticos de marketing, gemelo digital y Odoo.
 - **Reporting e indicadores**: postergados (DC29).
