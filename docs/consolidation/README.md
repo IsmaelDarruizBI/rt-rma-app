@@ -242,7 +242,7 @@ Las DEC-IT1 se aprobaron para cerrar la iteración 1 de `rt-rma-mvp` (rama `feat
 
 ### Decisiones de la macroiteración integral (12/11/2026)
 
-Aprobadas por el responsable de producto para la macroiteración integral de `rt-rma-mvp` (rama `feat/macro-integral`). Ninguna está implementada todavía: el registro las declara `NO_IMPLEMENTADO` hasta que el equipo de implementación cite su evidencia. No agregan nodos, aristas ni estados: cambian el texto de las reglas, de los nodos, de las Features y de VAR-REP-038.
+Aprobadas por el responsable de producto para la macroiteración integral de `rt-rma-mvp` (rama `feat/macro-integral`). Su estado de implementación está en el registro (`implementation`) y en la sección J. No agregan nodos, aristas ni estados: cambian el texto de las reglas, de los nodos, de las Features y de VAR-REP-038.
 
 | Decisión | Qué decide | Cierra | Abre |
 |---|---|---|---|
@@ -296,6 +296,26 @@ La columna de pendientes describe el estado al cerrar `feat/macro-v14`. Las deci
 | Compras y lotes | DEC-MI-09 (ABI-12) y DEC-MI-10 (ABI-22) | - |
 | Usuarios con varios roles | DEC-MI-12 | - |
 | Recepción y documentación | DEC-MI-06 (ABI-08), DEC-MI-04 (ABI-06), DEC-MI-05 (ABI-32) y DEC-MI-07 (ABI-25, UAT-I18) | ABI-41 hasta cuándo se corrigen los datos del ingreso |
+
+## J. Macroiteración integral (13/11/2026)
+
+Implementación en `rt-rma-mvp` (rama `feat/macro-integral`, commits locales sin publicar) de las decisiones DEC-MI-01 a 15, sin decisiones nuevas. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
+
+| Módulo | Implementado | Commit | Sigue abierto |
+|---|---|---|---|
+| Roles y permisos | DEC-MI-12, DC27A, DC08, DC03, DP-01, DP-02, DC10, DC18B y DEC-MI-04: varios roles por usuario, permisos por rol configurables con los predeterminados, rol habilitante en el historial, nunca sin un Administrador | `c47903e` | DC27B: la consulta de Órdenes y catálogos sigue abierta a todo usuario autenticado |
+| Comercial | DEC-MI-03 y DC09: ajuste por Orden o por Detalle, saldo a favor y devolución antes de entregar | `85f42cf` | ABI-24, ABI-40 |
+| Garantías | DEC-MI-01, DC15A, DEC-MI-05 y DEC-MI-07: plazos por Tipo, política RMA, check-in con motivo, corrección del ingreso auditada | `cc46121`, `7a79d97` | ABI-38, ABI-39, ABI-41 |
+| Reclamos | DEC-MI-02: reclamo rechazado y continuación paga vinculada | `75948ac` | - |
+| Motivos y retiro demorado | DEC-MI-15, DEC-MI-14 y los parámetros de DEC-MI-13 | `ac7a56d` | ABI-29 (medios de devolución), ABI-40 |
+| Comunicaciones | DEC-MI-08, DC25 (etapa 1) y DC30 | `b4dd52c` | ABI-13, solo el proveedor de la etapa 2 |
+| Firmas | DEC-MI-06 y DC26 | `6a199dc` | - |
+| Identidad del equipo | DEC-MI-11 y DC20 | `c4ca1fd` | - |
+| Catálogos | DEC-MI-13 (parcial) y DC23AUD: Tipos, Mesas, políticas de garantía, permisos, motivos, parámetros, plantillas e insumos, con auditoría | `5c0536d` y los anteriores | Checklist por tipo de equipo (DC12) y precios y costos de compra (DEC-MI-09) |
+| Compras | - | - | DEC-MI-09 sin implementar |
+| Lotes y desperdicio | - | - | DEC-MI-10 sin implementar |
+
+**Decisión faltante (DC12, checklist por tipo de equipo).** Ni la baseline ni DEC-MI-13 definen qué es el «tipo de equipo» ni de dónde lo toma la Orden: no hay un catálogo de tipos de equipo y el Equipo solo tiene marca, modelo y variante (o el modelo técnico). Sin esa definición no se implementa el checklist.
 
 ## Glosario de entidades, estados y actores
 
