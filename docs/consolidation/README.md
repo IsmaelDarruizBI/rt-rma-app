@@ -162,10 +162,10 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Bloquean la aprobación | Ninguno abierto. ABI-01 (aprobación final) y ABI-02 (revisión de las elecciones de modelado) se cerraron con DC01 |
 | Bloquean implementar la funcionalidad afectada | ABI-13 proveedor de WhatsApp de la etapa 2 (fuera de la macroiteración integral) · 38 política RMA inicial de cada Tipo de Reparación · 39 plazo de garantía sin check-in exigible fuera de RMA |
 | Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 24 DNI duplicados históricos |
-| Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso |
+| Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso · 42 qué dato del catálogo de Ventas es el Tipo de Equipo |
 | Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1; ABI-03, 05 a 10, 12, 22, 23, 25, 31, 32, 34, 35 y 37, por las de la macroiteración integral (sección H) |
 
-ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen.
+ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define.
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -261,8 +261,9 @@ Aprobadas por el responsable de producto para la macroiteración integral de `rt
 | DEC-MI-13 | Catálogos administrados con permisos, auditoría y referencias históricas | - | - |
 | DEC-MI-14 | Retiro demorado a los 30 días de avisar el equipo listo, configurable; alerta sin cerrar la Orden ni disponer del equipo | ABI-07 | ABI-40 |
 | DEC-MI-15 | Catálogos separados de motivos de cancelación y de interrupción; «Otro» con descripción; versión histórica | ABI-29, salvo los medios de devolución | - |
+| DEC-MI-16 | El Tipo de Equipo del checklist viene del catálogo de Ventas de Gestión RT; RMA configura solo las preguntas y la Orden conserva el tipo elegido (aprobada el 15/11/2026, completa DC12) | - | ABI-42 |
 
-Fuera del alcance: la vinculación o integración de equipos con Gestión RT, la integración con ventas de Gestión RT, el proveedor automático de WhatsApp, los envíos automáticos de marketing, el gemelo digital y Odoo.
+Fuera del alcance: la vinculación o integración de equipos con Gestión RT (salvo la lectura del catálogo de tipos de equipo, DEC-MI-16), la integración con ventas de Gestión RT, el proveedor automático de WhatsApp, los envíos automáticos de marketing, el gemelo digital y Odoo.
 
 Dos lecturas que conviene confirmar: DEC-MI-04 no nombra la regularización de PROC-REP-271, que se trata como el registro de uno de sus eventos, con el permiso de la configuración inicial (DEC-MI-12); y DEC-MI-05 no dice quién corrige el check-in, que también parte de esa configuración inicial.
 
@@ -299,7 +300,7 @@ La columna de pendientes describe el estado al cerrar `feat/macro-v14`. Las deci
 
 ## J. Macroiteración integral (13/11/2026)
 
-Implementación en `rt-rma-mvp` (rama `feat/macro-integral`, commits locales sin publicar) de las decisiones DEC-MI-01 a 15 y DC12, sin decisiones nuevas. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
+Implementación en `rt-rma-mvp` (rama `feat/macro-integral`) de las decisiones DEC-MI-01 a 16 y DC12. DEC-MI-16 se aprobó el 15/11/2026, durante la implementación. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
 
 | Módulo | Implementado | Commit | Sigue abierto |
 |---|---|---|---|
@@ -314,9 +315,9 @@ Implementación en `rt-rma-mvp` (rama `feat/macro-integral`, commits locales sin
 | Catálogos | DEC-MI-13, DC23 y DC23AUD: Tipos, Mesas, políticas de garantía, permisos, motivos, parámetros, plantillas, insumos con control y precio, proveedores y checklist, con auditoría | `5c0536d`, `8699dbd`, `3434453`, `c8cd64f` | - |
 | Compras | DEC-MI-09 y DC24: solicitudes manuales o sugeridas y confirmadas, órdenes de compra sin aprobación, recepciones parciales con ingreso de stock, último costo e histórico | `3434453` | - |
 | Lotes y desperdicio | DEC-MI-10 y DC24LOT: control por lote o serie, stock sin lote identificado para el existente, desperdicio y devolución | `8699dbd` | - |
-| Checklist de recepción | DC12: tipos de equipo y preguntas configurables, checklist opcional con copia y versiones, advertencia por información faltante que no bloquea | `c8cd64f` | De dónde toma la Orden su tipo de equipo (ver abajo) |
+| Checklist de recepción | DC12 y DEC-MI-16: tipos de equipo copiados del catálogo de Ventas (solo lectura, sin alta ni edición en RMA), preguntas por tipo con vigencia y orden, checklist opcional con copia del tipo y de las preguntas y versiones, advertencia por información faltante que no bloquea | `c8cd64f`, `ef79e45` | ABI-42 |
 
-**Decisión pendiente (DC12, de dónde toma la Orden su tipo de equipo).** No existía una entidad de tipo de equipo en ninguna versión del dominio ni de la especificación: la baseline nombra el «tipo de equipo» y DEC-MI-13 el «checklist por tipo de equipo» sin definirlo. La implementación no inventa una clasificación: el catálogo de tipos empieza vacío y lo carga Administración, y hoy Recepción elige el tipo al completar el checklist. Alternativas para decidir: (a) que lo elija Recepción, como hoy; (b) que cada modelo técnico del catálogo tenga su tipo y la Orden lo herede; (c) derivarlo de la categoría del catálogo de Ventas, que solo tienen las Órdenes anteriores.
+**Dependencia pendiente (DEC-MI-16, ABI-42).** La tabla de Ventas que RMA ya lee (`raw_TipoProducto`, con el mismo origen de solo lectura de BR-REP-048) no tiene una entidad Tipo de Equipo: `tp_categoria` mezcla línea de marca y tipo, `tp_subcat_1` y `tp_gp` incluyen la condición nuevo o usado, y `tp_id` es el producto completo. La implementación copia los tipos desde la columna que se configure (`RMA_TIPO_EQUIPO_CAMPO`), que queda sin definir: hasta que Gestión RT indique la columna, o una tabla de tipos con identificador estable, no hay tipos y el checklist no se ofrece ni se pide.
 
 ## Glosario de entidades, estados y actores
 

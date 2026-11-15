@@ -193,7 +193,7 @@ Además:
 
 **Entidades.**
 
-- Catálogos (DEC-MI-13): TipoReparacion (precio, puntaje y política de garantía), Insumo (con su control por lote, DEC-MI-10), MesaDeTrabajo (Estación) con sus tipos habilitados, ChecklistTipoEquipo (preguntas y opciones), PoliticaGarantia, PlantillaMensaje, MotivoCancelacion y MotivoInterrupcion (catálogos separados, con versión, DEC-MI-15), precios y costos.
+- Catálogos (DEC-MI-13): TipoReparacion (precio, puntaje y política de garantía), Insumo (con su control por lote, DEC-MI-10), MesaDeTrabajo (Estación) con sus tipos habilitados, ChecklistTipoEquipo (preguntas, opciones, vigencia y orden, por Tipo de Equipo de Gestión RT; DEC-MI-16), PoliticaGarantia, PlantillaMensaje, MotivoCancelacion y MotivoInterrupcion (catálogos separados, con versión, DEC-MI-15), precios y costos.
 - Parámetros operativos, entre ellos el plazo del retiro demorado (30 días iniciales, DEC-MI-14).
 - CambioConfiguracion: entidad, clave, valor anterior, valor nuevo, usuario y fecha/hora.
 - HistorialPrecio.
@@ -309,7 +309,8 @@ Además:
 **Entidades.**
 
 - InformacionInicial: diagnóstico inicial, observaciones visibles y notas internas.
-- RespuestaChecklist: pregunta, opción o no realizada, según el tipo de equipo.
+- TipoEquipo: copia de solo lectura del catálogo de Ventas de Gestión RT (identificador de Ventas, descripción, vigente, columna de origen y última sincronización); RMA no lo crea ni lo edita (DEC-MI-16; qué dato de Ventas es el tipo: ABI-42).
+- RespuestaChecklist: pregunta, opción o no realizada, según el tipo de equipo; el registro conserva el identificador y la descripción del tipo elegido y la copia de las preguntas.
 - Fotografia: clave del objeto, tipo, tamaño, usuario y fecha/hora.
 - ConfirmacionAdvertencia: qué faltaba, usuario y fecha/hora.
 - CorreccionIngreso: dato corregido, valor anterior, valor nuevo, motivo obligatorio, usuario y fecha/hora (DEC-MI-07). Hasta cuándo se admite está pendiente (ABI-41).
