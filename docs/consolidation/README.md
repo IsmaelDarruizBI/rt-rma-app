@@ -299,11 +299,11 @@ La columna de pendientes describe el estado al cerrar `feat/macro-v14`. Las deci
 
 ## J. Macroiteración integral (13/11/2026)
 
-Implementación en `rt-rma-mvp` (rama `feat/macro-integral`, commits locales sin publicar) de las decisiones DEC-MI-01 a 15, sin decisiones nuevas. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
+Implementación en `rt-rma-mvp` (rama `feat/macro-integral`, commits locales sin publicar) de las decisiones DEC-MI-01 a 15 y DC12, sin decisiones nuevas. El estado de cada decisión está en el registro (`implementation`) y en la matriz.
 
 | Módulo | Implementado | Commit | Sigue abierto |
 |---|---|---|---|
-| Roles y permisos | DEC-MI-12, DC27A, DC08, DC03, DP-01, DP-02, DC10, DC18B y DEC-MI-04: varios roles por usuario, permisos por rol configurables con los predeterminados, rol habilitante en el historial, nunca sin un Administrador | `c47903e` | DC27B: la consulta de Órdenes y catálogos sigue abierta a todo usuario autenticado |
+| Roles y permisos | DEC-MI-12, DC27A, DC27B, DC08, DC03, DP-01, DP-02, DC10, DC18B y DEC-MI-04: varios roles por usuario, permisos por rol configurables con los predeterminados, rol habilitante en el historial, consultas de Órdenes e inventario configurables, nunca sin un Administrador | `c47903e`, `c973bb0` | - |
 | Comercial | DEC-MI-03 y DC09: ajuste por Orden o por Detalle, saldo a favor y devolución antes de entregar | `85f42cf` | ABI-24, ABI-40 |
 | Garantías | DEC-MI-01, DC15A, DEC-MI-05 y DEC-MI-07: plazos por Tipo, política RMA, check-in con motivo, corrección del ingreso auditada | `cc46121`, `7a79d97` | ABI-38, ABI-39, ABI-41 |
 | Reclamos | DEC-MI-02: reclamo rechazado y continuación paga vinculada | `75948ac` | - |
@@ -311,11 +311,12 @@ Implementación en `rt-rma-mvp` (rama `feat/macro-integral`, commits locales sin
 | Comunicaciones | DEC-MI-08, DC25 (etapa 1) y DC30 | `b4dd52c` | ABI-13, solo el proveedor de la etapa 2 |
 | Firmas | DEC-MI-06 y DC26 | `6a199dc` | - |
 | Identidad del equipo | DEC-MI-11 y DC20 | `c4ca1fd` | - |
-| Catálogos | DEC-MI-13 (parcial) y DC23AUD: Tipos, Mesas, políticas de garantía, permisos, motivos, parámetros, plantillas e insumos, con auditoría | `5c0536d` y los anteriores | Checklist por tipo de equipo (DC12) y precios y costos de compra (DEC-MI-09) |
-| Compras | - | - | DEC-MI-09 sin implementar |
-| Lotes y desperdicio | - | - | DEC-MI-10 sin implementar |
+| Catálogos | DEC-MI-13, DC23 y DC23AUD: Tipos, Mesas, políticas de garantía, permisos, motivos, parámetros, plantillas, insumos con control y precio, proveedores y checklist, con auditoría | `5c0536d`, `8699dbd`, `3434453`, `c8cd64f` | - |
+| Compras | DEC-MI-09 y DC24: solicitudes manuales o sugeridas y confirmadas, órdenes de compra sin aprobación, recepciones parciales con ingreso de stock, último costo e histórico | `3434453` | - |
+| Lotes y desperdicio | DEC-MI-10 y DC24LOT: control por lote o serie, stock sin lote identificado para el existente, desperdicio y devolución | `8699dbd` | - |
+| Checklist de recepción | DC12: tipos de equipo y preguntas configurables, checklist opcional con copia y versiones, advertencia por información faltante que no bloquea | `c8cd64f` | De dónde toma la Orden su tipo de equipo (ver abajo) |
 
-**Decisión faltante (DC12, checklist por tipo de equipo).** Ni la baseline ni DEC-MI-13 definen qué es el «tipo de equipo» ni de dónde lo toma la Orden: no hay un catálogo de tipos de equipo y el Equipo solo tiene marca, modelo y variante (o el modelo técnico). Sin esa definición no se implementa el checklist.
+**Decisión pendiente (DC12, de dónde toma la Orden su tipo de equipo).** No existía una entidad de tipo de equipo en ninguna versión del dominio ni de la especificación: la baseline nombra el «tipo de equipo» y DEC-MI-13 el «checklist por tipo de equipo» sin definirlo. La implementación no inventa una clasificación: el catálogo de tipos empieza vacío y lo carga Administración, y hoy Recepción elige el tipo al completar el checklist. Alternativas para decidir: (a) que lo elija Recepción, como hoy; (b) que cada modelo técnico del catálogo tenga su tipo y la Orden lo herede; (c) derivarlo de la categoría del catálogo de Ventas, que solo tienen las Órdenes anteriores.
 
 ## Glosario de entidades, estados y actores
 
