@@ -454,7 +454,8 @@ Además:
 **Entidades.**
 
 - AjusteComercial: tipo CORTESIA o DESCUENTO; alcance Orden o Detalle; porcentaje o importe; motivo; usuario; fecha/hora; historial de cambios y retiros. Lo aplican Recepción, Coordinación RMA o Administración (DEC-MI-03).
-- Pago: importe, medio, tipo ANTICIPO o PAGO, referencia, usuario y fecha/hora.
+- Pago: importe, medio, tipo ANTICIPO o PAGO, referencia, usuario y fecha/hora; copia del recargo del medio (porcentaje e importe), cobrado aparte del importe imputado (DEC-UX-08).
+- MedioPago: recargo porcentual configurable por Administración, con auditoría (DEC-UX-08).
 - AnulacionPago: motivo, usuario y fecha/hora.
 - DevolucionDinero: importe positivo, medio, motivo, referencia, usuario y fecha/hora.
 

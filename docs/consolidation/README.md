@@ -165,7 +165,7 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso · 42 qué dato del catálogo de Ventas es el Tipo de Equipo |
 | Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1; ABI-03, 05 a 10, 12, 22, 23, 25, 31, 32, 34, 35 y 37, por las de la macroiteración integral (sección H) |
 
-ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define.
+ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen.
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -266,6 +266,25 @@ Aprobadas por el responsable de producto para la macroiteración integral de `rt
 Fuera del alcance: la vinculación o integración de equipos con Gestión RT (salvo la lectura del catálogo de tipos de equipo, DEC-MI-16), la integración con ventas de Gestión RT, el proveedor automático de WhatsApp, los envíos automáticos de marketing, el gemelo digital y Odoo.
 
 Dos lecturas que conviene confirmar: DEC-MI-04 no nombra la regularización de PROC-REP-271, que se trata como el registro de uno de sus eventos, con el permiso de la configuración inicial (DEC-MI-12); y DEC-MI-05 no dice quién corrige el check-in, que también parte de esa configuración inicial.
+
+### Decisiones de la iteración de UX de Recepción (16/11/2026)
+
+Aprobadas por el responsable de producto para la iteración de mejoras funcionales y de UX de Recepción de `rt-rma-mvp` (rama `feat/ux-recepcion`). No agregan nodos, aristas ni estados: cambian el texto de BR-REP-017, 022, 046 y 048 y dónde se ofrecen acciones existentes.
+
+| Decisión | Qué decide | Abre |
+|---|---|---|
+| DEC-UX-01 | Los modelos del catálogo técnico vienen de Ventas; se completan con una exportación nueva, sin inventar ni duplicar | ABI-43 |
+| DEC-UX-02 | Sin IMEI, el identificador interno del Equipo, visible en la Orden y en el comprobante; el IMEI real se asocia después | - |
+| DEC-UX-03 | Un solo campo de Observaciones del equipo en la recepción; las Órdenes anteriores conservan sus datos | - |
+| DEC-UX-04 | Trabajo inicial opcional desde el alta, con el mismo comando y controles | - |
+| DEC-UX-05 | Imprimir el comprobante con el mismo PDF, sin emitir otro | - |
+| DEC-UX-06 | Comprobante con DNI (o «sin DNI»), identificador, observaciones y espacio para firmar; aviso previo sin bloquear | - |
+| DEC-UX-07 | Firma opcional ofrecida junto al comprobante de ingreso | - |
+| DEC-UX-08 | Recargo porcentual por medio de pago (Transferencia 2 %), copiado en cada pago y cobrado aparte del saldo | ABI-44, ABI-45 |
+| DEC-UX-09 | Cancelar el trabajo en cada trabajo; cancelar la Orden en Más acciones | - |
+| DEC-UX-10 | Resultado técnico derivado, sin estados nuevos | - |
+| DEC-UX-11 | Acceso directo al WhatsApp asistido desde la Orden | - |
+| DEC-UX-12 | Cabecera con número, nombre y teléfono del cliente y acciones | - |
 
 ## I. Macroiteración de desarrollo funcional (12/11/2026)
 
