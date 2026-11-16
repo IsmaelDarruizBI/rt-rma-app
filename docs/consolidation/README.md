@@ -165,7 +165,7 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso · 42 qué dato del catálogo de Ventas es el Tipo de Equipo |
 | Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1; ABI-03, 05 a 10, 12, 22, 23, 25, 31, 32, 34, 35 y 37, por las de la macroiteración integral (sección H) |
 
-ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen.
+ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen; ABI-44 y 45 se cerraron ese mismo día con DEC-UX-14 y 13.
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -280,11 +280,15 @@ Aprobadas por el responsable de producto para la iteración de mejoras funcional
 | DEC-UX-05 | Imprimir el comprobante con el mismo PDF, sin emitir otro | - |
 | DEC-UX-06 | Comprobante con DNI (o «sin DNI»), identificador, observaciones y espacio para firmar; aviso previo sin bloquear | - |
 | DEC-UX-07 | Firma opcional ofrecida junto al comprobante de ingreso | - |
-| DEC-UX-08 | Recargo porcentual por medio de pago (Transferencia 2 %), copiado en cada pago y cobrado aparte del saldo | ABI-44, ABI-45 |
+| DEC-UX-08 | Recargo porcentual por medio de pago (Transferencia 2 %), copiado en cada pago y cobrado aparte del saldo | ABI-44 y ABI-45 (cerrados por DEC-UX-14 y 13) |
 | DEC-UX-09 | Cancelar el trabajo en cada trabajo; cancelar la Orden en Más acciones | - |
 | DEC-UX-10 | Resultado técnico derivado, sin estados nuevos | - |
 | DEC-UX-11 | Acceso directo al WhatsApp asistido desde la Orden | - |
 | DEC-UX-12 | Cabecera con número, nombre y teléfono del cliente y acciones | - |
+| DEC-UX-13 | El recargo se incorpora al importe final de cada Detalle, en proporción a sus importes; sin línea aparte en el comprobante (cierra ABI-45) | - |
+| DEC-UX-14 | La devolución reintegra la parte proporcional del recargo de su pago (cierra ABI-44) | - |
+
+DEC-UX-03 y DEC-UX-04 se revisaron el 16/11/2026: el texto único lleva una marca explícita y no se copia al estado físico; el alta y el trabajo inicial son una sola operación.
 
 ## I. Macroiteración de desarrollo funcional (12/11/2026)
 
