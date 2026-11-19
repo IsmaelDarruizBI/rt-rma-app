@@ -1329,7 +1329,7 @@ rules:
       por eso una Orden cancelada ya no espera la devolucion: es terminal.
       Las Ordenes que quedaron CANCELADA y abiertas por la regla anterior
       conservan ese circuito hasta cerrarse.
-      DEC-CFG-07 (20/11/2026): el plazo del retiro demorado deja de mostrarse
+      DEC-CFG-07 (19/11/2026): el plazo del retiro demorado deja de mostrarse
       en Configuracion; se conserva con su valor y sus efectos, y solo
       Administracion puede cambiarlo, sin una pantalla para hacerlo.
     status: approved
@@ -1748,7 +1748,7 @@ rules:
       de mensajes Administracion (DEC-MI-08, BR-REP-044).
       La autenticacion y el almacenamiento de usuarios, roles y permisos son
       una decision de arquitectura (DC27C), no de esta regla.
-      Configuracion v2 (DEC-CFG-02 a DEC-CFG-04, 20/11/2026): los permisos se
+      Configuracion v2 (DEC-CFG-02 a DEC-CFG-04, 19/11/2026): los permisos se
       asignan solo por rol, sin permisos individuales por usuario; cada accion
       y cada consulta exige su permiso en el servidor, y las acciones que
       dependian de un rol fijo usan su permiso con el mismo predeterminado.
@@ -1792,7 +1792,7 @@ rules:
       Del checklist, Administracion configura las preguntas, sus opciones,
       su vigencia y su orden; los tipos de equipo los define Gestion RT y no
       se modifican desde RMA (DEC-MI-16).
-      Configuracion v2 (DEC-CFG-01, DEC-CFG-03 y DEC-CFG-05, 20/11/2026): el
+      Configuracion v2 (DEC-CFG-01, DEC-CFG-03 y DEC-CFG-05, 19/11/2026): el
       sistema genera los codigos de los Tipos de Reparacion, los motivos, los
       insumos (identificador y codigo iguales por defecto), los proveedores,
       las preguntas del checklist, las solicitudes y ordenes de compra y los
@@ -1839,7 +1839,7 @@ rules:
       trazabilidad, y esa condicion es la que valida PROC-REP-036 en un
       reclamo de garantia RMA (BR-REP-019). El comprobante final informa el
       plazo definitivo y el vencimiento de cada Detalle.
-      DEC-CFG-06 (20/11/2026): Configuracion muestra de cada Tipo de
+      DEC-CFG-06 (19/11/2026): Configuracion muestra de cada Tipo de
       Reparacion solo la garantia con check-in y sin check-in, en dias. El
       plazo generico del Tipo, el que se aplica a un Detalle sin check-in
       registrado, se conserva sin pantalla: los Tipos existentes mantienen su
@@ -1904,7 +1904,7 @@ rules:
       de un proveedor.
       Etapa 2 (DC25): proveedor oficial, con estados de envio y reintentos.
       Pendiente: el proveedor de la etapa 2.
-      DEC-CFG-08 (20/11/2026): Configuracion y la Orden ofrecen solo las
+      DEC-CFG-08 (19/11/2026): Configuracion y la Orden ofrecen solo las
       plantillas de ingreso de equipo y de equipo listo para retirar, que se
       editan pero no se agregan nuevas; autorizacion pendiente, recordatorio
       de retiro y garantia no se borran ni se desactivan, y las comunicaciones
@@ -2081,7 +2081,7 @@ rules:
       costo real lo registra quien recibe y solo Administracion configura
       precios. Los proveedores tienen datos basicos. Fuera de alcance:
       inventarios fisicos periodicos.
-      Configuracion v2 (DEC-CFG-01 y DEC-CFG-04, 20/11/2026): cada accion de
+      Configuracion v2 (DEC-CFG-01 y DEC-CFG-04, 19/11/2026): cada accion de
       Compras tiene su permiso -solicitar, crear ordenes de compra, confirmar,
       cancelar las confirmadas, recibir y gestionar proveedores- y todas
       requieren el de consultar Compras; las cinco primeras empiezan con

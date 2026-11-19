@@ -701,7 +701,7 @@ decisions:
       mayor a cero (criterio de garantia aplicable). Cada Detalle tiene un
       plazo calculado y trazable. No decide cual de las tres politicas RMA es
       la inicial de cada Tipo (ABI-38) ni que plazo rige cuando el check-in no
-      es exigible fuera de la garantia RMA (ABI-39). DEC-CFG-06 (20/11/2026):
+      es exigible fuera de la garantia RMA (ABI-39). DEC-CFG-06 (19/11/2026):
       Configuracion muestra solo los plazos con y sin check-in; el plazo
       generico y la politica RMA de cada Tipo se conservan sin pantalla, con
       sus reglas.
@@ -841,7 +841,7 @@ decisions:
       de las comerciales; el marketing exige consentimiento expreso, revocable,
       con usuario, fecha, canal y origen, y se respetan las preferencias. Los
       envios automaticos de marketing quedan fuera del alcance. DEC-CFG-08
-      (20/11/2026): Configuracion y la Orden ofrecen solo ingreso de equipo y
+      (19/11/2026): Configuracion y la Orden ofrecen solo ingreso de equipo y
       equipo listo para retirar; las otras tres plantillas se conservan, sin
       borrarse ni desactivarse.
     implementation:
@@ -867,7 +867,7 @@ decisions:
       sin duplicados y con registro de diferencias. El ultimo costo de compra
       es la referencia operativa; cada recepcion conserva su costo historico;
       solo Administracion configura precios; el costo real lo registra quien
-      recibe. Proveedores con datos basicos. DEC-CFG-04 (20/11/2026): cada
+      recibe. Proveedores con datos basicos. DEC-CFG-04 (19/11/2026): cada
       accion de Compras tiene su permiso, con esos tres roles como
       predeterminados, y los proveedores el suyo, inicialmente de
       Administracion; los precios, el permiso de precios de DEC-CFG-03,
@@ -936,7 +936,7 @@ decisions:
       configuracion inicial; los permisos de consulta de reportes,
       antecedentes y operaciones administrativas son configurables; ningun
       cambio puede dejar el sistema sin un administrador autorizado.
-      DEC-CFG-02 y DEC-CFG-03 (20/11/2026): los permisos siguen siendo por
+      DEC-CFG-02 y DEC-CFG-03 (19/11/2026): los permisos siguen siendo por
       rol, sin permisos individuales; cada catalogo operativo y los precios
       tienen su permiso, inicialmente de Administracion; usuarios, roles y
       permisos, parametros del sistema, recargos por medio de pago y la
@@ -959,7 +959,7 @@ decisions:
       interrupcion, parametros operativos, precios y costos. Cada cambio
       respeta permisos, se audita, preserva las referencias historicas y no
       cambia precios de Ordenes existentes. DEC-CFG-01, DEC-CFG-03 y
-      DEC-CFG-05 (20/11/2026): los codigos los genera el sistema; cada
+      DEC-CFG-05 (19/11/2026): los codigos los genera el sistema; cada
       catalogo tiene su permiso; Configuracion se organiza por funcionalidad,
       con altas sin campos de codigo.
     implementation:
@@ -981,7 +981,7 @@ decisions:
       comunicaciones; la Orden sigue abierta y nunca se cierra, declara
       abandono ni dispone del equipo por vencimiento. Las devoluciones de
       dinero posteriores a ENTREGADA y el dinero no retirado cuando no hay un
-      equipo por retirar no se decidieron (ABI-40). DEC-CFG-07 (20/11/2026):
+      equipo por retirar no se decidieron (ABI-40). DEC-CFG-07 (19/11/2026):
       el plazo sale de la pantalla de Configuracion y sigue rigiendo con su
       valor; solo Administracion lo cambia, sin pantalla.
     implementation:
@@ -1489,8 +1489,8 @@ decisions:
       status: IMPLEMENTADO
       evidence: "rt-rma-mvp feat/reparacion-rt-etapa1 dc9bd3b y 1b0a483, local (services/permisos.py PRODUCTOS_RT_CONSULTAR: Recepcion, Coordinacion RMA y Administracion; PRODUCTOS_RT_SINCRONIZAR: Administracion; ambos configurables). Crear la Orden desde un Producto y validar una coincidencia llegan con la etapa 2 (DEC-RT-01, DEC-RT-03)"
 
-  # ------------------------------------------------------------------ Configuracion v2 (20/11/2026)
-  # Aprobadas por el responsable de producto el 20/11/2026 para la iteracion
+  # ------------------------------------------------------------------ Configuracion v2 (19/11/2026)
+  # Aprobadas por el responsable de producto el 19/11/2026 para la iteracion
   # Configuracion v2 de rt-rma-mvp (rama feat/configuracion-v2): D1 a D8, los
   # ajustes 1 a 8 de la revision y DF-1 a DF-5 de rt-rma-mvp
   # docs/configuracion-discovery.md (CFG-01 a CFG-08). No agregan nodos,
@@ -1504,7 +1504,7 @@ decisions:
     rules: [BR-REP-040, BR-REP-049]
     features: [FEAT-REP-010, FEAT-REP-003]
     notes: >
-      Aprobada el 20/11/2026 (CFG-01; D4, D6 y los ajustes 1 y 7). (1) El
+      Aprobada el 19/11/2026 (CFG-01; D4, D6 y los ajustes 1 y 7). (1) El
       sistema genera el codigo de los Tipos de Reparacion, de los motivos de
       cancelacion y de interrupcion (con un prefijo segun el tipo de motivo) y
       de los insumos, cuyo identificador y codigo son iguales por defecto; la
@@ -1533,7 +1533,7 @@ decisions:
     rules: [BR-REP-039]
     features: [FEAT-REP-011]
     notes: >
-      Aprobada el 20/11/2026 (CFG-02; D1 y el ajuste 5). Precisa DEC-MI-12.
+      Aprobada el 19/11/2026 (CFG-02; D1 y el ajuste 5). Precisa DEC-MI-12.
       (1) Los permisos se asignan por rol, como hasta ahora; no hay permisos
       individuales por usuario, que quedan para otra iteracion. (2) Cada
       accion y cada consulta exige su permiso en el servidor, no solo en la
@@ -1560,7 +1560,7 @@ decisions:
     rules: [BR-REP-039, BR-REP-040, BR-REP-015]
     features: [FEAT-REP-010, FEAT-REP-011]
     notes: >
-      Aprobada el 20/11/2026 (CFG-03; D2, D3 y D8). Amplia DEC-MI-12 y
+      Aprobada el 19/11/2026 (CFG-03; D2, D3 y D8). Amplia DEC-MI-12 y
       DEC-MI-13. (1) Tipos de Reparacion (alta, nombre, puntaje, garantias y
       vigencia), tipos habilitados por Mesa de trabajo, motivos de cancelacion
       y de interrupcion, insumos (alta, nombre, unidad, control por lote y
@@ -1596,7 +1596,7 @@ decisions:
     rules: [BR-REP-049, BR-REP-039]
     features: [FEAT-REP-003, FEAT-REP-011]
     notes: >
-      Aprobada el 20/11/2026 (CFG-03; D5, DF-4 y DF-5). Amplia DEC-MI-09 solo
+      Aprobada el 19/11/2026 (CFG-03; D5, DF-4 y DF-5). Amplia DEC-MI-09 solo
       en quien hace cada accion. (1) El permiso unico de gestionar Compras se
       divide en: crear y descartar solicitudes de compra; crear ordenes de
       compra; confirmarlas; cancelar ordenes de compra confirmadas; registrar
@@ -1625,7 +1625,7 @@ decisions:
     rules: [BR-REP-040, BR-REP-039]
     features: [FEAT-REP-010, FEAT-REP-011]
     notes: >
-      Aprobada el 20/11/2026 (CFG-04 y CFG-05; D4). (1) Configuracion se
+      Aprobada el 19/11/2026 (CFG-04 y CFG-05; D4). (1) Configuracion se
       agrupa por funcionalidad: Taller (Tipos de Reparacion, Mesas de
       trabajo, motivos y checklist), Inventario y compras (insumos y
       proveedores), Comunicacion (plantillas de WhatsApp) y Sistema (usuarios
@@ -1657,7 +1657,7 @@ decisions:
     rules: [BR-REP-041, BR-REP-040]
     features: [FEAT-REP-010, FEAT-REP-008]
     notes: >
-      Aprobada el 20/11/2026 (CFG-06; el ajuste 2 y el 8, DF-1 y DF-2). Ajusta
+      Aprobada el 19/11/2026 (CFG-06; el ajuste 2 y el 8, DF-1 y DF-2). Ajusta
       DEC-MI-01 solo en lo que muestra Configuracion. (1) El alta y la edicion
       de un Tipo de Reparacion muestran solo la garantia con check-in y la
       garantia sin check-in, en dias. (2) El plazo generico del Tipo, el que
@@ -1685,7 +1685,7 @@ decisions:
     nodes: [PROC-REP-260, PROC-REP-270]
     features: [FEAT-REP-010, FEAT-REP-008]
     notes: >
-      Aprobada el 20/11/2026 (CFG-07; los ajustes 3 y 8). Ajusta DEC-MI-14
+      Aprobada el 19/11/2026 (CFG-07; los ajustes 3 y 8). Ajusta DEC-MI-14
       solo en donde se configura. El plazo deja de mostrarse en Configuracion;
       se conserva con su valor actual (30 dias desde el aviso de equipo listo,
       si no se cambio), sigue marcando el retiro demorado en las bandejas y en
@@ -1704,7 +1704,7 @@ decisions:
     nodes: [PROC-REP-260]
     features: [FEAT-REP-008, FEAT-REP-010]
     notes: >
-      Aprobada el 20/11/2026 (CFG-08; los ajustes 4 y 8, DF-3). Ajusta
+      Aprobada el 19/11/2026 (CFG-08; los ajustes 4 y 8, DF-3). Ajusta
       DEC-MI-08 y DEC-UX-11 solo en las plantillas que se ofrecen. (1)
       Configuracion muestra solo las plantillas de ingreso de equipo y de
       equipo listo para retirar, que se editan (texto y vigencia); no ofrece
@@ -2682,7 +2682,7 @@ open_items:
       abrir el modulo si la copia tiene mas de N minutos, o programada; con
       que frecuencia y que antiguedad maxima admite crear una Orden.
 
-  # ---------------------------------------- Configuracion v2 (20/11/2026)
+  # ---------------------------------------- Configuracion v2 (19/11/2026)
   - id: ABI-53
     title: Jerarquia de insumos y compatibilidad de un insumo con varios modelos de equipo
     impact: POSTERIOR

@@ -165,7 +165,7 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso · 42 qué dato del catálogo de Ventas es el Tipo de Equipo · 53 jerarquía de insumos y compatibilidad con modelos de equipo |
 | Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1; ABI-03, 05 a 10, 12, 22, 23, 25, 31, 32, 34, 35 y 37, por las de la macroiteración integral (sección H) |
 
-ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen; ABI-44 y 45 se cerraron ese mismo día con DEC-UX-14 y 13. ABI-53 se abrió el 20/11/2026 con lo que Configuración v2 no define; ABI-38 y 39 siguen abiertos: DEC-CFG-06 solo decide cómo se conservan y se inicializan los valores que hoy se aplican.
+ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen; ABI-44 y 45 se cerraron ese mismo día con DEC-UX-14 y 13. ABI-53 se abrió el 19/11/2026 con lo que Configuración v2 no define; ABI-38 y 39 siguen abiertos: DEC-CFG-06 solo decide cómo se conservan y se inicializan los valores que hoy se aplican.
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -290,7 +290,7 @@ Aprobadas por el responsable de producto para la iteración de mejoras funcional
 
 DEC-UX-03 y DEC-UX-04 se revisaron el 16/11/2026: el texto único lleva una marca explícita y no se copia al estado físico; el alta y el trabajo inicial son una sola operación.
 
-### Decisiones de Configuración v2 (20/11/2026)
+### Decisiones de Configuración v2 (19/11/2026)
 
 Aprobadas por el responsable de producto para la iteración Configuración v2 de `rt-rma-mvp` (rama `feat/configuracion-v2`): D1 a D8, los ajustes de la revisión y DF-1 a DF-5 de `docs/configuracion-discovery.md` de ese repositorio. No agregan nodos, aristas ni estados: cambian el texto de BR-REP-033, 039, 040, 041, 044 y 049, y lo que la pantalla deja de mostrar se conserva con su valor y sus reglas. Su implementación está en el registro (`implementation`) y en la matriz.
 
