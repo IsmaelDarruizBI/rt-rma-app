@@ -147,7 +147,7 @@ Además:
 - Rol.
 - AsignacionRol: usuario y rol, varios por usuario. Solo Administración la gestiona, desde Configuración y con auditoría (DEC-MI-12).
 - Accion: cada nodo con actor y cada capacidad transversal (pago, anulación, devolución, check-in, ajuste comercial, cambio de prioridad, liberación ajena, sincronización, stock, fotografías, eventos de custodia y tipos de cancelación).
-- Permiso: rol, acción y contexto permitido.
+- Permiso: rol, acción y contexto permitido. Se asigna solo por rol, sin permisos individuales por usuario (DEC-CFG-02). Puede requerir otro, su consulta (DEC-CFG-03). Cada catálogo operativo y los precios tienen el suyo, y Compras uno por acción (DEC-CFG-03, DEC-CFG-04).
 - PermisoConsulta: rol y recurso consultable (Órdenes, Clientes, fotografías, documentos, pagos, reportes, antecedentes y operaciones administrativas, DEC-MI-12).
 - CambioPermiso: auditoría (BR-REP-040).
 - Cada acción registrada guarda el usuario y el rol que la habilitó (DEC-MI-12).
@@ -175,6 +175,9 @@ Además:
 - Los responsables por evento de custodia los decidió DEC-MI-04 y los del Ajuste Comercial, DEC-MI-03 y DEC-IT1-02.
 - Un técnico puede controlar su propio trabajo si tiene los permisos.
 - Ningún cambio de roles o permisos deja el sistema sin un administrador autorizado: el cambio que lo haría se rechaza completo.
+- Ningún permiso queda sin roles, y ningún rol queda con una acción sin la consulta que esa acción requiere (DEC-CFG-03).
+- Usuarios, roles y permisos, los parámetros del sistema, los recargos por medio de pago y la auditoría completa son fijos de Administración (DEC-CFG-03).
+- Cada acción y cada consulta exige su permiso en el servidor, no solo en la pantalla (DEC-CFG-02).
 
 **Transacciones.**
 
@@ -220,6 +223,8 @@ Además:
 - Todo cambio queda auditado y respeta los permisos.
 - Las referencias históricas se preservan: un registro referenciado pasa a NO_VIGENTE, nunca se borra; un motivo conserva la versión con la que se eligió.
 - La administración es delegable por permiso.
+- El código de cada registro de catálogo (y de proveedores, preguntas del checklist, solicitudes y órdenes de compra y reclamos) lo genera el sistema: único sin distinguir mayúsculas, nunca cambia, admite huecos y no reutiliza los existentes; el informado por un cliente anterior se respeta si es válido y único (DEC-CFG-01).
+- Lo que la pantalla deja de mostrar se conserva con su valor y sus reglas: el plazo genérico de garantía y la política RMA de cada Tipo (DEC-CFG-06), el plazo del retiro demorado (DEC-CFG-07) y las plantillas que no se ofrecen (DEC-CFG-08).
 
 **Transacciones.**
 
@@ -349,7 +354,7 @@ Además:
 
 **Entidades.**
 
-- PoliticaGarantia, una por Tipo de Reparación (DEC-MI-01): plazo con check-in realizado y plazo con check-in no realizado (90 y 30 días iniciales) y política para los trabajos hechos dentro de una garantía RMA: NUEVO_PLAZO (según el Tipo), TIEMPO_RESTANTE (de la garantía original) o SIN_GARANTIA. Cuál es la inicial de cada Tipo está pendiente (ABI-38).
+- PoliticaGarantia, una por Tipo de Reparación (DEC-MI-01): plazo con check-in realizado y plazo con check-in no realizado (90 y 30 días iniciales) y política para los trabajos hechos dentro de una garantía RMA: NUEVO_PLAZO (según el Tipo), TIEMPO_RESTANTE (de la garantía original) o SIN_GARANTIA. Cuál es la inicial de cada Tipo está pendiente (ABI-38). Configuración muestra solo los dos plazos; el plazo genérico (sin check-in registrado) y la política RMA se conservan sin pantalla, y en un Tipo nuevo el genérico toma el valor con check-in y la política queda sin definir (DEC-CFG-06).
 - GarantiaDetalle: política y Tipo aplicados, resultado del check-in considerado, plazo calculado, sugerido, definitivo, ajustes con motivo y vencimiento desde la entrega. Es trazable: se puede reconstruir cómo se calculó.
 - Checkin: realizado o no realizado, usuario y fecha/hora, con versiones (DEC-MI-05): cada corrección antes de la entrega es una versión nueva con motivo obligatorio; ninguna versión se modifica ni se borra y rige la última.
 - ExcepcionGarantia: de UN Detalle origen vencido (DEC-IT1-03): Detalle origen, vencimiento original, usuario, fecha/hora y motivo. La autorizan Recepción, Coordinación RMA o Administración (DEC-IT1-01).
@@ -623,6 +628,7 @@ Además:
 - Nunca hay una compra automática sin confirmación.
 - El último costo de compra es la referencia operativa; cada recepción conserva su costo histórico; solo Administración configura precios.
 - Los permisos implementados son la configuración inicial (DEC-MI-12); crean y confirman Órdenes de compra y registran recepciones Recepción, Coordinación RMA y Administración.
+- Cada acción de Compras tiene su permiso (solicitar, crear, confirmar, cancelar confirmadas, recibir y proveedores), que requiere el de consultar Compras; quien crea Órdenes de compra descarta su propio borrador y cancelar una confirmada exige el permiso de cancelar (DEC-CFG-04).
 - La contabilidad de stock existente pasa a este modelo con una transición controlada.
 
 **Transacciones.**
@@ -635,7 +641,7 @@ Además:
 
 **Entidades.**
 
-- PlantillaMensaje (configuración de Administración, DEC-MI-08): texto con variables de la Orden. Las cinco iniciales: ingreso de equipo, autorización pendiente, equipo listo para retirar, recordatorio de retiro y garantía.
+- PlantillaMensaje (configuración de Administración, DEC-MI-08): texto con variables de la Orden. Las cinco iniciales: ingreso de equipo, autorización pendiente, equipo listo para retirar, recordatorio de retiro y garantía. Configuración y la Orden ofrecen solo ingreso de equipo y equipo listo para retirar; las otras se conservan, sin borrarse ni desactivarse (DEC-CFG-08).
 - EnvioAsistido: Orden, plantilla, mensaje preparado (editado o no por el usuario), destinatario, canal, documento compartido, usuario, fecha/hora, intento de apertura de WhatsApp y confirmación manual del envío.
 - Consentimiento: cliente, finalidad (operativa o comercial), canal, fecha/hora, usuario, origen y revocación. El comercial (marketing) exige consentimiento expreso.
 

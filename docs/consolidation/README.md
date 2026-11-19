@@ -162,10 +162,10 @@ Están en `open_items` del registro y en la matriz. Ninguna se completó con una
 | Bloquean la aprobación | Ninguno abierto. ABI-01 (aprobación final) y ABI-02 (revisión de las elecciones de modelado) se cerraron con DC01 |
 | Bloquean implementar la funcionalidad afectada | ABI-13 proveedor de WhatsApp de la etapa 2 (fuera de la macroiteración integral) · 38 política RMA inicial de cada Tipo de Reparación · 39 plazo de garantía sin check-in exigible fuera de RMA |
 | Bloquean la migración a PostgreSQL | ABI-16 (AUD-V14-005, versiones de la definición) · 24 DNI duplicados históricos |
-| Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso · 42 qué dato del catálogo de Ventas es el Tipo de Equipo |
+| Posteriores | ABI-11, 14, 15, 17, 19 a 21, 27 a 30 (29: solo los medios de devolución), 36 (motivo de la interrupción en una liberación ajena), 40 dinero no retirado y devoluciones posteriores a ENTREGADA · 41 hasta cuándo se corrigen los datos del ingreso · 42 qué dato del catálogo de Ventas es el Tipo de Equipo · 53 jerarquía de insumos y compatibilidad con modelos de equipo |
 | Cerrados después de la baseline | ABI-04, 18, 26 y 33, por las decisiones de la iteración 1; ABI-03, 05 a 10, 12, 22, 23, 25, 31, 32, 34, 35 y 37, por las de la macroiteración integral (sección H) |
 
-ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen; ABI-44 y 45 se cerraron ese mismo día con DEC-UX-14 y 13.
+ABI-13 y ABI-29 se cerraron en parte: DEC-MI-08 decidió la etapa 1 de WhatsApp y DEC-MI-15 los motivos de cancelación y de interrupción; lo que no se decidió sigue en el mismo pendiente. ABI-38 a 41 se abrieron el 12/11/2026 con lo que esas decisiones no definen; ABI-42, el 15/11/2026, con lo que DEC-MI-16 no define; ABI-43 a 45, el 16/11/2026, con lo que las decisiones de UX de Recepción no definen; ABI-44 y 45 se cerraron ese mismo día con DEC-UX-14 y 13. ABI-53 se abrió el 20/11/2026 con lo que Configuración v2 no define; ABI-38 y 39 siguen abiertos: DEC-CFG-06 solo decide cómo se conservan y se inicializan los valores que hoy se aplican.
 
 Las mejoras que se postergaron (MEJ-01 a 04, de la auditoría M1, M3, M4 y M6) están en `improvements` del registro y en la matriz.
 
@@ -289,6 +289,21 @@ Aprobadas por el responsable de producto para la iteración de mejoras funcional
 | DEC-UX-14 | La devolución reintegra la parte proporcional del recargo de su pago (cierra ABI-44) | - |
 
 DEC-UX-03 y DEC-UX-04 se revisaron el 16/11/2026: el texto único lleva una marca explícita y no se copia al estado físico; el alta y el trabajo inicial son una sola operación.
+
+### Decisiones de Configuración v2 (20/11/2026)
+
+Aprobadas por el responsable de producto para la iteración Configuración v2 de `rt-rma-mvp` (rama `feat/configuracion-v2`): D1 a D8, los ajustes de la revisión y DF-1 a DF-5 de `docs/configuracion-discovery.md` de ese repositorio. No agregan nodos, aristas ni estados: cambian el texto de BR-REP-033, 039, 040, 041, 044 y 049, y lo que la pantalla deja de mostrar se conserva con su valor y sus reglas. Su implementación está en el registro (`implementation`) y en la matriz.
+
+| Decisión | Qué decide | Abre |
+|---|---|---|
+| DEC-CFG-01 | Códigos generados por el sistema en catálogos, compras, reclamos y checklist; únicos sin distinguir mayúsculas, inmutables, con huecos admitidos; los existentes no cambian y el informado por un cliente anterior se respeta | - |
+| DEC-CFG-02 | Permisos solo por rol; cada acción y consulta exige su permiso en el servidor; los roles fijos pasan a su permiso con el mismo predeterminado | - |
+| DEC-CFG-03 | Un permiso por catálogo operativo y otro para los precios, al inicio solo de Administración; lo sensible queda fijo para Administración; cada acción requiere su consulta y ningún permiso queda sin roles | - |
+| DEC-CFG-04 | Compras por acción (solicitar, crear, confirmar, cancelar confirmadas, recibir, proveedores) con los roles que tenía la gestión de Compras (DF-4); el creador descarta su borrador (DF-5) | - |
+| DEC-CFG-05 | Configuración por funcionalidad, cada sección con su permiso; altas breves sin campos de código | ABI-53 |
+| DEC-CFG-06 | Tipos con solo la garantía con y sin check-in; el plazo genérico y la política RMA se conservan sin pantalla (DF-1, DF-2) | - |
+| DEC-CFG-07 | El plazo del retiro demorado sale de la pantalla y sigue rigiendo | - |
+| DEC-CFG-08 | Solo las plantillas de ingreso y de equipo listo para retirar, en Configuración y en la Orden; las demás se conservan (DF-3) | - |
 
 ## I. Macroiteración de desarrollo funcional (12/11/2026)
 
